@@ -38,4 +38,4 @@ def test_rag_store_answer_includes_retrieved_context():
     )
     answer = store.answer("When are you available?")
     assert "Tuesday mornings" in answer
-    assert "knowledge base excerpts" in answer.lower()
+    assert "resume" in answer.lower()

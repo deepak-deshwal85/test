@@ -10,7 +10,7 @@ from rag import RagChunk, RagStore
 def test_load_client_config_for_phone_1234():
     config = load_client_config("1234")
     assert config.phone_number == "1234"
-    assert config.client_name == "Alice Johnson"
+    assert config.client_name == "Deepak Kumar"
     assert config.knowledge_base_doc == "resume_1.pdf"
     assert config.embeddings_file == "phone_number_1234.json"
 
@@ -48,9 +48,9 @@ def test_rag_store_retrieves_most_relevant_chunk():
     )
 
     matches = store.retrieve("What Python experience is listed?")
-    assert matches[0].startswith("Alice")
+    assert matches[0][1].startswith("Alice")
 
 
 def test_rag_store_answer_without_matches():
     store = RagStore(model_name="test-model", chunks=[], embed_query=_mock_embed_query)
-    assert "could not find relevant information" in store.answer("anything").lower()
+    assert "no matching information" in store.answer("anything").lower()

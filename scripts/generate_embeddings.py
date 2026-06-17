@@ -17,8 +17,8 @@ from client_config import load_client_config
 from paths import CONFIG_DIR, EMBEDDINGS_DIR, KNOWLEDGE_BASE_DIR
 from rag import DEFAULT_EMBEDDING_MODEL
 
-CHUNK_SIZE = 500
-CHUNK_OVERLAP = 100
+CHUNK_SIZE = 400
+CHUNK_OVERLAP = 80
 
 
 def extract_pdf_text(pdf_path: Path) -> str:

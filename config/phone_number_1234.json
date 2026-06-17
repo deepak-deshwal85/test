@@ -1,6 +1,6 @@
 {
   "phone_number": "1234",
-  "client_name": "Alice Johnson",
+  "client_name": "Deepak Kumar",
   "knowledge_base_doc": "resume_1.pdf",
   "embeddings_file": "phone_number_1234.json"
 }

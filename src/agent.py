@@ -304,13 +304,54 @@ class SpecialRequestsTask(AgentTask):
         self.complete(list(self._partial_results))
 
 
+class ClientQATask(AgentTask):
+    def __init__(
+        self,
+        client_name: str,
+        agent_instructions: str,
+        extra_tools: list | None = None,
+    ):
+        qa_instructions = (
+            f"You are helping callers learn about {client_name}.\n"
+            "- ALWAYS call get_answer before answering factual questions about "
+            f"{client_name}'s background, skills, experience, education, projects, or availability.\n"
+            "- Never guess resume details. If get_answer returns nothing useful, say you do not have that detail.\n"
+            "- Keep answers short and conversational.\n"
+            "- When the caller wants to book an appointment, call book_appointment."
+        )
+        super().__init__(
+            instructions=f"{agent_instructions}\n\n{qa_instructions}",
+            tools=list(extra_tools) if extra_tools else [],
+        )
+        self._client_name = client_name
+
+    async def on_enter(self):
+        await self.session.generate_reply(
+            instructions=(
+                f"Greet the caller briefly, then ask: "
+                f'What would you like to know about {self._client_name}?'
+            ),
+            allow_interruptions=True,
+            tool_choice="auto",
+        )
+
+    @function_tool(name="book_appointment")
+    async def book_appointment(self, context: RunContext):
+        """Call when the caller is ready to book an appointment."""
+        self.complete(None)
+
+
 class DefaultAgent(Agent):
     def __init__(self, client_config: ClientConfig, rag_store: RagStore) -> None:
         self._client_config = client_config
         self._rag_store = rag_store
         self._agent_instructions = f"""You are a friendly, reliable voice assistant that answers questions, explains topics, and completes tasks with available tools.
 
-You are assisting on behalf of {client_config.client_name}. Use the get_answer tool whenever the caller asks about background information, experience, skills, education, or availability for this client.
+You are assisting on behalf of {client_config.client_name}.
+
+# Conversation phases
+1. First answer the caller's questions about {client_config.client_name} using get_answer.
+2. Only move to appointment booking after the caller asks to book or schedule.
 
 # Output rules
 
@@ -346,34 +387,28 @@ You are interacting with the user via voice, and must apply the following rules 
         )
 
     async def on_enter(self):
-        greeting_instructions = ""
-        greeting_instructions = """Greet the caller and let them know you can help them book an appointment."""
-        # The greeting must not ask a question — the first data collection task
-        # asks the opening question. Without this guardrail the LLM tends to end
-        # with an open-ended prompt ("How can I help?"), which collides with the
-        # task's first turn.
-        no_question_guardrail = (
-            "IMPORTANT: The greeting must be a statement only. Do NOT end with any "
-            'question, including open-ended prompts like "How can I help?". The '
-            "next task will ask the first question."
+        _task_tools = [t for t in self.tools if not isinstance(t, EndCallTool)]
+
+        try:
+            await ClientQATask(
+                client_name=self._client_config.client_name,
+                agent_instructions=self._agent_instructions,
+                extra_tools=_task_tools,
+            )
+        except (ToolError, asyncio.CancelledError):
+            logger.info("client Q&A cancelled (participant likely disconnected)")
+            return
+
+        booking_intro = (
+            f"Acknowledge that you will now help book an appointment with "
+            f"{self._client_config.client_name}. Ask only for the first booking detail."
         )
         await self.session.generate_reply(
-            instructions="\n".join(
-                part
-                for part in (
-                    self._agent_instructions,
-                    greeting_instructions,
-                    no_question_guardrail,
-                )
-                if part
-            ),
+            instructions=booking_intro,
             allow_interruptions=True,
+            tool_choice="none",
         )
-        # Propagate HTTP/client/MCP tools into each data collection task so
-        # they're callable mid-task (e.g. looking up a customer record while
-        # collecting details). EndCallTool is excluded here — it's invoked
-        # programmatically in _finish_data_collection.
-        _task_tools = [t for t in self.tools if not isinstance(t, EndCallTool)]
+
         task_group = TaskGroup(chat_ctx=self.chat_ctx)
         task_group.add(
             lambda _ai=self._agent_instructions, _tools=_task_tools: (
@@ -481,13 +516,13 @@ You are interacting with the user via voice, and must apply the following rules 
     async def _client_tool_get_answer(
         self, context: RunContext, query_text: str
     ) -> str:
-        """Look up answers about the current client from their knowledge base.
+        """Search the client's resume and return relevant facts.
 
-        Use this when the caller asks about the client's background, skills,
-        experience, education, or availability.
+        ALWAYS use this before answering questions about the client's background,
+        skills, work experience, education, projects, certifications, or availability.
 
         Args:
-            query_text: The caller's question.
+            query_text: The caller's question rewritten as a clear search query.
         """
         try:
             return await asyncio.to_thread(self._rag_store.answer, query_text)
@@ -543,6 +578,9 @@ server = AgentServer()
 
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
+    from rag import create_embed_query
+
+    create_embed_query()
 
 
 server.setup_fnc = prewarm

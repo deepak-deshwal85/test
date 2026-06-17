@@ -10,9 +10,11 @@ from paths import EMBEDDINGS_DIR
 logger = logging.getLogger("agent-telephone-agent")
 
 DEFAULT_EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
-DEFAULT_TOP_K = 3
+DEFAULT_TOP_K = 5
+MIN_SIMILARITY_SCORE = 0.35
+BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
 
-
+_shared_models: dict[str, Callable[[str], list[float]]] = {}
 @dataclass(frozen=True)
 class RagChunk:
     text: str
@@ -25,7 +27,7 @@ class RagStore:
     chunks: list[RagChunk]
     embed_query: Callable[[str], list[float]]
 
-    def retrieve(self, query_text: str, top_k: int = DEFAULT_TOP_K) -> list[str]:
+    def retrieve(self, query_text: str, top_k: int = DEFAULT_TOP_K) -> list[tuple[float, str]]:
         if not self.chunks:
             return []
 
@@ -35,19 +37,40 @@ class RagStore:
             for chunk in self.chunks
         ]
         scored.sort(key=lambda item: item[0], reverse=True)
-        return [text for _, text in scored[:top_k]]
+        return scored[:top_k]
 
     def answer(self, query_text: str, top_k: int = DEFAULT_TOP_K) -> str:
-        matches = self.retrieve(query_text, top_k=top_k)
-        if not matches:
-            return "I could not find relevant information in the knowledge base for that question."
+        scored_matches = self.retrieve(query_text, top_k=top_k)
+        matches = [
+            (score, text) for score, text in scored_matches if score >= MIN_SIMILARITY_SCORE
+        ]
 
-        context = "\n\n".join(matches)
-        return (
-            "Use the following knowledge base excerpts to answer the caller. "
-            "If the excerpts do not contain the answer, say you do not have that information.\n\n"
-            f"{context}"
-        )
+        if matches:
+            logger.info(
+                "rag match for %r: top score=%.3f chunks=%d",
+                query_text,
+                matches[0][0],
+                len(matches),
+            )
+            excerpts = "\n".join(f"- {text}" for _, text in matches)
+            return f"Relevant information from the resume:\n{excerpts}"
+
+        if scored_matches:
+            logger.warning(
+                "rag low confidence for %r: top score=%.3f (min=%.3f)",
+                query_text,
+                scored_matches[0][0],
+                MIN_SIMILARITY_SCORE,
+            )
+            best_score, best_text = scored_matches[0]
+            return (
+                "The closest resume excerpt may be relevant:\n"
+                f"- {best_text}\n"
+                f"(confidence score: {best_score:.2f})"
+            )
+
+        logger.warning("rag found no chunks for query %r", query_text)
+        return "No matching information was found in the resume for that question."
 
 
 def _cosine_similarity(left: list[float], right: list[float]) -> float:
@@ -62,14 +85,25 @@ def _cosine_similarity(left: list[float], right: list[float]) -> float:
     return dot / (left_norm * right_norm)
 
 
-def _default_embed_query(model_name: str) -> Callable[[str], list[float]]:
+def _format_query_for_embedding(query_text: str, model_name: str) -> str:
+    if "bge" in model_name.lower():
+        return f"{BGE_QUERY_PREFIX}{query_text}"
+    return query_text
+
+
+def create_embed_query(model_name: str = DEFAULT_EMBEDDING_MODEL) -> Callable[[str], list[float]]:
+    if model_name in _shared_models:
+        return _shared_models[model_name]
+
     from fastembed import TextEmbedding
 
     model = TextEmbedding(model_name=model_name)
 
     def embed_query(text: str) -> list[float]:
-        return [float(value) for value in next(model.embed([text]))]
+        prepared = _format_query_for_embedding(text, model_name)
+        return [float(value) for value in next(model.embed([prepared]))]
 
+    _shared_models[model_name] = embed_query
     return embed_query
 
 
@@ -93,10 +127,17 @@ def load_rag_store(
         for item in data.get("chunks", [])
     ]
 
+    logger.info(
+        "loaded %d rag chunks for %s from %s",
+        len(chunks),
+        client_config.client_name,
+        embeddings_path.name,
+    )
+
     return RagStore(
         model_name=model_name,
         chunks=chunks,
-        embed_query=embed_query or _default_embed_query(model_name),
+        embed_query=embed_query or create_embed_query(model_name),
     )
 
 
@@ -116,5 +157,5 @@ def load_rag_store_from_embeddings_file(
     return RagStore(
         model_name=model_name,
         chunks=chunks,
-        embed_query=embed_query or _default_embed_query(model_name),
+        embed_query=embed_query or create_embed_query(model_name),
     )
