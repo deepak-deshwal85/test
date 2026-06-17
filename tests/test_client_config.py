@@ -7,12 +7,12 @@ from client_config import load_client_config, resolve_client_config
 from rag import RagChunk, RagStore
 
 
-def test_load_client_config_for_phone_1234():
-    config = load_client_config("1234")
-    assert config.phone_number == "1234"
+def test_load_client_config_for_phone_911171366880():
+    config = load_client_config("911171366880")
+    assert config.phone_number == "911171366880"
     assert config.client_name == "Deepak Kumar"
     assert config.knowledge_base_doc == "resume_1.pdf"
-    assert config.embeddings_file == "phone_number_1234.json"
+    assert config.embeddings_file == "phone_number_911171366880.json"
 
 
 def test_load_client_config_for_phone_6789():
@@ -21,10 +21,10 @@ def test_load_client_config_for_phone_6789():
     assert config.knowledge_base_doc == "resume_2.pdf"
 
 
-def test_resolve_client_config_matches_suffix():
-    config = resolve_client_config("155512341234")
+def test_resolve_client_config_matches_full_number():
+    config = resolve_client_config("911171366880")
     assert config is not None
-    assert config.phone_number == "1234"
+    assert config.phone_number == "911171366880"
 
 
 def test_resolve_client_config_returns_none_for_unknown_number():

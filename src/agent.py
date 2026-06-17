@@ -18,7 +18,6 @@ from livekit.agents import (
     cli,
     function_tool,
     get_job_context,
-    inference,
     llm,
     room_io,
     utils,
@@ -29,6 +28,9 @@ from livekit.agents.llm.chat_context import FunctionCall
 from livekit.agents.llm.utils import execute_function_call
 from livekit.plugins import (
     ai_coustics,
+    cartesia,
+    deepgram,
+    openai,
     silero,
 )
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
@@ -41,8 +43,10 @@ logger = logging.getLogger("agent-telephone-agent")
 
 load_dotenv(".env.local")
 
-DEFAULT_DEV_PHONE_NUMBER = "1234"
+DEFAULT_DEV_PHONE_NUMBER = "911171366880"
 SIP_PARTICIPANT_WAIT_SECONDS = 5.0
+STT_MODEL = "nova-3"
+TTS_MODEL = "sonic-3"
 
 
 def _to_json_serializable(obj):
@@ -591,16 +595,21 @@ async def entrypoint(ctx: JobContext):
     await ctx.connect()
     client_config, rag_store = await _resolve_session_client(ctx)
 
+    cartesia_voice = os.getenv("CARTESIA_VOICE", "").strip()
+    tts_kwargs: dict[str, object] = {
+        "model": os.getenv("TTS_MODEL", TTS_MODEL),
+        "language": "en",
+    }
+    if cartesia_voice:
+        tts_kwargs["voice"] = cartesia_voice
+
     session = AgentSession(
-        stt=inference.STT(model="deepgram/nova-3", language="en"),
-        llm=inference.LLM(
-            model="openai/gpt-5.2-chat-latest",
-        ),
-        tts=inference.TTS(
-            model="cartesia/sonic-3",
-            voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
+        stt=deepgram.STT(
+            model=os.getenv("STT_MODEL", STT_MODEL),
             language="en",
         ),
+        llm=openai.LLM(model=os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini")),
+        tts=cartesia.TTS(**tts_kwargs),
         turn_handling=TurnHandlingOptions(turn_detection=MultilingualModel()),
         vad=ctx.proc.userdata["vad"],
         preemptive_generation=True,
