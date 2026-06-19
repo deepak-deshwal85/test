@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from paths import CONFIG_DIR, EMBEDDINGS_DIR, KNOWLEDGE_BASE_DIR
+from paths import CONFIG_DIR
 
 logger = logging.getLogger("agent-telephone-agent")
 
@@ -15,16 +15,7 @@ CONFIG_FILE_PATTERN = "phone_number_{phone_number}.json"
 class ClientConfig:
     phone_number: str
     client_name: str
-    knowledge_base_doc: str
-    embeddings_file: str
-
-    @property
-    def knowledge_base_path(self) -> Path:
-        return KNOWLEDGE_BASE_DIR / self.knowledge_base_doc
-
-    @property
-    def embeddings_path(self) -> Path:
-        return EMBEDDINGS_DIR / self.embeddings_file
+    xai_collection_id: str
 
 
 def normalize_phone_number(phone: str) -> str:
@@ -48,8 +39,7 @@ def load_client_config(phone_number: str) -> ClientConfig:
     return ClientConfig(
         phone_number=data["phone_number"],
         client_name=data["client_name"],
-        knowledge_base_doc=data["knowledge_base_doc"],
-        embeddings_file=data["embeddings_file"],
+        xai_collection_id=data["xai_collection_id"],
     )
 
 

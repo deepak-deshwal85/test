@@ -1,6 +1,5 @@
 {
   "phone_number": "6789",
   "client_name": "Bob Smith",
-  "knowledge_base_doc": "resume_2.pdf",
-  "embeddings_file": "phone_number_6789.json"
+  "xai_collection_id": "collection_REPLACE_WITH_BOB_COLLECTION_ID"
 }

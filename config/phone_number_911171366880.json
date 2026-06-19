@@ -1,6 +1,5 @@
 {
   "phone_number": "911171366880",
   "client_name": "Deepak Kumar",
-  "knowledge_base_doc": "resume_1.pdf",
-  "embeddings_file": "phone_number_911171366880.json"
+  "xai_collection_id": "collection_b538deab-ad22-4dac-8752-96007d636be8"
 }

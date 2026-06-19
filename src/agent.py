@@ -10,18 +10,14 @@ from livekit.agents import (
     AgentSession,
     JobContext,
     JobProcess,
-    RunContext,
-    ToolError,
     TurnHandlingOptions,
     cli,
-    function_tool,
     room_io,
 )
 from livekit.plugins import ai_coustics, cartesia, deepgram, silero, xai
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from client_config import ClientConfig, resolve_client_config
-from rag import RagStore, create_embed_query, load_rag_store
 from sip_utils import extract_routing_phone_number
 
 logger = logging.getLogger("agent-telephone-agent")
@@ -36,9 +32,8 @@ TTS_MODEL = "sonic-3"
 
 
 class DefaultAgent(Agent):
-    def __init__(self, client_config: ClientConfig, rag_store: RagStore) -> None:
+    def __init__(self, client_config: ClientConfig) -> None:
         self._client_config = client_config
-        self._rag_store = rag_store
         super().__init__(
             instructions=f"""You are a friendly, reliable voice assistant for {client_config.client_name}.
 
@@ -55,8 +50,8 @@ You are interacting with the user via voice, and must apply the following rules 
 
 # Resume questions
 
-- ALWAYS call get_answer before answering factual questions about {client_config.client_name}'s background, skills, work experience, education, projects, certifications, or roles.
-- Never guess resume details. If get_answer returns nothing useful, say you do not have that detail.
+- Use file search to look up facts about {client_config.client_name}'s background before answering questions about skills, work experience, education, projects, certifications, or roles.
+- Never guess resume details. If file search returns nothing useful, say you do not have that detail.
 
 # Conversational flow
 
@@ -80,23 +75,15 @@ You are interacting with the user via voice, and must apply the following rules 
             allow_interruptions=True,
         )
 
-    @function_tool(name="get_answer")
-    async def get_answer(self, context: RunContext, query_text: str) -> str:
-        """Search the client's resume and return relevant facts.
 
-        ALWAYS use this before answering questions about the client's background,
-        skills, work experience, education, projects, certifications, or roles.
-
-        Args:
-            query_text: The caller's question rewritten as a clear search query.
-        """
-        try:
-            return await asyncio.to_thread(self._rag_store.answer, query_text)
-        except Exception as e:
-            raise ToolError(f"error: {e!s}") from e
+def build_file_search(client_config: ClientConfig) -> xai.FileSearch:
+    return xai.FileSearch(
+        vector_store_ids=[client_config.xai_collection_id],
+        max_num_results=int(os.getenv("XAI_FILE_SEARCH_MAX_RESULTS", "5")),
+    )
 
 
-async def _resolve_session_client(ctx: JobContext) -> tuple[ClientConfig, RagStore]:
+async def _resolve_session_client(ctx: JobContext) -> ClientConfig:
     phone_override = os.getenv("CLIENT_PHONE_OVERRIDE", "").strip()
     phone_digits: str | None = normalize_phone_override(phone_override)
 
@@ -121,15 +108,15 @@ async def _resolve_session_client(ctx: JobContext) -> tuple[ClientConfig, RagSto
     if client_config is None:
         raise RuntimeError(f"No client config found for phone number {phone_digits!r}")
 
-    rag_store = load_rag_store(client_config)
     ctx.proc.userdata["client_config"] = client_config
     ctx.proc.userdata["client_phone_number"] = client_config.phone_number
     logger.info(
-        "loaded client %s for phone %s",
+        "loaded client %s for phone %s (collection %s)",
         client_config.client_name,
         client_config.phone_number,
+        client_config.xai_collection_id,
     )
-    return client_config, rag_store
+    return client_config
 
 
 def normalize_phone_override(phone_override: str) -> str | None:
@@ -144,7 +131,6 @@ server = AgentServer()
 
 def prewarm(proc: JobProcess) -> None:
     proc.userdata["vad"] = silero.VAD.load()
-    create_embed_query()
 
 
 server.setup_fnc = prewarm
@@ -153,7 +139,7 @@ server.setup_fnc = prewarm
 @server.rtc_session(agent_name=os.getenv("AGENT_NAME", "telephone-agent"))
 async def entrypoint(ctx: JobContext) -> None:
     await ctx.connect()
-    client_config, rag_store = await _resolve_session_client(ctx)
+    client_config = await _resolve_session_client(ctx)
 
     cartesia_voice = os.getenv("CARTESIA_VOICE", "").strip()
     tts_kwargs: dict[str, object] = {
@@ -172,13 +158,14 @@ async def entrypoint(ctx: JobContext) -> None:
             model=os.getenv("XAI_LLM_MODEL", "grok-4-1-fast-non-reasoning"),
         ),
         tts=cartesia.TTS(**tts_kwargs),
+        tools=[build_file_search(client_config)],
         turn_handling=TurnHandlingOptions(turn_detection=MultilingualModel()),
         vad=ctx.proc.userdata["vad"],
         preemptive_generation=True,
     )
 
     await session.start(
-        agent=DefaultAgent(client_config=client_config, rag_store=rag_store),
+        agent=DefaultAgent(client_config=client_config),
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(
