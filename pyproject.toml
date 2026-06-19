@@ -9,7 +9,7 @@ description = "Single prompt voice AI agent built with LiveKit Agents for Python
 requires-python = ">=3.10"
 
 dependencies = [
-    "livekit-agents[silero,turn-detector]~=1.5",
+    "livekit-agents[silero,turn-detector,xai]~=1.5",
     "livekit-plugins-ai-coustics~=0.2",
     "livekit-plugins-noise-cancellation~=0.2",
     "python-dotenv",

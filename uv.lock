@@ -1146,7 +1146,7 @@ version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastembed" },
-    { name = "livekit-agents", extra = ["silero", "turn-detector"] },
+    { name = "livekit-agents", extra = ["silero", "turn-detector", "xai"] },
     { name = "livekit-plugins-ai-coustics" },
     { name = "livekit-plugins-cartesia" },
     { name = "livekit-plugins-deepgram" },
@@ -1168,7 +1168,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastembed", specifier = ">=0.6.0" },
-    { name = "livekit-agents", extras = ["silero", "turn-detector"], specifier = "~=1.5" },
+    { name = "livekit-agents", extras = ["silero", "turn-detector", "xai"], specifier = "~=1.5" },
     { name = "livekit-plugins-ai-coustics", specifier = "~=0.2" },
     { name = "livekit-plugins-cartesia", specifier = "~=1.5" },
     { name = "livekit-plugins-deepgram", specifier = "~=1.5" },
@@ -1238,11 +1238,17 @@ codecs = [
 images = [
     { name = "pillow" },
 ]
+openai = [
+    { name = "livekit-plugins-openai" },
+]
 silero = [
     { name = "livekit-plugins-silero" },
 ]
 turn-detector = [
     { name = "livekit-plugins-turn-detector" },
+]
+xai = [
+    { name = "livekit-plugins-xai" },
 ]
 
 [[package]]
@@ -1433,6 +1439,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/35/2d/2a2405e7b4cd1c9a8cdbd37a05045410e703c85694c07fe6c34a7ad23320/livekit_plugins_turn_detector-1.6.1.tar.gz", hash = "sha256:27e13f3718575921f7ddad6da295f4514e8d4608875251a0b60e2b6004194821", size = 7400, upload-time = "2026-06-17T16:51:07.812Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/94/5c/54db9ca1f360d92affbc07044f0514c4b4c24ca9c4aaf484ee77b0d5eb5d/livekit_plugins_turn_detector-1.6.1-py3-none-any.whl", hash = "sha256:b06bed121e9ff271496ee6fcdd4245301065f24e3807b36a976801d13f6ed935", size = 10454, upload-time = "2026-06-17T16:51:06.621Z" },
+]
+
+[[package]]
+name = "livekit-plugins-xai"
+version = "1.6.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "livekit-agents", extra = ["openai"] },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/27/a1/8c288febd9aa43b57c2a40ee03bf6e1ba51af2b87d52d333fbd4f20e4a98/livekit_plugins_xai-1.6.1.tar.gz", hash = "sha256:420f9bfa081658071c5734112da167927ccb84414aee4a0ca06ba84dcc64e1fd", size = 12423, upload-time = "2026-06-17T16:51:09.077Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c1/fe/bbf51c3f69b2399b7a8f171065bba8e12c3f916c472890413b45389ad1cd/livekit_plugins_xai-1.6.1-py3-none-any.whl", hash = "sha256:e2608c4d340e26949f700e50ff27d133bddb2b8182c999100ff56d4c69b74b84", size = 16406, upload-time = "2026-06-17T16:51:07.988Z" },
 ]
 
 [[package]]
