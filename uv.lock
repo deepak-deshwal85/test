@@ -1124,7 +1124,6 @@ source = { editable = "." }
 dependencies = [
     { name = "livekit-agents", extra = ["silero", "turn-detector", "xai"] },
     { name = "livekit-plugins-ai-coustics" },
-    { name = "livekit-plugins-cartesia" },
     { name = "livekit-plugins-deepgram" },
     { name = "livekit-plugins-noise-cancellation" },
     { name = "livekit-plugins-openai" },
@@ -1145,7 +1144,6 @@ dev = [
 requires-dist = [
     { name = "livekit-agents", extras = ["silero", "turn-detector", "xai"], specifier = "~=1.5" },
     { name = "livekit-plugins-ai-coustics", specifier = "~=0.2" },
-    { name = "livekit-plugins-cartesia", specifier = "~=1.5" },
     { name = "livekit-plugins-deepgram", specifier = "~=1.5" },
     { name = "livekit-plugins-noise-cancellation", specifier = "~=0.2" },
     { name = "livekit-plugins-openai", specifier = "~=1.5" },
@@ -1326,18 +1324,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/43/15/eb48d2e662a08667f4526d3181097f900b9088e78028d9742114d8b4d729/livekit_plugins_ai_coustics-0.3.0-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:0d78a4e48d80c09b0a9e192115f850891813589cde8090d36b745bd4e3312bf3", size = 70398515, upload-time = "2026-06-15T20:53:22.37Z" },
     { url = "https://files.pythonhosted.org/packages/ed/c0/9ddfd240baccca55021a0cb2622968ae0b7041a570aed1b4ce792a6b0f29/livekit_plugins_ai_coustics-0.3.0-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:4e70be41a4988d9344516fb5f3f64d9cab369a93bd94135226f0c903863da150", size = 70742569, upload-time = "2026-06-15T20:53:25.877Z" },
     { url = "https://files.pythonhosted.org/packages/13/da/12b27e79ac14f29e4f732b7c3a665604bf0e34830802d9658fa679ca04a5/livekit_plugins_ai_coustics-0.3.0-cp310-abi3-win_amd64.whl", hash = "sha256:3940b252fb8a278ea7455144629cbb8283f8927b99125327492efe6cde74c8fd", size = 70087927, upload-time = "2026-06-15T20:53:29.37Z" },
-]
-
-[[package]]
-name = "livekit-plugins-cartesia"
-version = "1.6.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "livekit-agents" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/b7/42/769d363a7d40e0ec663ece7b60d5d42fccd81772209f0d13a65903424c6c/livekit_plugins_cartesia-1.6.1.tar.gz", hash = "sha256:9964b04b80f5ace01cca3081f61a7fb1e77716e8ab9bb44a49d39f4b474fcef3", size = 18198, upload-time = "2026-06-17T16:49:01.445Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b6/d5/228a03c6bccf20d5740d09cf6bf15f82a9e0d7700960582d79236e66e0cb/livekit_plugins_cartesia-1.6.1-py3-none-any.whl", hash = "sha256:a3657ef104c92f8499e31247be218baa723980dd58ae6137269ae48d6c179274", size = 25533, upload-time = "2026-06-17T16:49:00.317Z" },
 ]
 
 [[package]]

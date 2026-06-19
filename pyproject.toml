@@ -17,7 +17,6 @@ dependencies = [
     "pypdf>=5.0.0",
     "livekit-plugins-openai~=1.5",
     "livekit-plugins-deepgram~=1.5",
-    "livekit-plugins-cartesia~=1.5",
 ]
 
 [dependency-groups]

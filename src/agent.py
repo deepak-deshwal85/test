@@ -14,7 +14,7 @@ from livekit.agents import (
     cli,
     room_io,
 )
-from livekit.plugins import ai_coustics, cartesia, deepgram, silero, xai
+from livekit.plugins import ai_coustics, deepgram, silero, xai
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from client_config import ClientConfig, resolve_client_config
@@ -28,7 +28,7 @@ load_dotenv(".env")
 DEFAULT_DEV_PHONE_NUMBER = "911171366880"
 SIP_PARTICIPANT_WAIT_SECONDS = 5.0
 STT_MODEL = "nova-3"
-TTS_MODEL = "sonic-3"
+DEFAULT_TTS_VOICE = "ara"
 DEFAULT_LLM_MODEL = "grok-4-1-fast-non-reasoning"
 
 
@@ -142,13 +142,10 @@ async def entrypoint(ctx: JobContext) -> None:
     await ctx.connect()
     client_config = await _resolve_session_client(ctx)
 
-    cartesia_voice = os.getenv("CARTESIA_VOICE", "").strip()
     tts_kwargs: dict[str, object] = {
-        "model": os.getenv("TTS_MODEL", TTS_MODEL),
+        "voice": os.getenv("XAI_TTS_VOICE", DEFAULT_TTS_VOICE),
         "language": "en",
     }
-    if cartesia_voice:
-        tts_kwargs["voice"] = cartesia_voice
 
     session = AgentSession(
         stt=deepgram.STT(
@@ -158,7 +155,7 @@ async def entrypoint(ctx: JobContext) -> None:
         llm=xai.responses.LLM(
             model=os.getenv("XAI_LLM_MODEL", DEFAULT_LLM_MODEL),
         ),
-        tts=cartesia.TTS(**tts_kwargs),
+        tts=xai.TTS(**tts_kwargs),
         tools=[build_file_search(client_config)],
         turn_handling=TurnHandlingOptions(turn_detection=MultilingualModel()),
         vad=ctx.proc.userdata["vad"],
