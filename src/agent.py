@@ -29,6 +29,7 @@ DEFAULT_DEV_PHONE_NUMBER = "911171366880"
 SIP_PARTICIPANT_WAIT_SECONDS = 5.0
 STT_MODEL = "nova-3"
 TTS_MODEL = "sonic-3"
+DEFAULT_LLM_MODEL = "grok-4-1-fast-non-reasoning"
 
 
 class DefaultAgent(Agent):
@@ -155,7 +156,7 @@ async def entrypoint(ctx: JobContext) -> None:
             language="en",
         ),
         llm=xai.responses.LLM(
-            model=os.getenv("XAI_LLM_MODEL", "grok-4-1-fast-non-reasoning"),
+            model=os.getenv("XAI_LLM_MODEL", DEFAULT_LLM_MODEL),
         ),
         tts=cartesia.TTS(**tts_kwargs),
         tools=[build_file_search(client_config)],
