@@ -12,10 +12,19 @@ CONFIG_FILE_PATTERN = "phone_number_{phone_number}.json"
 
 
 @dataclass(frozen=True)
+class CalComConfig:
+    username: str
+    event_type_slug: str
+    event_type_id: int | None = None
+    organization_slug: str | None = None
+
+
+@dataclass(frozen=True)
 class ClientConfig:
     phone_number: str
     client_name: str
     xai_collection_id: str
+    calcom: CalComConfig | None = None
 
 
 def normalize_phone_number(phone: str) -> str:
@@ -36,10 +45,21 @@ def load_client_config(phone_number: str) -> ClientConfig:
     with path.open(encoding="utf-8") as f:
         data = json.load(f)
 
+    calcom = None
+    if data.get("calcom_username") and data.get("calcom_event_type_slug"):
+        event_type_id = data.get("calcom_event_type_id")
+        calcom = CalComConfig(
+            username=data["calcom_username"],
+            event_type_slug=data["calcom_event_type_slug"],
+            event_type_id=int(event_type_id) if event_type_id is not None else None,
+            organization_slug=data.get("calcom_organization_slug"),
+        )
+
     return ClientConfig(
         phone_number=data["phone_number"],
         client_name=data["client_name"],
         xai_collection_id=data["xai_collection_id"],
+        calcom=calcom,
     )
 
 

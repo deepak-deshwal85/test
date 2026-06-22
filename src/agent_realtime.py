@@ -1,4 +1,5 @@
 import logging
+import sys
 
 from dotenv import load_dotenv
 from livekit.agents import (
@@ -6,7 +7,6 @@ from livekit.agents import (
     AgentServer,
     AgentSession,
     JobContext,
-    cli,
     room_io,
 )
 from livekit.plugins import ai_coustics, xai
@@ -101,4 +101,10 @@ async def entrypoint(ctx: JobContext):
 
 
 if __name__ == "__main__":
-    cli.run_app(server)
+    print(
+        "agent_realtime.py is deprecated.\n"
+        "Use the main pipeline agent instead:\n"
+        "  uv run python src/agent.py console",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
