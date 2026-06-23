@@ -11,6 +11,10 @@ KMS
 .pytest_cache
 .ruff_cache
 data/meetings/
+data/embedding_cache.sqlite
+data/embedding_cache.sqlite-*
+voice-agent/data/
+api/data/
 
 # Claude Code
 .claude/settings.local.json

@@ -1,0 +1,7 @@
+{
+  "phone_number": "6789",
+  "client_name": "Bob Smith",
+  "xai_collection_id": "collection_REPLACE_WITH_BOB_COLLECTION_ID",
+  "calcom_username": "REPLACE_WITH_BOB_CALCOM_USERNAME",
+  "calcom_event_type_slug": "30min"
+}

@@ -1,0 +1,100 @@
+import sys
+from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
+from fastapi.testclient import TestClient
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+
+from app.main import create_app
+
+
+@pytest.fixture
+def client() -> TestClient:
+    return TestClient(create_app())
+
+
+def test_health(client: TestClient) -> None:
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_qdrant_repository_search_maps_payload() -> None:
+    from app.core.config import Settings
+    from app.db.qdrant_repository import QdrantRepository
+
+    client = MagicMock()
+    client.collection_exists.return_value = True
+    search_result = MagicMock()
+    search_result.score = 0.88
+    search_result.payload = {"text": "Senior Java engineer", "source_uri": "resume.pdf"}
+    query_response = MagicMock()
+    query_response.points = [search_result]
+    client.query_points.return_value = query_response
+
+    settings = Settings()
+    repo = QdrantRepository(settings, client=client)
+    hits = repo.search(
+        "phone_911171366880",
+        query_vector=[0.1, 0.2],
+        limit=3,
+    )
+    assert hits[0].text == "Senior Java engineer"
+    assert hits[0].source_uri == "resume.pdf"
+
+
+def test_chunk_text_splits_with_overlap() -> None:
+    from app.services.document_service import DocumentService
+
+    text = "word " * 300
+    chunks = DocumentService._chunk_text(text, max_chars=100, overlap=20)
+    assert len(chunks) > 1
+    assert all(len(chunk) <= 100 for chunk in chunks)
+
+
+def test_search_requires_collection_or_phone(client: TestClient) -> None:
+    response = client.post("/v1/search", json={"query": "hello"})
+    assert response.status_code == 400
+
+
+def test_collection_from_phone() -> None:
+    from app.core.collections import collection_from_phone, resolve_collection
+
+    assert collection_from_phone("+911171366880") == "phone_911171366880"
+    assert resolve_collection(phone_number="911171366880") == "phone_911171366880"
+    assert resolve_collection(collection="custom") == "custom"
+
+
+def test_search_invalid_phone(client: TestClient) -> None:
+    response = client.post(
+        "/v1/search",
+        json={"phone_number": "abc", "query": "hello"},
+    )
+    assert response.status_code == 400
+
+
+def test_create_embeddings(client: TestClient) -> None:
+    from app.core.dependencies import get_embedding_service
+    from app.domain.models import EmbeddingBatchResult
+    from app.main import create_app
+
+    mock_service = MagicMock()
+    mock_service.create_embeddings.return_value = EmbeddingBatchResult(
+        model="text-embedding-3-small",
+        dimensions=3,
+        embeddings=[[0.1, 0.2, 0.3]],
+        cache_hits=1,
+        cache_misses=0,
+    )
+
+    app = create_app()
+    app.dependency_overrides[get_embedding_service] = lambda: mock_service
+    test_client = TestClient(app)
+
+    response = test_client.post("/v1/embeddings", json={"texts": ["hello"]})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["model"] == "text-embedding-3-small"
+    assert data["embeddings"] == [[0.1, 0.2, 0.3]]

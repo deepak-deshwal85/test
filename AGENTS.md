@@ -6,9 +6,21 @@ The following is a guide for working with this project.
 
 ## Project structure
 
-This Python project uses the `uv` package manager. You should always use `uv` to install dependencies, run the agent, and run tests.
+This repository is a monorepo with two Python projects:
 
-All app-level code is in the `src/` directory. In general, simple agents can be constructed with a single `agent.py` file. Additional files can be added, but you must retain `agent.py` as the entrypoint (see the associated Dockerfile for how this is deployed).
+| Folder | Purpose |
+|--------|---------|
+| `voice-agent/` | LiveKit voice agent (`voice-agent/src/agent.py` entrypoint) |
+| `api/` | Layered RAG REST API (Qdrant + embeddings + search) |
+
+Each project uses the `uv` package manager. Run commands from the relevant folder:
+
+```console
+cd voice-agent && uv sync && uv run python src/agent.py console
+cd api && uv sync && uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
+```
+
+Run tests per project: `cd voice-agent && uv run pytest` or `cd api && uv run pytest`.
 
 Be sure to maintain code formatting. You can use the ruff formatter/linter as needed: `uv run ruff format` and `uv run ruff check`.
 
