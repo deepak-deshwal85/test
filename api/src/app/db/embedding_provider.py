@@ -75,7 +75,11 @@ class EmbeddingProviderFactory:
                 model=self._settings.embedder_model,
                 dimensions=self._settings.embedder_dimensions,
             )
-            inner = OpenAIEmbeddingProvider(config)
+            inner = OpenAIEmbeddingProvider(
+                config,
+                api_key=self._settings.openai_api_key,
+                base_url=self._settings.openai_base_url,
+            )
             if self._settings.embedder_cache_enabled:
                 cache = self.cache
                 assert cache is not None

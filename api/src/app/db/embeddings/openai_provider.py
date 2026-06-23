@@ -19,7 +19,7 @@ class OpenAIEmbeddingProvider:
         http_client: httpx.Client | None = None,
     ) -> None:
         self._config = config
-        self._api_key = api_key or os.getenv("OPENAI_API_KEY", "").strip()
+        self._api_key = (api_key or os.getenv("OPENAI_API_KEY", "")).strip()
         if not self._api_key:
             raise ValueError("OPENAI_API_KEY is required for OpenAI embeddings.")
         self._base_url = (

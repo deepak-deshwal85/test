@@ -3,15 +3,20 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from dotenv import load_dotenv
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from paths import DATA_DIR
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_DATA_DIR = _PROJECT_ROOT / "data"
+
+load_dotenv(_PROJECT_ROOT / ".env.local")
+load_dotenv(_PROJECT_ROOT / ".env")
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=(".env.local", ".env"),
+        env_file=(_PROJECT_ROOT / ".env.local", _PROJECT_ROOT / ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -32,9 +37,12 @@ class Settings(BaseSettings):
     embedder_dimensions: int = Field(default=1536, alias="RAG_EMBEDDER_DIMENSIONS")
     embedder_cache_enabled: bool = Field(default=True, alias="RAG_EMBEDDER_CACHE")
     embedder_cache_path: Path = Field(
-        default=DATA_DIR / "embedding_cache.sqlite",
+        default=_DATA_DIR / "embedding_cache.sqlite",
         alias="RAG_EMBEDDER_CACHE_PATH",
     )
+
+    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    openai_base_url: str | None = Field(default=None, alias="OPENAI_BASE_URL")
 
     qdrant_url: str = Field(default="http://127.0.0.1:6333", alias="QDRANT_URL")
     qdrant_api_key: str | None = Field(default=None, alias="QDRANT_API_KEY")
