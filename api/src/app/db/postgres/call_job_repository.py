@@ -1,0 +1,100 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from uuid import UUID, uuid4
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.postgres.models import CallJobRow
+from app.domain.customer_models import CallJob, normalize_phone_number
+
+
+class CallJobRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    @staticmethod
+    def _to_domain(row: CallJobRow) -> CallJob:
+        return CallJob(
+            id=row.id,
+            client_phone_number=row.client_phone_number,
+            status=row.status,
+            total_customers=row.total_customers,
+            calls_completed=row.calls_completed,
+            error_message=row.error_message,
+            started_at=row.started_at,
+            completed_at=row.completed_at,
+            created_at=row.created_at,
+        )
+
+    async def create(self, *, client_phone_number: str) -> CallJob:
+        row = CallJobRow(
+            id=uuid4(),
+            client_phone_number=normalize_phone_number(client_phone_number),
+            status="pending",
+        )
+        self._session.add(row)
+        await self._session.commit()
+        await self._session.refresh(row)
+        return self._to_domain(row)
+
+    async def get(self, job_id: UUID) -> CallJob | None:
+        row = await self._session.get(CallJobRow, job_id)
+        return self._to_domain(row) if row else None
+
+    async def mark_running(
+        self, job_id: UUID, *, total_customers: int
+    ) -> CallJob | None:
+        row = await self._session.get(CallJobRow, job_id)
+        if row is None:
+            return None
+        row.status = "running"
+        row.total_customers = total_customers
+        row.started_at = datetime.now(UTC)
+        await self._session.commit()
+        await self._session.refresh(row)
+        return self._to_domain(row)
+
+    async def update_progress(self, job_id: UUID, *, calls_completed: int) -> None:
+        row = await self._session.get(CallJobRow, job_id)
+        if row is None:
+            return
+        row.calls_completed = calls_completed
+        await self._session.commit()
+
+    async def mark_completed(self, job_id: UUID) -> CallJob | None:
+        row = await self._session.get(CallJobRow, job_id)
+        if row is None:
+            return None
+        row.status = "completed"
+        row.completed_at = datetime.now(UTC)
+        await self._session.commit()
+        await self._session.refresh(row)
+        return self._to_domain(row)
+
+    async def mark_failed(self, job_id: UUID, *, error_message: str) -> CallJob | None:
+        row = await self._session.get(CallJobRow, job_id)
+        if row is None:
+            return None
+        row.status = "failed"
+        row.error_message = error_message
+        row.completed_at = datetime.now(UTC)
+        await self._session.commit()
+        await self._session.refresh(row)
+        return self._to_domain(row)
+
+    async def list_recent(
+        self,
+        *,
+        client_phone_number: str | None = None,
+        limit: int = 20,
+    ) -> list[CallJob]:
+        query = select(CallJobRow).order_by(CallJobRow.created_at.desc()).limit(limit)
+        if client_phone_number:
+            query = query.where(
+                CallJobRow.client_phone_number
+                == normalize_phone_number(client_phone_number)
+            )
+        rows = (await self._session.execute(query)).scalars().all()
+        return [self._to_domain(row) for row in rows]

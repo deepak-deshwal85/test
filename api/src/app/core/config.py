@@ -48,6 +48,15 @@ class Settings(BaseSettings):
     qdrant_api_key: str | None = Field(default=None, alias="QDRANT_API_KEY")
     rag_api_key: str | None = Field(default=None, alias="RAG_API_KEY")
 
+    database_url: str = Field(
+        default="postgresql+asyncpg://postgres:1234@localhost:5432/telephone_agent",
+        alias="DATABASE_URL",
+    )
+    database_echo: bool = Field(default=False, alias="DATABASE_ECHO")
+    outbound_call_webhook_url: str | None = Field(
+        default=None, alias="OUTBOUND_CALL_WEBHOOK_URL"
+    )
+
 
 @lru_cache
 def get_settings() -> Settings:
