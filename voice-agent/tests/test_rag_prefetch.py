@@ -34,6 +34,48 @@ def test_should_auto_search_skips_stop_signal_in_any_position():
     assert should_auto_search_user_text("Good. Stop. Stop.") is False
     assert should_auto_search_user_text("Good stop") is False
     assert should_auto_search_user_text("Bye for now") is False
+    assert should_auto_search_user_text("Okay. Stop.") is False
+
+
+def test_warmup_queries_defaults():
+    from rag_client.prefetch import DEFAULT_WARMUP_QUERIES, warmup_queries
+
+    assert warmup_queries() == DEFAULT_WARMUP_QUERIES
+
+
+def test_warmup_queries_from_env(monkeypatch):
+    from rag_client.prefetch import warmup_queries
+
+    monkeypatch.setenv("RAG_WARMUP_QUERIES", "foo, bar")
+    assert warmup_queries() == ("foo", "bar")
+
+
+def test_warmup_knowledge_retriever_runs_searches():
+    import asyncio
+    from unittest.mock import AsyncMock
+
+    from rag_client.prefetch import warmup_knowledge_retriever
+
+    retriever = AsyncMock()
+    retriever.warmup = AsyncMock()
+    retriever.search = AsyncMock(return_value=[])
+
+    config = ClientConfig(
+        phone_number="911171366880",
+        client_name="Test Client",
+        xai_collection_id="phone_911171366880",
+        rag_backend="qdrant",
+    )
+
+    asyncio.run(
+        warmup_knowledge_retriever(
+            client_config=config,
+            retriever=retriever,
+        )
+    )
+
+    retriever.warmup.assert_awaited_once()
+    assert retriever.search.await_count == 5
 
 
 def test_document_prefetch_cache_reuses_inflight_task():

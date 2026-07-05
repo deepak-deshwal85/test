@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import re
+import time
 from collections.abc import Coroutine
 
 from client_config import ClientConfig
@@ -22,6 +23,7 @@ SKIP_AUTO_SEARCH_PHRASES = frozenset(
         "yep",
         "ok",
         "okay",
+        "okay stop",
         "thanks",
         "thank you",
         "stop",
@@ -38,6 +40,54 @@ SKIP_AUTO_SEARCH_PHRASES = frozenset(
 STOP_SIGNAL_WORDS = frozenset({"stop", "bye", "goodbye"})
 
 DEFAULT_MIN_AUTO_SEARCH_WORDS = 2
+
+DEFAULT_WARMUP_QUERIES = (
+    "Who is the appellant",
+    "What is the case name",
+    "Who delivered the judgment",
+    "What is the order date",
+    "Who is the counsel",
+)
+
+
+def warmup_queries() -> tuple[str, ...]:
+    raw = os.getenv("RAG_WARMUP_QUERIES", "").strip()
+    if raw:
+        return tuple(query.strip() for query in raw.split(",") if query.strip())
+    return DEFAULT_WARMUP_QUERIES
+
+
+async def warmup_knowledge_retriever(
+    *,
+    client_config: ClientConfig,
+    retriever,
+) -> None:
+    """Prime HTTP, embedding cache, and Qdrant before the first user question."""
+    warmup = getattr(retriever, "warmup", None)
+    if warmup is not None:
+        await warmup()
+
+    queries = warmup_queries()
+    if not queries:
+        return
+
+    started = time.perf_counter()
+    max_results = 1
+    results = await asyncio.gather(
+        *[
+            retriever.search(query, max_results=max_results)
+            for query in queries
+        ],
+        return_exceptions=True,
+    )
+    ok = sum(1 for result in results if not isinstance(result, Exception))
+    logger.info(
+        "rag warmup phone=%s queries=%d ok=%d total_ms=%.0f",
+        client_config.phone_number,
+        len(queries),
+        ok,
+        (time.perf_counter() - started) * 1000,
+    )
 
 
 def create_knowledge_retriever(

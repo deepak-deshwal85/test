@@ -17,6 +17,7 @@ from livekit.agents import (
     llm,
     room_io,
 )
+from livekit.agents.voice.turn import EndpointingOptions
 from livekit.plugins import ai_coustics, deepgram, xai
 
 from agent_instructions import build_conversation_flow_instructions
@@ -28,6 +29,7 @@ from rag_client.prefetch import (
     extract_message_text,
     prefetch_uploaded_documents,
     requires_sync_turn_completion,
+    warmup_knowledge_retriever,
 )
 from rag_client.tools import knowledge_search_tool_label
 from scheduling_tools import (
@@ -47,7 +49,31 @@ SIP_PARTICIPANT_WAIT_SECONDS = 5.0
 STT_MODEL = "nova-3"
 DEFAULT_LLM_MODEL = "grok-4-1-fast-non-reasoning"
 DEFAULT_MEETING_TIMEZONE = os.getenv("MEETING_TIMEZONE", "Asia/Kolkata")
+DEFAULT_TURN_ENDPOINTING_MAX_DELAY = 1.0
+DEFAULT_TURN_ENDPOINTING_MIN_DELAY = 0.3
 AGENT_MODE = "telephone-agent-pipeline"
+
+
+def build_turn_handling_options(client_config: ClientConfig) -> TurnHandlingOptions:
+    max_delay = float(
+        os.getenv("TURN_ENDPOINTING_MAX_DELAY", str(DEFAULT_TURN_ENDPOINTING_MAX_DELAY))
+    )
+    min_delay = float(
+        os.getenv("TURN_ENDPOINTING_MIN_DELAY", str(DEFAULT_TURN_ENDPOINTING_MIN_DELAY))
+    )
+    kwargs: dict[str, object] = {
+        "turn_detection": inference.TurnDetector(version="v1"),
+        "endpointing": EndpointingOptions(
+            max_delay=max_delay,
+            min_delay=min_delay,
+        ),
+    }
+    if requires_sync_turn_completion(client_config):
+        # Document prefetch runs in on_user_turn_completed and can take several
+        # seconds. Preemptive generation starts before that hook finishes, so
+        # the LLM would run without injected excerpts.
+        kwargs["preemptive_generation"] = {"enabled": False}
+    return TurnHandlingOptions(**kwargs)
 
 
 def build_agent_instructions(client_config: ClientConfig) -> str:
@@ -93,6 +119,7 @@ class DefaultAgent(Agent):
         self,
         client_config: ClientConfig,
         knowledge_retriever=None,
+        rag_warmup_task: asyncio.Task[None] | None = None,
     ) -> None:
         self._client_config = client_config
         self._rag_settings = load_rag_settings()
@@ -100,13 +127,18 @@ class DefaultAgent(Agent):
             client_config,
             self._rag_settings,
         )
+        self._rag_warmup_task = rag_warmup_task
         super().__init__(instructions=build_agent_instructions(client_config))
 
     async def on_enter(self) -> None:
         if self._knowledge_retriever is not None:
-            warmup = getattr(self._knowledge_retriever, "warmup", None)
-            if warmup is not None:
-                await warmup()
+            if self._rag_warmup_task is not None:
+                await self._rag_warmup_task
+            else:
+                await warmup_knowledge_retriever(
+                    client_config=self._client_config,
+                    retriever=self._knowledge_retriever,
+                )
 
         await self.session.generate_reply(
             instructions=(
@@ -245,14 +277,14 @@ async def entrypoint(ctx: JobContext) -> None:
     tts = build_cartesia_tts()
     tts.prewarm()
 
-    turn_handling_kwargs: dict[str, object] = {
-        "turn_detection": inference.TurnDetector(version="v1"),
-    }
-    if requires_sync_turn_completion(client_config):
-        # Document prefetch runs in on_user_turn_completed and can take several
-        # seconds. Preemptive generation starts before that hook finishes, so
-        # the LLM would run without injected excerpts.
-        turn_handling_kwargs["preemptive_generation"] = {"enabled": False}
+    rag_warmup_task: asyncio.Task[None] | None = None
+    if knowledge_retriever is not None:
+        rag_warmup_task = asyncio.create_task(
+            warmup_knowledge_retriever(
+                client_config=client_config,
+                retriever=knowledge_retriever,
+            )
+        )
 
     session = AgentSession(
         stt=deepgram.STT(
@@ -264,13 +296,14 @@ async def entrypoint(ctx: JobContext) -> None:
         ),
         tts=tts,
         tools=session_tools,
-        turn_handling=TurnHandlingOptions(**turn_handling_kwargs),
+        turn_handling=build_turn_handling_options(client_config),
     )
 
     await session.start(
         agent=DefaultAgent(
             client_config=client_config,
             knowledge_retriever=knowledge_retriever,
+            rag_warmup_task=rag_warmup_task,
         ),
         room=ctx.room,
         room_options=room_io.RoomOptions(
