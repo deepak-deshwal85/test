@@ -49,9 +49,21 @@ class CachingEmbeddingProvider:
             fresh_vectors = self._inner.embed_texts(miss_texts)
             for index, vector in zip(miss_indices, fresh_vectors, strict=True):
                 results[index] = vector
-                self._cache.put(self._inner.config, texts[index], vector)
+            if hasattr(self._cache, "put_many"):
+                self._cache.put_many(
+                    self._inner.config,
+                    [(miss_texts[i], fresh_vectors[i]) for i in range(len(miss_texts))],
+                )
+            else:
+                for index, vector in zip(miss_indices, fresh_vectors, strict=True):
+                    self._cache.put(self._inner.config, texts[index], vector)
 
-        return [vector for vector in results if vector is not None]
+        final = [v for v in results if v is not None]
+        if len(final) != len(texts):
+            raise RuntimeError(
+                f"Embedding count mismatch: got {len(final)}, expected {len(texts)}"
+            )
+        return final
 
 
 class EmbeddingProviderFactory:
@@ -79,6 +91,7 @@ class EmbeddingProviderFactory:
                 config,
                 api_key=self._settings.openai_api_key,
                 base_url=self._settings.openai_base_url,
+                timeout=self._settings.openai_timeout,
             )
             if self._settings.embedder_cache_enabled:
                 cache = self.cache

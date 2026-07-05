@@ -15,6 +15,7 @@ def test_api_rag_retriever_calls_search_endpoint():
         backend="qdrant",
         max_results=3,
         rag_api_base_url="http://rag.test",
+        min_score=0.3,
     )
     captured: dict[str, object] = {}
 

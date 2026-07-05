@@ -16,6 +16,7 @@ class OpenAIEmbeddingProvider:
         *,
         api_key: str | None = None,
         base_url: str | None = None,
+        timeout: float = 30.0,
         http_client: httpx.Client | None = None,
     ) -> None:
         self._config = config
@@ -25,6 +26,7 @@ class OpenAIEmbeddingProvider:
         self._base_url = (
             base_url or os.getenv("OPENAI_BASE_URL", DEFAULT_OPENAI_BASE_URL)
         ).rstrip("/")
+        self._timeout = timeout
         self._http_client = http_client
         self._owns_client = http_client is None
 
@@ -34,7 +36,9 @@ class OpenAIEmbeddingProvider:
 
     def _client(self) -> httpx.Client:
         if self._http_client is None:
-            self._http_client = httpx.Client(timeout=60.0)
+            self._http_client = httpx.Client(
+                timeout=httpx.Timeout(self._timeout, connect=5.0)
+            )
             self._owns_client = True
         return self._http_client
 

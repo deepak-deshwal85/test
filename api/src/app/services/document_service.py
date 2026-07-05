@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -98,6 +99,7 @@ class DocumentService:
         if not content:
             raise ValueError("Uploaded file is empty")
 
+        started = time.perf_counter()
         suffix = Path(filename).suffix.lower() or ".txt"
         with NamedTemporaryFile(delete=False, suffix=suffix) as handle:
             handle.write(content)
@@ -133,6 +135,17 @@ class DocumentService:
             collection,
             chunks=indexed_chunks,
             embeddings=embedding_result.embeddings,
+        )
+        elapsed_ms = (time.perf_counter() - started) * 1000
+        logger.info(
+            "ingest complete collection=%s file=%r chunks=%d "
+            "embed_cache_hits=%d embed_cache_misses=%d total_ms=%.0f",
+            collection,
+            filename,
+            count,
+            embedding_result.cache_hits,
+            embedding_result.cache_misses,
+            elapsed_ms,
         )
         return IngestResult(
             collection=collection,

@@ -6,6 +6,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.core.config import get_settings
+from app.core.dependencies import (
+    get_embedding_provider_factory,
+    get_qdrant_repository,
+    reset_rag_clients,
+)
 from app.core.logging import configure_logging
 from app.db.postgres.session import dispose_engine, init_engine
 from app.routers import (
@@ -28,8 +33,13 @@ async def lifespan(_app: FastAPI):
     settings = get_settings()
     init_engine(settings)
     logger.info("database engine initialized")
+    get_qdrant_repository(settings)
+    logger.info("qdrant client warmed")
+    get_embedding_provider_factory(settings).get_provider()
+    logger.info("embedding provider warmed")
     yield
     await dispose_engine()
+    reset_rag_clients()
     logger.info("database engine disposed")
 
 

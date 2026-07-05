@@ -13,11 +13,11 @@ from livekit.agents import (
     JobProcess,
     TurnHandlingOptions,
     cli,
+    inference,
     llm,
     room_io,
 )
-from livekit.plugins import ai_coustics, deepgram, silero, xai
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit.plugins import ai_coustics, deepgram, xai
 
 from agent_instructions import build_conversation_flow_instructions
 from client_config import ClientConfig, resolve_client_config
@@ -89,16 +89,25 @@ You are on a phone call. Follow these rules for natural speech:
 
 
 class DefaultAgent(Agent):
-    def __init__(self, client_config: ClientConfig) -> None:
+    def __init__(
+        self,
+        client_config: ClientConfig,
+        knowledge_retriever=None,
+    ) -> None:
         self._client_config = client_config
         self._rag_settings = load_rag_settings()
-        self._knowledge_retriever = create_knowledge_retriever(
+        self._knowledge_retriever = knowledge_retriever or create_knowledge_retriever(
             client_config,
             self._rag_settings,
         )
         super().__init__(instructions=build_agent_instructions(client_config))
 
     async def on_enter(self) -> None:
+        if self._knowledge_retriever is not None:
+            warmup = getattr(self._knowledge_retriever, "warmup", None)
+            if warmup is not None:
+                await warmup()
+
         await self.session.generate_reply(
             instructions=(
                 "Greet the caller briefly. Say you can answer questions from "
@@ -126,9 +135,12 @@ class DefaultAgent(Agent):
         turn_ctx.add_message(role="developer", content=prefetched)
 
 
-def build_session_tools(client_config: ClientConfig) -> list[object]:
+def build_session_tools(
+    client_config: ClientConfig,
+    knowledge_retriever=None,
+) -> list[object]:
     return [
-        *build_rag_tools(client_config),
+        *build_rag_tools(client_config, retriever=knowledge_retriever),
         *build_scheduling_tools(
             client_config,
             default_timezone=DEFAULT_MEETING_TIMEZONE,
@@ -205,7 +217,9 @@ server = AgentServer()
 
 
 def prewarm(proc: JobProcess) -> None:
-    proc.userdata["vad"] = silero.VAD.load()
+    # AgentSession uses bundled silero VAD by default — no explicit load needed.
+    # Keep this setup_fnc so the framework keeps a warm process pool ready.
+    pass
 
 
 server.setup_fnc = prewarm
@@ -215,7 +229,9 @@ server.setup_fnc = prewarm
 async def entrypoint(ctx: JobContext) -> None:
     await ctx.connect()
     client_config = await _resolve_session_client(ctx)
-    session_tools = build_session_tools(client_config)
+    rag_settings = load_rag_settings()
+    knowledge_retriever = create_knowledge_retriever(client_config, rag_settings)
+    session_tools = build_session_tools(client_config, knowledge_retriever)
     tool_names = [
         getattr(tool, "id", getattr(tool, "name", repr(tool))) for tool in session_tools
     ]
@@ -230,7 +246,7 @@ async def entrypoint(ctx: JobContext) -> None:
     tts.prewarm()
 
     turn_handling_kwargs: dict[str, object] = {
-        "turn_detection": MultilingualModel(),
+        "turn_detection": inference.TurnDetector(model="multilingual"),
     }
     if requires_sync_turn_completion(client_config):
         # Document prefetch runs in on_user_turn_completed and can take several
@@ -249,11 +265,13 @@ async def entrypoint(ctx: JobContext) -> None:
         tts=tts,
         tools=session_tools,
         turn_handling=TurnHandlingOptions(**turn_handling_kwargs),
-        vad=ctx.proc.userdata["vad"],
     )
 
     await session.start(
-        agent=DefaultAgent(client_config=client_config),
+        agent=DefaultAgent(
+            client_config=client_config,
+            knowledge_retriever=knowledge_retriever,
+        ),
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(

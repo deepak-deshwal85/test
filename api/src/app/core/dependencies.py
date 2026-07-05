@@ -18,18 +18,26 @@ from app.services.embedding_service import EmbeddingService
 from app.services.search_service import SearchService
 
 _call_job_service: CallJobService | None = None
+_qdrant_repository: QdrantRepository | None = None
+_embedding_provider_factory: EmbeddingProviderFactory | None = None
 
 
 def get_qdrant_repository(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> QdrantRepository:
-    return QdrantRepository(settings)
+    global _qdrant_repository
+    if _qdrant_repository is None:
+        _qdrant_repository = QdrantRepository(settings)
+    return _qdrant_repository
 
 
 def get_embedding_provider_factory(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> EmbeddingProviderFactory:
-    return EmbeddingProviderFactory(settings)
+    global _embedding_provider_factory
+    if _embedding_provider_factory is None:
+        _embedding_provider_factory = EmbeddingProviderFactory(settings)
+    return _embedding_provider_factory
 
 
 def get_embedding_service(
@@ -87,6 +95,12 @@ def get_call_job_service(
 def reset_call_job_service() -> None:
     global _call_job_service
     _call_job_service = None
+
+
+def reset_rag_clients() -> None:
+    global _qdrant_repository, _embedding_provider_factory
+    _qdrant_repository = None
+    _embedding_provider_factory = None
 
 
 def verify_api_key(

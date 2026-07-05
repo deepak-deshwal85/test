@@ -28,6 +28,10 @@ class ApiRagRetriever:
         self._settings = settings
         self._http_client = http_client
         self._owns_client = http_client is None
+        api_key = os.getenv("RAG_API_KEY", "").strip()
+        self._auth_headers: dict[str, str] = (
+            {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        )
 
     def _client(self) -> httpx.AsyncClient:
         if self._http_client is None:
@@ -44,11 +48,13 @@ class ApiRagRetriever:
             self._http_client = None
 
     def _headers(self) -> dict[str, str]:
-        headers = {"Content-Type": "application/json"}
-        api_key = os.getenv("RAG_API_KEY", "").strip()
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
-        return headers
+        return {"Content-Type": "application/json", **self._auth_headers}
+
+    async def warmup(self) -> None:
+        try:
+            await self._client().get("/health")
+        except Exception:
+            logger.debug("rag api warmup failed", exc_info=True)
 
     async def search(self, query: str, *, max_results: int) -> list[RagSearchHit]:
         payload = {

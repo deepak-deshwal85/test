@@ -26,7 +26,6 @@ def test_qdrant_repository_search_maps_payload() -> None:
     from app.db.qdrant_repository import QdrantRepository
 
     client = MagicMock()
-    client.collection_exists.return_value = True
     search_result = MagicMock()
     search_result.score = 0.88
     search_result.payload = {"text": "Senior Java engineer", "source_uri": "resume.pdf"}
@@ -67,7 +66,7 @@ def test_collection_from_phone() -> None:
     assert resolve_collection(collection="custom") == "custom"
 
 
-def test_search_service_filters_low_score_hits() -> None:
+def test_search_service_passes_score_threshold_to_qdrant() -> None:
     from app.core.config import Settings
     from app.domain.models import RagSearchHit
     from app.services.search_service import SearchService
@@ -76,7 +75,6 @@ def test_search_service_filters_low_score_hits() -> None:
     qdrant = MagicMock()
     qdrant.search.return_value = [
         RagSearchHit(text="relevant", score=0.55, source_uri="a.txt"),
-        RagSearchHit(text="weak", score=0.12, source_uri="b.txt"),
     ]
     embedding_service = MagicMock()
     embedding_service.create_embeddings.return_value = MagicMock(
@@ -95,6 +93,8 @@ def test_search_service_filters_low_score_hits() -> None:
     assert collection == "phone_911171366880"
     assert len(hits) == 1
     assert hits[0].text == "relevant"
+    _, kwargs = qdrant.search.call_args
+    assert kwargs["score_threshold"] == pytest.approx(0.3)
 
 
 def test_search_invalid_phone(client: TestClient) -> None:

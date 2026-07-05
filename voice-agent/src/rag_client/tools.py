@@ -33,6 +33,7 @@ def build_rag_instructions(backend: str) -> str:
 
 - Uploaded documents are the only source of truth for factual answers.
 - The system auto-searches uploaded documents each turn; use the provided excerpts.
+- If excerpts are already provided for this turn, do not call {tool_label} again.
 - If excerpts are missing or incomplete, call {tool_label} before answering.
 - Never say you lack access to uploaded documents.
 - If search finds nothing relevant, say you do not have that detail in the uploaded documents."""
@@ -54,6 +55,7 @@ def build_rag_tools(
     *,
     settings: RagClientSettings | None = None,
     api_retriever_factory=create_api_rag_retriever,
+    retriever=None,
 ) -> list[object]:
     rag_settings = settings or load_rag_settings()
     backend = resolve_rag_backend(client_config, rag_settings)
@@ -66,7 +68,7 @@ def build_rag_tools(
         )
         return [build_xai_file_search(client_config, rag_settings)]
 
-    retriever = api_retriever_factory(
+    shared_retriever = retriever or api_retriever_factory(
         client_config=client_config,
         settings=rag_settings,
     )
@@ -83,7 +85,7 @@ def build_rag_tools(
     async def search_knowledge_base(query: str) -> str:
         tool_started = time.perf_counter()
         try:
-            raw_hits = await retriever.search(
+            raw_hits = await shared_retriever.search(
                 query,
                 max_results=int(
                     os.getenv("RAG_MAX_RESULTS", str(rag_settings.max_results))

@@ -27,6 +27,7 @@ class QdrantRepository:
             url=settings.qdrant_url,
             api_key=settings.qdrant_api_key,
             check_compatibility=False,
+            timeout=settings.qdrant_timeout,
         )
 
     @property
@@ -152,16 +153,21 @@ class QdrantRepository:
         *,
         query_vector: list[float],
         limit: int,
+        score_threshold: float | None = None,
     ) -> list[RagSearchHit]:
-        if not self._client.collection_exists(collection_name):
-            return []
-
-        response = self._client.query_points(
-            collection_name=collection_name,
-            query=query_vector,
-            limit=limit,
-            with_payload=True,
-        )
+        try:
+            response = self._client.query_points(
+                collection_name=collection_name,
+                query=query_vector,
+                limit=limit,
+                with_payload=True,
+                score_threshold=score_threshold,
+            )
+        except Exception as exc:
+            message = str(exc).lower()
+            if "not found" in message or "doesn't exist" in message:
+                return []
+            raise
 
         hits: list[RagSearchHit] = []
         for result in response.points:

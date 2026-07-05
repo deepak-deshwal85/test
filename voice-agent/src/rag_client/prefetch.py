@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import re
+from collections.abc import Coroutine
 
 from client_config import ClientConfig
 from rag_client.api_retriever import create_api_rag_retriever
@@ -23,12 +25,19 @@ SKIP_AUTO_SEARCH_PHRASES = frozenset(
         "thanks",
         "thank you",
         "stop",
+        "oh stop",
         "bye",
         "goodbye",
         "hi",
         "hello",
     }
 )
+
+# Single words that always indicate an interrupt/dismissal, even inside a longer
+# phrase. e.g. "Good. Stop. Stop." is not a searchable question.
+STOP_SIGNAL_WORDS = frozenset({"stop", "bye", "goodbye"})
+
+DEFAULT_MIN_AUTO_SEARCH_WORDS = 2
 
 
 def create_knowledge_retriever(
@@ -61,12 +70,23 @@ def extract_message_text(content: object) -> str:
     return " ".join(parts).strip()
 
 
+def min_auto_search_words() -> int:
+    return int(os.getenv("RAG_MIN_QUERY_WORDS", str(DEFAULT_MIN_AUTO_SEARCH_WORDS)))
+
+
 def should_auto_search_user_text(user_text: str) -> bool:
     normalized = re.sub(r"[^\w\s]", "", user_text.strip().lower())
     normalized = " ".join(normalized.split())
     if not normalized:
         return False
-    return normalized not in SKIP_AUTO_SEARCH_PHRASES
+    if normalized in SKIP_AUTO_SEARCH_PHRASES:
+        return False
+    words = normalized.split()
+    # Skip if any stop/interrupt signal word is present anywhere in the utterance
+    # (e.g. "Good. Stop. Stop." should not trigger a RAG search).
+    if any(word in STOP_SIGNAL_WORDS for word in words):
+        return False
+    return len(words) >= min_auto_search_words()
 
 
 def build_prefetched_context_message(*, user_query: str, hits: list[RagSearchHit]) -> str:
@@ -90,6 +110,42 @@ def build_prefetched_context_message(*, user_query: str, hits: list[RagSearchHit
 def requires_sync_turn_completion(client_config: ClientConfig) -> bool:
     """RAG prefetch in on_user_turn_completed must finish before the LLM runs."""
     return create_knowledge_retriever(client_config) is not None
+
+
+class DocumentPrefetchCache:
+    """Starts document search early on final STT transcripts."""
+
+    def __init__(self) -> None:
+        self._active_query: str | None = None
+        self._task: asyncio.Task[str | None] | None = None
+
+    def schedule(
+        self,
+        user_text: str,
+        coro: Coroutine[object, object, str | None],
+    ) -> None:
+        normalized = user_text.strip()
+        if not normalized:
+            return
+        if (
+            self._task is not None
+            and not self._task.done()
+            and self._active_query == normalized
+        ):
+            return
+        if self._task is not None and not self._task.done():
+            self._task.cancel()
+        self._active_query = normalized
+        self._task = asyncio.create_task(coro)
+
+    async def consume(self, user_text: str) -> str | None:
+        normalized = user_text.strip()
+        if self._task is None or self._active_query != normalized:
+            return None
+        try:
+            return await self._task
+        except asyncio.CancelledError:
+            return None
 
 
 async def prefetch_uploaded_documents(

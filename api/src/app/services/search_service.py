@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import asdict
 
 from app.core.collections import resolve_collection
 from app.core.config import Settings
@@ -45,25 +44,22 @@ class SearchService:
         embed_ms = (time.perf_counter() - embed_started) * 1000
 
         qdrant_started = time.perf_counter()
-        raw_hits = self._qdrant.search(
+        hits = self._qdrant.search(
             resolved_collection,
             query_vector=query_vector,
             limit=limit,
+            score_threshold=self._settings.rag_min_score,
         )
-        min_score = self._settings.rag_min_score
-        hits = [hit for hit in raw_hits if hit.score >= min_score]
-        filtered_out = len(raw_hits) - len(hits)
         qdrant_ms = (time.perf_counter() - qdrant_started) * 1000
         total_ms = (time.perf_counter() - started) * 1000
 
         logger.info(
-            "search collection=%s hits=%d filtered_out=%d min_score=%.2f "
+            "search collection=%s hits=%d min_score=%.2f "
             "embed_ms=%.0f qdrant_ms=%.0f total_ms=%.0f "
             "embed_cache_hits=%d embed_cache_misses=%d phone=%s",
             resolved_collection,
             len(hits),
-            filtered_out,
-            min_score,
+            self._settings.rag_min_score,
             embed_ms,
             qdrant_ms,
             total_ms,
@@ -72,13 +68,3 @@ class SearchService:
             phone_number,
         )
         return hits, resolved_collection
-
-    @staticmethod
-    def hits_to_response(
-        hits: list[RagSearchHit], collection: str
-    ) -> dict[str, object]:
-        return {
-            "hits": [asdict(hit) for hit in hits],
-            "count": len(hits),
-            "collection": collection,
-        }

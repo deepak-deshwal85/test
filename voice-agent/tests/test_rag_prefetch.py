@@ -6,6 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from client_config import ClientConfig
 from rag_client.models import RagSearchHit, filter_relevant_hits
 from rag_client.prefetch import (
+    DocumentPrefetchCache,
     build_prefetched_context_message,
     extract_message_text,
     requires_sync_turn_completion,
@@ -22,7 +23,34 @@ def test_extract_message_text_from_string_list():
 def test_should_auto_search_skips_short_confirmations():
     assert should_auto_search_user_text("no") is False
     assert should_auto_search_user_text("Yes.") is False
+    assert should_auto_search_user_text("Oh, stop.") is False
+    assert should_auto_search_user_text("I") is False
     assert should_auto_search_user_text("What is Reliance Industries?") is True
+    assert should_auto_search_user_text("who founded reliance") is True
+
+
+def test_should_auto_search_skips_stop_signal_in_any_position():
+    # Interrupt phrases that contain a stop-signal word should not trigger RAG.
+    assert should_auto_search_user_text("Good. Stop. Stop.") is False
+    assert should_auto_search_user_text("Good stop") is False
+    assert should_auto_search_user_text("Bye for now") is False
+
+
+def test_document_prefetch_cache_reuses_inflight_task():
+    import asyncio
+
+    async def slow_prefetch() -> str:
+        await asyncio.sleep(0.05)
+        return "cached context"
+
+    async def _run() -> None:
+        cache = DocumentPrefetchCache()
+        cache.schedule("revenue", slow_prefetch())
+        result = await cache.consume("revenue")
+        assert result == "cached context"
+        assert await cache.consume("revenue") == "cached context"
+
+    asyncio.run(_run())
 
 
 def test_filter_relevant_hits_drops_weak_matches():

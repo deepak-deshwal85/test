@@ -44,9 +44,11 @@ class Settings(BaseSettings):
 
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     openai_base_url: str | None = Field(default=None, alias="OPENAI_BASE_URL")
+    openai_timeout: float = Field(default=30.0, alias="OPENAI_TIMEOUT")
 
     qdrant_url: str = Field(default="http://127.0.0.1:6333", alias="QDRANT_URL")
     qdrant_api_key: str | None = Field(default=None, alias="QDRANT_API_KEY")
+    qdrant_timeout: float = Field(default=10.0, alias="QDRANT_TIMEOUT")
     qdrant_cluster_endpoint: str | None = Field(
         default=None, alias="QDRANT_CLUSTER_ENDPOINT"
     )

@@ -46,6 +46,7 @@ def test_build_rag_tools_uses_qdrant_function_tool():
         backend="qdrant",
         max_results=3,
         rag_api_base_url="http://127.0.0.1:8090",
+        min_score=0.3,
     )
 
     def factory(*, client_config, settings):

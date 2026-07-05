@@ -65,6 +65,32 @@ class EmbeddingCacheRepository:
         self._conn.commit()
         return key
 
+    def put_many(
+        self,
+        config: EmbeddingConfig,
+        items: list[tuple[str, list[float]]],
+    ) -> None:
+        """Insert multiple embeddings in a single transaction."""
+        if not items:
+            return
+        now = time.time()
+        rows = [
+            (embedding_cache_key(config, text), text, json.dumps(vector), now)
+            for text, vector in items
+        ]
+        self._conn.executemany(
+            """
+            INSERT INTO embeddings (cache_key, source_text, vector_json, created_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(cache_key) DO UPDATE SET
+                source_text = excluded.source_text,
+                vector_json = excluded.vector_json,
+                created_at = excluded.created_at
+            """,
+            rows,
+        )
+        self._conn.commit()
+
     def delete(self, config: EmbeddingConfig, text: str) -> bool:
         key = embedding_cache_key(config, text)
         cursor = self._conn.execute(
