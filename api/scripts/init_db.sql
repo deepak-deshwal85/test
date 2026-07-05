@@ -36,3 +36,6 @@ CREATE TABLE call_jobs (
 
 CREATE INDEX idx_call_jobs_client_phone ON call_jobs (client_phone_number);
 CREATE INDEX idx_call_jobs_status ON call_jobs (status);
+
+ALTER TABLE call_jobs
+    ADD COLUMN IF NOT EXISTS results_json TEXT;

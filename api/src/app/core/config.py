@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from dotenv import load_dotenv
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -46,7 +46,23 @@ class Settings(BaseSettings):
 
     qdrant_url: str = Field(default="http://127.0.0.1:6333", alias="QDRANT_URL")
     qdrant_api_key: str | None = Field(default=None, alias="QDRANT_API_KEY")
+    qdrant_cluster_endpoint: str | None = Field(
+        default=None, alias="QDRANT_CLUSTER_ENDPOINT"
+    )
+    qdrant_cluster_name: str | None = Field(default=None, alias="QDRANT_CLUSTER_NAME")
     rag_api_key: str | None = Field(default=None, alias="RAG_API_KEY")
+
+    @model_validator(mode="after")
+    def resolve_qdrant_cloud_url(self) -> Settings:
+        if not self.qdrant_cluster_endpoint:
+            return self
+        url = self.qdrant_cluster_endpoint.strip().rstrip("/")
+        if not url.startswith(("http://", "https://")):
+            url = f"https://{url}"
+        if ":6333" not in url:
+            url = f"{url}:6333"
+        self.qdrant_url = url
+        return self
 
     database_url: str = Field(
         default="postgresql+asyncpg://postgres:1234@localhost:5432/telephone_agent",
@@ -56,6 +72,23 @@ class Settings(BaseSettings):
     outbound_call_webhook_url: str | None = Field(
         default=None, alias="OUTBOUND_CALL_WEBHOOK_URL"
     )
+
+    livekit_url: str | None = Field(default=None, alias="LIVEKIT_URL")
+    livekit_api_key: str | None = Field(default=None, alias="LIVEKIT_API_KEY")
+    livekit_api_secret: str | None = Field(default=None, alias="LIVEKIT_API_SECRET")
+    livekit_sip_outbound_trunk_id: str | None = Field(
+        default=None, alias="LIVEKIT_SIP_OUTBOUND_TRUNK_ID"
+    )
+    livekit_agent_name: str = Field(default="telephone-agent", alias="LIVEKIT_AGENT_NAME")
+
+    @property
+    def livekit_outbound_enabled(self) -> bool:
+        return bool(
+            self.livekit_url
+            and self.livekit_api_key
+            and self.livekit_api_secret
+            and self.livekit_sip_outbound_trunk_id
+        )
 
 
 @lru_cache

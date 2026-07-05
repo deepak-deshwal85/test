@@ -87,6 +87,11 @@ def build_prefetched_context_message(*, user_query: str, hits: list[RagSearchHit
     )
 
 
+def requires_sync_turn_completion(client_config: ClientConfig) -> bool:
+    """RAG prefetch in on_user_turn_completed must finish before the LLM runs."""
+    return create_knowledge_retriever(client_config) is not None
+
+
 async def prefetch_uploaded_documents(
     *,
     client_config: ClientConfig,
@@ -100,10 +105,12 @@ async def prefetch_uploaded_documents(
     rag_settings = settings or load_rag_settings()
     max_results = int(os.getenv("RAG_MAX_RESULTS", str(rag_settings.max_results)))
     hits = await retriever.search(user_text, max_results=max_results)
+    top_score = max((hit.score for hit in hits), default=0.0)
     logger.info(
-        "auto document search phone=%s query=%r hits=%d",
+        "auto document search phone=%s query=%r hits=%d top_score=%.3f",
         client_config.phone_number,
         user_text[:80],
         len(hits),
+        top_score,
     )
     return build_prefetched_context_message(user_query=user_text, hits=hits)

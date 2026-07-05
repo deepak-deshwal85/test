@@ -3,10 +3,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from client_config import ClientConfig
 from rag_client.models import RagSearchHit
 from rag_client.prefetch import (
     build_prefetched_context_message,
     extract_message_text,
+    requires_sync_turn_completion,
     should_auto_search_user_text,
 )
 
@@ -21,6 +23,26 @@ def test_should_auto_search_skips_short_confirmations():
     assert should_auto_search_user_text("no") is False
     assert should_auto_search_user_text("Yes.") is False
     assert should_auto_search_user_text("What is Reliance Industries?") is True
+
+
+def test_requires_sync_turn_completion_when_qdrant_backend():
+    config = ClientConfig(
+        phone_number="911171366880",
+        client_name="Test Client",
+        xai_collection_id="phone_911171366880",
+        rag_backend="qdrant",
+    )
+    assert requires_sync_turn_completion(config) is True
+
+
+def test_requires_sync_turn_completion_false_without_qdrant():
+    config = ClientConfig(
+        phone_number="911171366880",
+        client_name="Test Client",
+        xai_collection_id="collection-1",
+        rag_backend="xai",
+    )
+    assert requires_sync_turn_completion(config) is False
 
 
 def test_build_prefetched_context_message_includes_excerpts():

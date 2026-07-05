@@ -9,8 +9,9 @@ from app.core.config import Settings
 from app.db.postgres.call_job_repository import CallJobRepository
 from app.db.postgres.customer_repository import CustomerRepository
 from app.db.postgres.session import get_session_factory
-from app.schemas.call_jobs import CallJobResponse
-from app.services.outbound_caller import OutboundCaller
+from app.domain.customer_models import CallAttemptResult
+from app.schemas.call_jobs import CallAttemptResponse, CallJobResponse
+from app.services.outbound_caller import OutboundCaller, build_outbound_caller
 
 logger = logging.getLogger("telephone-rag-api")
 
@@ -28,6 +29,17 @@ class CallJobService:
 
     @staticmethod
     def _to_response(job) -> CallJobResponse:
+        results = None
+        if job.results:
+            results = [
+                CallAttemptResponse(
+                    customer_id=result.customer_id,
+                    consumer_phone_number=result.consumer_phone_number,
+                    success=result.success,
+                    detail=result.detail,
+                )
+                for result in job.results
+            ]
         return CallJobResponse(
             id=job.id,
             client_phone_number=job.client_phone_number,
@@ -38,6 +50,7 @@ class CallJobService:
             started_at=job.started_at,
             completed_at=job.completed_at,
             created_at=job.created_at,
+            results=results,
         )
 
     async def create_job(self, client_phone_number: str) -> CallJobResponse:
@@ -54,6 +67,7 @@ class CallJobService:
 
     async def run_job(self, job_id: UUID) -> None:
         logger.info("call job started job_id=%s", job_id)
+        results: list[CallAttemptResult] = []
         try:
             async with self._session_factory() as session:
                 job_repository = CallJobRepository(session)
@@ -67,25 +81,54 @@ class CallJobService:
                 customers = await customer_repository.list_by_client_phone(
                     job.client_phone_number
                 )
+                logger.info(
+                    "call job loaded customers job_id=%s client=%s count=%d",
+                    job_id,
+                    job.client_phone_number,
+                    len(customers),
+                )
+                for customer in customers:
+                    logger.info(
+                        "customer queued job_id=%s id=%s name=%s consumer=%s",
+                        job_id,
+                        customer.id,
+                        customer.client_name,
+                        customer.consumer_phone_number,
+                    )
+
                 await job_repository.mark_running(
                     job_id, total_customers=len(customers)
                 )
 
             completed = 0
             for customer in customers:
-                result = await self._outbound_caller.place_call(customer=customer)
+                result = await self._outbound_caller.place_call(
+                    customer=customer,
+                    job_id=job_id,
+                )
+                results.append(result)
                 if result.success:
                     completed += 1
+                logger.info(
+                    "call attempt job_id=%s customer_id=%s consumer=%s success=%s detail=%s",
+                    job_id,
+                    customer.id,
+                    customer.consumer_phone_number,
+                    result.success,
+                    result.detail,
+                )
 
                 async with self._session_factory() as session:
                     job_repository = CallJobRepository(session)
                     await job_repository.update_progress(
-                        job_id, calls_completed=completed
+                        job_id,
+                        calls_completed=completed,
+                        results=results,
                     )
 
             async with self._session_factory() as session:
                 job_repository = CallJobRepository(session)
-                await job_repository.mark_completed(job_id)
+                await job_repository.mark_completed(job_id, results=results)
 
             logger.info(
                 "call job completed job_id=%s calls=%d/%d",
@@ -97,12 +140,16 @@ class CallJobService:
             logger.exception("call job failed job_id=%s", job_id)
             async with self._session_factory() as session:
                 job_repository = CallJobRepository(session)
-                await job_repository.mark_failed(job_id, error_message=str(exc))
+                await job_repository.mark_failed(
+                    job_id,
+                    error_message=str(exc),
+                    results=results or None,
+                )
 
 
 def build_call_job_service(settings: Settings) -> CallJobService:
     return CallJobService(
         settings=settings,
         session_factory=get_session_factory(),
-        outbound_caller=OutboundCaller(settings),
+        outbound_caller=build_outbound_caller(settings),
     )

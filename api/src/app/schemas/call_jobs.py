@@ -14,6 +14,13 @@ class TriggerCallJobRequest(BaseModel):
     )
 
 
+class CallAttemptResponse(BaseModel):
+    customer_id: int
+    consumer_phone_number: str
+    success: bool
+    detail: str
+
+
 class CallJobResponse(BaseModel):
     id: UUID
     client_phone_number: str
@@ -24,6 +31,7 @@ class CallJobResponse(BaseModel):
     started_at: datetime | None
     completed_at: datetime | None
     created_at: datetime
+    results: list[CallAttemptResponse] | None = None
 
 
 class TriggerCallJobResponse(BaseModel):

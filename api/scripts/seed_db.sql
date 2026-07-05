@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS call_jobs (
 CREATE INDEX IF NOT EXISTS idx_call_jobs_client_phone ON call_jobs (client_phone_number);
 CREATE INDEX IF NOT EXISTS idx_call_jobs_status ON call_jobs (status);
 
+ALTER TABLE call_jobs
+    ADD COLUMN IF NOT EXISTS results_json TEXT;
+
 INSERT INTO customers (client_phone_number, client_name, consumer_phone_number)
 VALUES
     ('911171366880', 'Deepak Kumar', '9876543210'),

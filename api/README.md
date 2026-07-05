@@ -87,9 +87,25 @@ Example create:
 }
 ```
 
-Returns `202 Accepted` with `job_id`. The job loads all customers for that `client_phone_number` and places an outbound call to each `consumer_phone_number`.
+Returns `202 Accepted` with `job_id`. The job loads all customers for that `client_phone_number` and dials each `consumer_phone_number`.
 
-Set `OUTBOUND_CALL_WEBHOOK_URL` in `.env` to POST call payloads to your telephony provider (LiveKit/SIP). Without it, calls are simulated and logged.
+**Console logs** show each step (`call job loaded customers`, `call attempt`, etc.). **GET** `/v1/call-jobs/{job_id}` returns a `results` array with per-customer call details.
+
+### Real calls (LiveKit SIP)
+
+Add to `api/.env` (same LiveKit project as voice-agent):
+
+```env
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=...
+LIVEKIT_API_SECRET=...
+LIVEKIT_SIP_OUTBOUND_TRUNK_ID=ST_xxxx   # outbound trunk from LiveKit Cloud / lk CLI
+LIVEKIT_AGENT_NAME=telephone-agent
+```
+
+Without these, calls are **simulated only** (job completes but no phone rings).
+
+The voice agent must be running (`uv run python src/agent.py dev`) to answer outbound rooms.
 
 ## RAG APIs
 
@@ -107,9 +123,14 @@ Set `OUTBOUND_CALL_WEBHOOK_URL` in `.env` to POST call payloads to your telephon
 |----------|---------|
 | `OPENAI_API_KEY` | Embeddings |
 | `DATABASE_URL` | PostgreSQL async connection |
-| `QDRANT_URL` | Vector store |
+| `QDRANT_URL` | Local Qdrant (default `http://127.0.0.1:6333`) |
+| `QDRANT_CLUSTER_ENDPOINT` | Qdrant Cloud HTTPS endpoint (overrides `QDRANT_URL`) |
+| `QDRANT_API_KEY` | Required for Qdrant Cloud |
 | `RAG_API_KEY` | Optional API bearer auth |
-| `OUTBOUND_CALL_WEBHOOK_URL` | Optional telephony webhook |
+| `OUTBOUND_CALL_WEBHOOK_URL` | Legacy optional webhook (use LiveKit vars instead) |
+| `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | Required for real outbound calls |
+| `LIVEKIT_SIP_OUTBOUND_TRUNK_ID` | Outbound SIP trunk ID |
+| `LIVEKIT_AGENT_NAME` | Agent to dispatch (default `telephone-agent`) |
 
 ## Tests
 

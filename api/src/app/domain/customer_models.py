@@ -12,6 +12,16 @@ def normalize_phone_number(value: str) -> str:
     return digits
 
 
+def format_sip_phone(value: str) -> str:
+    stripped = value.strip()
+    if stripped.startswith("+"):
+        return stripped
+    digits = normalize_phone_number(stripped)
+    if len(digits) == 10:
+        return f"+91{digits}"
+    return f"+{digits}"
+
+
 @dataclass(frozen=True)
 class Customer:
     id: int
@@ -33,6 +43,7 @@ class CallJob:
     started_at: datetime | None
     completed_at: datetime | None
     created_at: datetime
+    results: list[CallAttemptResult] | None = None
 
 
 @dataclass(frozen=True)

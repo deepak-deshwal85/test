@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.core.config import get_settings
+from app.core.logging import configure_logging
 from app.db.postgres.session import dispose_engine, init_engine
 from app.routers import (
     call_jobs,
@@ -18,6 +19,8 @@ from app.routers import (
 )
 
 logger = logging.getLogger("telephone-rag-api")
+
+configure_logging()
 
 
 @asynccontextmanager

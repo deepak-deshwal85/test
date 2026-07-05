@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 
@@ -26,6 +27,7 @@ from rag_client.prefetch import (
     create_knowledge_retriever,
     extract_message_text,
     prefetch_uploaded_documents,
+    requires_sync_turn_completion,
 )
 from rag_client.tools import knowledge_search_tool_label
 from scheduling_tools import (
@@ -135,8 +137,23 @@ def build_session_tools(client_config: ClientConfig) -> list[object]:
 
 
 async def _resolve_session_client(ctx: JobContext) -> ClientConfig:
+    phone_digits: str | None = None
+
+    if ctx.job.metadata:
+        try:
+            metadata = json.loads(ctx.job.metadata)
+            raw_phone = metadata.get("client_phone_number")
+            if raw_phone:
+                phone_digits = normalize_phone_override(str(raw_phone))
+                logger.info(
+                    "using client_phone_number from job metadata: %s", phone_digits
+                )
+        except json.JSONDecodeError:
+            logger.warning("invalid job metadata JSON: %r", ctx.job.metadata)
+
     phone_override = os.getenv("CLIENT_PHONE_OVERRIDE", "").strip()
-    phone_digits: str | None = normalize_phone_override(phone_override)
+    if not phone_digits and phone_override:
+        phone_digits = normalize_phone_override(phone_override)
 
     if not phone_digits:
         try:
@@ -212,6 +229,15 @@ async def entrypoint(ctx: JobContext) -> None:
     tts = build_cartesia_tts()
     tts.prewarm()
 
+    turn_handling_kwargs: dict[str, object] = {
+        "turn_detection": MultilingualModel(),
+    }
+    if requires_sync_turn_completion(client_config):
+        # Document prefetch runs in on_user_turn_completed and can take several
+        # seconds. Preemptive generation starts before that hook finishes, so
+        # the LLM would run without injected excerpts.
+        turn_handling_kwargs["preemptive_generation"] = {"enabled": False}
+
     session = AgentSession(
         stt=deepgram.STT(
             model=os.getenv("STT_MODEL", STT_MODEL),
@@ -222,7 +248,7 @@ async def entrypoint(ctx: JobContext) -> None:
         ),
         tts=tts,
         tools=session_tools,
-        turn_handling=TurnHandlingOptions(turn_detection=MultilingualModel()),
+        turn_handling=TurnHandlingOptions(**turn_handling_kwargs),
         vad=ctx.proc.userdata["vad"],
     )
 
