@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import random
 import re
 import time
 from collections.abc import Coroutine
@@ -40,6 +41,20 @@ SKIP_AUTO_SEARCH_PHRASES = frozenset(
 STOP_SIGNAL_WORDS = frozenset({"stop", "bye", "goodbye"})
 
 DEFAULT_MIN_AUTO_SEARCH_WORDS = 2
+
+# Filler phrases spoken immediately while RAG runs in background.
+# Varied pool avoids sounding robotic.
+_FILLER_PHRASES = (
+    "Let me check that for you.",
+    "Sure, let me look that up.",
+    "One moment while I find that.",
+    "Let me find that information for you.",
+    "Just a second, looking that up now.",
+)
+
+
+def pick_filler_phrase() -> str:
+    return random.choice(_FILLER_PHRASES)
 
 DEFAULT_WARMUP_QUERIES = (
     "Who is the appellant",
@@ -204,8 +219,9 @@ async def prefetch_uploaded_documents(
     user_text: str,
     retriever,
     settings: RagClientSettings | None = None,
+    already_filtered: bool = False,
 ) -> str | None:
-    if not should_auto_search_user_text(user_text):
+    if not already_filtered and not should_auto_search_user_text(user_text):
         return None
 
     rag_settings = settings or load_rag_settings()

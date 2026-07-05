@@ -27,8 +27,10 @@ from rag_client.config import load_rag_settings
 from rag_client.prefetch import (
     create_knowledge_retriever,
     extract_message_text,
+    pick_filler_phrase,
     prefetch_uploaded_documents,
     requires_sync_turn_completion,
+    should_auto_search_user_text,
     warmup_knowledge_retriever,
 )
 from rag_client.tools import knowledge_search_tool_label
@@ -155,16 +157,37 @@ class DefaultAgent(Agent):
             return
 
         user_text = extract_message_text(new_message.content)
-        prefetched = await prefetch_uploaded_documents(
-            client_config=self._client_config,
-            user_text=user_text,
-            retriever=self._knowledge_retriever,
-            settings=self._rag_settings,
-        )
-        if prefetched is None:
+
+        # Skip RAG (and filler) for short confirmations and stop phrases.
+        if not should_auto_search_user_text(user_text):
             return
 
-        turn_ctx.add_message(role="developer", content=prefetched)
+        # Speak a brief filler via TTS immediately — this runs in parallel with
+        # the RAG API call so the caller hears audio within ~200ms instead of
+        # waiting ~1.5s in silence.
+        filler_handle = self.session.say(
+            pick_filler_phrase(),
+            allow_interruptions=False,
+            add_to_chat_ctx=False,
+        )
+
+        # Run RAG while filler is playing.
+        rag_task = asyncio.create_task(
+            prefetch_uploaded_documents(
+                client_config=self._client_config,
+                user_text=user_text,
+                retriever=self._knowledge_retriever,
+                settings=self._rag_settings,
+                already_filtered=True,
+            )
+        )
+
+        # Wait for both filler and RAG to finish before returning so the LLM
+        # starts with full context and only after the filler has played out.
+        prefetched, _ = await asyncio.gather(rag_task, filler_handle.wait_for_playout())
+
+        if prefetched is not None:
+            turn_ctx.add_message(role="developer", content=prefetched)
 
 
 def build_session_tools(
