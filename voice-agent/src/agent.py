@@ -246,7 +246,7 @@ async def entrypoint(ctx: JobContext) -> None:
     tts.prewarm()
 
     turn_handling_kwargs: dict[str, object] = {
-        "turn_detection": inference.TurnDetector(model="multilingual"),
+        "turn_detection": inference.TurnDetector(version="v1"),
     }
     if requires_sync_turn_completion(client_config):
         # Document prefetch runs in on_user_turn_completed and can take several
