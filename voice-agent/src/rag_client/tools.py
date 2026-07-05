@@ -13,7 +13,7 @@ from rag_client.config import (
     resolve_rag_api_url,
     resolve_rag_backend,
 )
-from rag_client.models import format_search_hits
+from rag_client.models import filter_relevant_hits, format_search_hits
 
 logger = logging.getLogger("agent-telephone-agent")
 
@@ -83,16 +83,19 @@ def build_rag_tools(
     async def search_knowledge_base(query: str) -> str:
         tool_started = time.perf_counter()
         try:
-            hits = await retriever.search(
+            raw_hits = await retriever.search(
                 query,
                 max_results=int(
                     os.getenv("RAG_MAX_RESULTS", str(rag_settings.max_results))
                 ),
             )
+            hits = filter_relevant_hits(raw_hits, min_score=rag_settings.min_score)
             logger.info(
-                "search_knowledge_base tool_ms=%.0f query=%r",
+                "search_knowledge_base tool_ms=%.0f query=%r hits=%d raw_hits=%d",
                 (time.perf_counter() - tool_started) * 1000,
                 query[:80],
+                len(hits),
+                len(raw_hits),
             )
             return format_search_hits(hits)
         except Exception as exc:

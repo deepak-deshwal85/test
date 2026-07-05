@@ -7,7 +7,7 @@ import re
 from client_config import ClientConfig
 from rag_client.api_retriever import create_api_rag_retriever
 from rag_client.config import RagClientSettings, load_rag_settings, resolve_rag_backend
-from rag_client.models import RagSearchHit, format_search_hits
+from rag_client.models import RagSearchHit, filter_relevant_hits, format_search_hits
 
 logger = logging.getLogger("agent-telephone-agent")
 
@@ -104,13 +104,16 @@ async def prefetch_uploaded_documents(
 
     rag_settings = settings or load_rag_settings()
     max_results = int(os.getenv("RAG_MAX_RESULTS", str(rag_settings.max_results)))
-    hits = await retriever.search(user_text, max_results=max_results)
-    top_score = max((hit.score for hit in hits), default=0.0)
+    raw_hits = await retriever.search(user_text, max_results=max_results)
+    hits = filter_relevant_hits(raw_hits, min_score=rag_settings.min_score)
+    top_score = max((hit.score for hit in raw_hits), default=0.0)
     logger.info(
-        "auto document search phone=%s query=%r hits=%d top_score=%.3f",
+        "auto document search phone=%s query=%r hits=%d raw_hits=%d top_score=%.3f min_score=%.2f",
         client_config.phone_number,
         user_text[:80],
         len(hits),
+        len(raw_hits),
         top_score,
+        rag_settings.min_score,
     )
     return build_prefetched_context_message(user_query=user_text, hits=hits)

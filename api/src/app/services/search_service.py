@@ -45,19 +45,25 @@ class SearchService:
         embed_ms = (time.perf_counter() - embed_started) * 1000
 
         qdrant_started = time.perf_counter()
-        hits = self._qdrant.search(
+        raw_hits = self._qdrant.search(
             resolved_collection,
             query_vector=query_vector,
             limit=limit,
         )
+        min_score = self._settings.rag_min_score
+        hits = [hit for hit in raw_hits if hit.score >= min_score]
+        filtered_out = len(raw_hits) - len(hits)
         qdrant_ms = (time.perf_counter() - qdrant_started) * 1000
         total_ms = (time.perf_counter() - started) * 1000
 
         logger.info(
-            "search collection=%s hits=%d embed_ms=%.0f qdrant_ms=%.0f total_ms=%.0f "
+            "search collection=%s hits=%d filtered_out=%d min_score=%.2f "
+            "embed_ms=%.0f qdrant_ms=%.0f total_ms=%.0f "
             "embed_cache_hits=%d embed_cache_misses=%d phone=%s",
             resolved_collection,
             len(hits),
+            filtered_out,
+            min_score,
             embed_ms,
             qdrant_ms,
             total_ms,

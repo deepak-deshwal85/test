@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     rag_backend: str = Field(default="qdrant", alias="RAG_BACKEND")
     rag_max_results: int = Field(default=5, alias="RAG_MAX_RESULTS")
+    rag_min_score: float = Field(default=0.3, alias="RAG_MIN_SCORE")
 
     embedder_provider: str = Field(default="openai", alias="RAG_EMBEDDER_PROVIDER")
     embedder_model: str = Field(

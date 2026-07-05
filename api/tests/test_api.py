@@ -67,6 +67,36 @@ def test_collection_from_phone() -> None:
     assert resolve_collection(collection="custom") == "custom"
 
 
+def test_search_service_filters_low_score_hits() -> None:
+    from app.core.config import Settings
+    from app.domain.models import RagSearchHit
+    from app.services.search_service import SearchService
+
+    settings = Settings(rag_min_score=0.3)
+    qdrant = MagicMock()
+    qdrant.search.return_value = [
+        RagSearchHit(text="relevant", score=0.55, source_uri="a.txt"),
+        RagSearchHit(text="weak", score=0.12, source_uri="b.txt"),
+    ]
+    embedding_service = MagicMock()
+    embedding_service.create_embeddings.return_value = MagicMock(
+        embeddings=[[0.1, 0.2]],
+        cache_hits=0,
+        cache_misses=1,
+    )
+
+    service = SearchService(settings, qdrant, embedding_service)
+    hits, collection = service.search(
+        query="workforce",
+        max_results=5,
+        phone_number="911171366880",
+    )
+
+    assert collection == "phone_911171366880"
+    assert len(hits) == 1
+    assert hits[0].text == "relevant"
+
+
 def test_search_invalid_phone(client: TestClient) -> None:
     response = client.post(
         "/v1/search",

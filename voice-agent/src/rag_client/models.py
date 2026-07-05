@@ -15,6 +15,14 @@ class RagRetriever(Protocol):
     async def search(self, query: str, *, max_results: int) -> list[RagSearchHit]: ...
 
 
+def filter_relevant_hits(
+    hits: list[RagSearchHit],
+    *,
+    min_score: float,
+) -> list[RagSearchHit]:
+    return [hit for hit in hits if hit.score >= min_score]
+
+
 def format_search_hits(hits: list[RagSearchHit]) -> str:
     if not hits:
         return "No matching information was found in the knowledge base."
