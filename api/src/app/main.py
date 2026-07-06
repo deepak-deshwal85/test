@@ -23,7 +23,7 @@ from app.routers import (
     search,
 )
 
-logger = logging.getLogger("telephone-rag-api")
+logger = logging.getLogger("relaydesk-api")
 
 configure_logging()
 

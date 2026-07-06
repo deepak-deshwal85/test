@@ -1,14 +1,14 @@
--- PostgreSQL setup for Telephone Agent API
+-- PostgreSQL setup for RelayDesk API
 -- Run as postgres superuser, e.g.:
 --   psql -U postgres -h localhost -p 5432 -f scripts/init_db.sql
 
-CREATE DATABASE telephone_agent
+CREATE DATABASE relaydesk
     WITH ENCODING 'UTF8'
     LC_COLLATE='en_US.UTF-8'
     LC_CTYPE='en_US.UTF-8'
     TEMPLATE template0;
 
-\c telephone_agent
+\c relaydesk
 
 CREATE TABLE customers (
     id SERIAL PRIMARY KEY,

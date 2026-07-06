@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "telephone-voice-agent"
+name = "relaydesk-voice-agent"
 version = "1.0.0"
-description = "LiveKit voice agent for telephone calls with scheduling and RAG client"
+description = "RelayDesk LiveKit voice agent with scheduling and RAG client"
 requires-python = ">=3.10"
 
 dependencies = [

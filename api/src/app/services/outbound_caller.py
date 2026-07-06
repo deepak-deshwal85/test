@@ -8,7 +8,7 @@ from app.domain.customer_models import CallAttemptResult, Customer
 from app.services.livekit_outbound_caller import LiveKitOutboundCaller
 from app.services.simulated_outbound_caller import SimulatedOutboundCaller
 
-logger = logging.getLogger("telephone-rag-api")
+logger = logging.getLogger("relaydesk-api")
 
 
 class OutboundCaller:

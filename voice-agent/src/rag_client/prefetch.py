@@ -13,7 +13,7 @@ from rag_client.api_retriever import create_api_rag_retriever
 from rag_client.config import RagClientSettings, load_rag_settings, resolve_rag_backend
 from rag_client.models import RagSearchHit, filter_relevant_hits, format_search_hits
 
-logger = logging.getLogger("agent-telephone-agent")
+logger = logging.getLogger("relaydesk-agent")
 
 SKIP_AUTO_SEARCH_PHRASES = frozenset(
     {

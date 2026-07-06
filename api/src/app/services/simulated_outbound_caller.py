@@ -4,7 +4,7 @@ import logging
 
 from app.domain.customer_models import CallAttemptResult, Customer
 
-logger = logging.getLogger("telephone-rag-api")
+logger = logging.getLogger("relaydesk-api")
 
 
 class SimulatedOutboundCaller:

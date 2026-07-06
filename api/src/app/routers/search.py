@@ -12,7 +12,7 @@ from app.core.qdrant_errors import is_qdrant_connection_error, qdrant_unavailabl
 from app.schemas.search import SearchHitResponse, SearchRequest, SearchResponse
 from app.services.search_service import SearchService
 
-logger = logging.getLogger("telephone-rag-api")
+logger = logging.getLogger("relaydesk-api")
 
 router = APIRouter(
     prefix="/v1",

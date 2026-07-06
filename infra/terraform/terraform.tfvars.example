@@ -1,10 +1,10 @@
 aws_region   = "ap-south-1"
 environment  = "prod"
-project_name = "telephone-agent"
+project_name = "relaydesk"
 
 # Required: your GitHub org or username (for OIDC deploy role trust)
 github_org  = "YOUR_GITHUB_ORG_OR_USER"
-github_repo = "telephone-agent"
+github_repo = "relaydesk"
 
 # EC2 backing ECS — t3.xlarge fits voice-agent (8GB) + API (1GB) on one node
 ecs_instance_type             = "t3.xlarge"

@@ -1,9 +1,9 @@
--- Windows-friendly PostgreSQL setup for Telephone Agent API
+-- Windows-friendly PostgreSQL setup for RelayDesk API
 -- Run: psql -U postgres -h localhost -p 5432 -f scripts/seed_db.sql
 
-CREATE DATABASE telephone_agent;
+CREATE DATABASE relaydesk;
 
-\c telephone_agent
+\c relaydesk
 
 CREATE TABLE IF NOT EXISTS customers (
     id SERIAL PRIMARY KEY,

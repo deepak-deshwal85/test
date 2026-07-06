@@ -28,7 +28,7 @@ locals {
   voice_agent_environment = [
     { name = "RAG_BACKEND", value = "qdrant" },
     { name = "RAG_API_BASE_URL", value = "http://${local.api_service_dns}:8090" },
-    { name = "AGENT_NAME", value = "telephone-agent" },
+    { name = "AGENT_NAME", value = "relaydesk-agent" },
     { name = "TURN_ENDPOINTING_MAX_DELAY", value = "1.0" },
     { name = "TURN_ENDPOINTING_MIN_DELAY", value = "0.3" },
   ]

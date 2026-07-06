@@ -1,4 +1,4 @@
-# Telephone Agent Monorepo
+# RelayDesk Monorepo
 
 This repository contains two independent Python projects:
 
@@ -47,7 +47,7 @@ Set `RAG_API_BASE_URL=http://127.0.0.1:8090` in `voice-agent/.env`.
 ## Project layout
 
 ```
-telephone-agent/
+relaydesk/
 ├── voice-agent/          # LiveKit voice agent
 │   ├── src/
 │   ├── config/           # Per-phone client configs

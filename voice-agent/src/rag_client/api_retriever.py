@@ -9,7 +9,7 @@ import httpx
 from rag_client.config import RagClientSettings, resolve_rag_api_url
 from rag_client.models import RagSearchHit
 
-logger = logging.getLogger("agent-telephone-agent")
+logger = logging.getLogger("relaydesk-agent")
 
 
 class ApiRagRetriever:

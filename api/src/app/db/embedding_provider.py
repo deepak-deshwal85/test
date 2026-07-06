@@ -7,7 +7,7 @@ from app.db.embedding_cache_repository import EmbeddingCacheRepository
 from app.db.embeddings.base import EmbeddingConfig, EmbeddingProvider
 from app.db.embeddings.openai_provider import OpenAIEmbeddingProvider
 
-logger = logging.getLogger("telephone-rag-api")
+logger = logging.getLogger("relaydesk-api")
 
 
 class CachingEmbeddingProvider:

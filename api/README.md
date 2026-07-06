@@ -1,4 +1,4 @@
-# Telephone Agent API
+# RelayDesk API
 
 Layered FastAPI service: RAG (Qdrant), customer CRUD (PostgreSQL), and async outbound call jobs.
 
@@ -19,7 +19,7 @@ src/app/
 Default connection (override in `.env`):
 
 ```
-postgresql+asyncpg://postgres:1234@localhost:5432/telephone_agent
+postgresql+asyncpg://postgres:1234@localhost:5432/relaydesk
 ```
 
 Create database and tables:
@@ -35,7 +35,7 @@ If the database already exists, connect and run only the `CREATE TABLE` statemen
 Add to `api/.env`:
 
 ```env
-DATABASE_URL=postgresql+asyncpg://postgres:1234@localhost:5432/telephone_agent
+DATABASE_URL=postgresql+asyncpg://postgres:1234@localhost:5432/relaydesk
 ```
 
 ## Quick start
@@ -100,7 +100,7 @@ LIVEKIT_URL=wss://your-project.livekit.cloud
 LIVEKIT_API_KEY=...
 LIVEKIT_API_SECRET=...
 LIVEKIT_SIP_OUTBOUND_TRUNK_ID=ST_xxxx   # outbound trunk from LiveKit Cloud / lk CLI
-LIVEKIT_AGENT_NAME=telephone-agent
+LIVEKIT_AGENT_NAME=relaydesk
 ```
 
 Without these, calls are **simulated only** (job completes but no phone rings).
@@ -130,7 +130,7 @@ The voice agent must be running (`uv run python src/agent.py dev`) to answer out
 | `OUTBOUND_CALL_WEBHOOK_URL` | Legacy optional webhook (use LiveKit vars instead) |
 | `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | Required for real outbound calls |
 | `LIVEKIT_SIP_OUTBOUND_TRUNK_ID` | Outbound SIP trunk ID |
-| `LIVEKIT_AGENT_NAME` | Agent to dispatch (default `telephone-agent`) |
+| `LIVEKIT_AGENT_NAME` | Agent to dispatch (default `relaydesk`) |
 
 ## Tests
 

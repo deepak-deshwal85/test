@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "project_name" {
   description = "Prefix for resource names."
   type        = string
-  default     = "telephone-agent"
+  default     = "relaydesk"
 }
 
 variable "environment" {
@@ -56,7 +56,7 @@ variable "github_org" {
 variable "github_repo" {
   description = "GitHub repository name (without org)."
   type        = string
-  default     = "telephone-agent"
+  default     = "relaydesk"
 }
 
 variable "github_branch" {

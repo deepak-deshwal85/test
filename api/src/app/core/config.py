@@ -21,7 +21,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = "Telephone Agent RAG API"
+    app_name: str = "RelayDesk API"
     app_version: str = "2.0.0"
     api_host: str = Field(default="127.0.0.1", alias="RAG_API_HOST")
     api_port: int = Field(default=8090, alias="RAG_API_PORT")
@@ -68,7 +68,7 @@ class Settings(BaseSettings):
         return self
 
     database_url: str = Field(
-        default="postgresql+asyncpg://postgres:1234@localhost:5432/telephone_agent",
+        default="postgresql+asyncpg://postgres:1234@localhost:5432/relaydesk",
         alias="DATABASE_URL",
     )
     database_echo: bool = Field(default=False, alias="DATABASE_ECHO")
@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     livekit_sip_outbound_trunk_id: str | None = Field(
         default=None, alias="LIVEKIT_SIP_OUTBOUND_TRUNK_ID"
     )
-    livekit_agent_name: str = Field(default="telephone-agent", alias="LIVEKIT_AGENT_NAME")
+    livekit_agent_name: str = Field(default="relaydesk-agent", alias="LIVEKIT_AGENT_NAME")
 
     @property
     def livekit_outbound_enabled(self) -> bool:

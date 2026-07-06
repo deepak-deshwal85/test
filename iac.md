@@ -1,11 +1,11 @@
 # Infrastructure as Code (IaC) — AWS ECS on EC2
 
-This document describes how to deploy the **telephone-agent** monorepo on AWS using Terraform and GitHub Actions.
+This document describes how to deploy the **relaydesk** monorepo on AWS using Terraform and GitHub Actions.
 
 | Project | ECS service | Purpose |
 |---------|-------------|---------|
-| `voice-agent/` | `telephone-agent-prod-voice-agent` | LiveKit voice agent (STT, LLM, TTS, RAG client) |
-| `api/` | `telephone-agent-prod-api` | FastAPI RAG API (Qdrant, embeddings, search) |
+| `voice-agent/` | `relaydesk-prod-voice-agent` | LiveKit voice agent (STT, LLM, TTS, RAG client) |
+| `api/` | `relaydesk-prod-api` | FastAPI RAG API (Qdrant, embeddings, search) |
 
 Terraform lives in [`infra/terraform/`](infra/terraform/). CI/CD is [`.github/workflows/deploy-ecs.yml`](.github/workflows/deploy-ecs.yml).
 
@@ -32,7 +32,7 @@ The voice agent only needs **outbound** network (LiveKit, Deepgram, Cartesia, xA
 ```
 Internet (optional) ──► ALB ──► API task :8090
                               ▲
-Voice agent task ─────────────┘  RAG_API_BASE_URL=http://api.telephone-agent.local:8090
+Voice agent task ─────────────┘  RAG_API_BASE_URL=http://api.relaydesk.local:8090
      │
      └──► LiveKit Cloud, Deepgram, Cartesia, xAI (outbound)
 
@@ -42,7 +42,7 @@ Qdrant Cloud + RDS PostgreSQL — external (configured via SSM secrets, not in T
 **Networking**
 
 - ECS tasks run in **private subnets** with a **NAT gateway** for outbound internet (LiveKit, OpenAI, Qdrant Cloud).
-- API is registered in **AWS Cloud Map** as `api.telephone-agent.local` so the voice agent resolves it without hard-coding IPs.
+- API is registered in **AWS Cloud Map** as `api.relaydesk.local` so the voice agent resolves it without hard-coding IPs.
 - ALB is **internal** by default; set `api_publicly_accessible = true` in Terraform for a public document-upload endpoint.
 
 ---
@@ -56,7 +56,7 @@ infra/
     ├── vpc.tf                   # VPC, subnets, NAT, routing
     ├── ecs.tf                   # ECS cluster, EC2 ASG, task defs, services
     ├── alb.tf                   # Application Load Balancer for API
-    ├── service_discovery.tf     # Cloud Map: api.telephone-agent.local
+    ├── service_discovery.tf     # Cloud Map: api.relaydesk.local
     ├── ecr.tf                   # ECR repositories
     ├── iam.tf                   # Task roles, EC2 instance role, GitHub OIDC
     ├── ssm.tf                   # SSM Parameter Store placeholders for secrets
@@ -118,14 +118,14 @@ Terraform creates placeholder `SecureString` parameters. Set real values after a
 
 ```bash
 aws ssm put-parameter \
-  --name "/telephone-agent/prod/api/OPENAI_API_KEY" \
+  --name "/relaydesk/prod/api/OPENAI_API_KEY" \
   --value "sk-..." \
   --type SecureString \
   --overwrite
 
 aws ssm put-parameter \
-  --name "/telephone-agent/prod/api/DATABASE_URL" \
-  --value "postgresql+asyncpg://user:pass@host:5432/telephone_agent" \
+  --name "/relaydesk/prod/api/DATABASE_URL" \
+  --value "postgresql+asyncpg://user:pass@host:5432/relaydesk" \
   --type SecureString \
   --overwrite
 
@@ -157,8 +157,8 @@ docker push $ECR_API:latest
 docker build -t $ECR_VOICE:latest ./voice-agent
 docker push $ECR_VOICE:latest
 
-aws ecs update-service --cluster telephone-agent-prod --service telephone-agent-prod-api --force-new-deployment
-aws ecs update-service --cluster telephone-agent-prod --service telephone-agent-prod-voice-agent --force-new-deployment
+aws ecs update-service --cluster relaydesk-prod --service relaydesk-prod-api --force-new-deployment
+aws ecs update-service --cluster relaydesk-prod --service relaydesk-prod-voice-agent --force-new-deployment
 ```
 
 ### 4. GitHub repository variables
@@ -169,11 +169,11 @@ In **Settings → Secrets and variables → Actions → Variables**:
 |----------|----------------|
 | `AWS_ROLE_ARN` | From `terraform output github_actions_role_arn` |
 | `AWS_REGION` | `ap-south-1` |
-| `ECS_CLUSTER` | `telephone-agent-prod` |
-| `ECS_SERVICE_API` | `telephone-agent-prod-api` |
-| `ECS_SERVICE_VOICE` | `telephone-agent-prod-voice-agent` |
-| `ECR_API_REPO` | `telephone-agent-api` |
-| `ECR_VOICE_REPO` | `telephone-agent-voice-agent` |
+| `ECS_CLUSTER` | `relaydesk-prod` |
+| `ECS_SERVICE_API` | `relaydesk-prod-api` |
+| `ECS_SERVICE_VOICE` | `relaydesk-prod-voice-agent` |
+| `ECR_API_REPO` | `relaydesk-api` |
+| `ECR_VOICE_REPO` | `relaydesk-voice-agent` |
 
 The workflow **Deploy to ECS (EC2)** runs only when `AWS_ROLE_ARN` is set.
 
@@ -259,7 +259,7 @@ terraform output api_alb_dns_name
 |---------|--------|
 | ECS tasks not starting | EC2 instance joined cluster? ASG healthy? Enough CPU/RAM on instance? |
 | `CannotPullContainerError` | Image pushed to ECR? Task execution role has ECR pull? |
-| Voice agent can't reach API | Cloud Map DNS `api.telephone-agent.local`? Security group allows 8090 within VPC? |
+| Voice agent can't reach API | Cloud Map DNS `api.relaydesk.local`? Security group allows 8090 within VPC? |
 | API can't reach Qdrant/OpenAI | NAT gateway route on private subnets? SSM secrets set (not `CHANGEME`)? |
 | GitHub Action skipped | `AWS_ROLE_ARN` repository variable set? |
 | OIDC assume role failed | `github_org` / `github_repo` in tfvars match repository? Branch is `main`? |
@@ -267,8 +267,8 @@ terraform output api_alb_dns_name
 **Logs**
 
 ```bash
-aws logs tail /ecs/telephone-agent-prod/api --follow
-aws logs tail /ecs/telephone-agent-prod/voice-agent --follow
+aws logs tail /ecs/relaydesk-prod/api --follow
+aws logs tail /ecs/relaydesk-prod/voice-agent --follow
 ```
 
 **SSM into ECS host (debugging)**

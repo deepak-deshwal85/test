@@ -9,7 +9,7 @@ from meeting_scheduler import (
     get_meeting_availability,
 )
 
-logger = logging.getLogger("agent-telephone-agent")
+logger = logging.getLogger("relaydesk-agent")
 
 
 def build_meeting_scheduling_instructions(client_name: str) -> str:

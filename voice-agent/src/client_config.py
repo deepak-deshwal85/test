@@ -6,7 +6,7 @@ from pathlib import Path
 
 from paths import CONFIG_DIR
 
-logger = logging.getLogger("agent-telephone-agent")
+logger = logging.getLogger("relaydesk-agent")
 
 CONFIG_FILE_PATTERN = "phone_number_{phone_number}.json"
 

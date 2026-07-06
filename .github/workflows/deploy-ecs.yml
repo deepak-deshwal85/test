@@ -16,11 +16,11 @@ permissions:
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
-  ECS_CLUSTER: ${{ vars.ECS_CLUSTER || 'telephone-agent-prod' }}
-  ECS_SERVICE_API: ${{ vars.ECS_SERVICE_API || 'telephone-agent-prod-api' }}
-  ECS_SERVICE_VOICE: ${{ vars.ECS_SERVICE_VOICE || 'telephone-agent-prod-voice-agent' }}
-  ECR_API_REPO: ${{ vars.ECR_API_REPO || 'telephone-agent-api' }}
-  ECR_VOICE_REPO: ${{ vars.ECR_VOICE_REPO || 'telephone-agent-voice-agent' }}
+  ECS_CLUSTER: ${{ vars.ECS_CLUSTER || 'relaydesk-prod' }}
+  ECS_SERVICE_API: ${{ vars.ECS_SERVICE_API || 'relaydesk-prod-api' }}
+  ECS_SERVICE_VOICE: ${{ vars.ECS_SERVICE_VOICE || 'relaydesk-prod-voice-agent' }}
+  ECR_API_REPO: ${{ vars.ECR_API_REPO || 'relaydesk-api' }}
+  ECR_VOICE_REPO: ${{ vars.ECR_VOICE_REPO || 'relaydesk-voice-agent' }}
 
 jobs:
   deploy:

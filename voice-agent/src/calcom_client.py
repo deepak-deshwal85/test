@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-logger = logging.getLogger("agent-telephone-agent")
+logger = logging.getLogger("relaydesk-agent")
 
 DEFAULT_CALCOM_BASE_URL = "https://api.cal.com"
 DEFAULT_CALCOM_API_VERSION = "2024-09-04"

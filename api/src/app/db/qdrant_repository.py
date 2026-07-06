@@ -17,7 +17,7 @@ from qdrant_client.models import (
 from app.core.config import Settings
 from app.domain.models import DocumentSummary, IndexedChunk, RagSearchHit
 
-logger = logging.getLogger("telephone-rag-api")
+logger = logging.getLogger("relaydesk-api")
 
 
 class QdrantRepository:

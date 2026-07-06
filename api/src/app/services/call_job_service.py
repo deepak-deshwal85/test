@@ -13,7 +13,7 @@ from app.domain.customer_models import CallAttemptResult
 from app.schemas.call_jobs import CallAttemptResponse, CallJobResponse
 from app.services.outbound_caller import OutboundCaller, build_outbound_caller
 
-logger = logging.getLogger("telephone-rag-api")
+logger = logging.getLogger("relaydesk-api")
 
 
 class CallJobService:

@@ -53,7 +53,7 @@ def upload_document(
             ) from exc
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    logging.getLogger("telephone-rag-api").info(
+    logging.getLogger("relaydesk-api").info(
         "POST /v1/collections/%s/documents file=%r chunks=%d total_ms=%.0f",
         collection,
         filename,

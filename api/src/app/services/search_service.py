@@ -9,7 +9,7 @@ from app.db.qdrant_repository import QdrantRepository
 from app.domain.models import RagSearchHit
 from app.services.embedding_service import EmbeddingService
 
-logger = logging.getLogger("telephone-rag-api")
+logger = logging.getLogger("relaydesk-api")
 
 
 class SearchService:

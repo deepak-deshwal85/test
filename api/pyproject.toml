@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "telephone-api"
+name = "relaydesk-api"
 version = "2.0.0"
-description = "Layered FastAPI service for RAG embeddings, documents, and search"
+description = "RelayDesk API — RAG, documents, customers, and call jobs"
 requires-python = ">=3.10"
 
 dependencies = [

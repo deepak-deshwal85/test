@@ -41,7 +41,7 @@ from scheduling_tools import (
 from sip_utils import extract_routing_phone_number
 from tts_config import build_cartesia_tts
 
-logger = logging.getLogger("agent-telephone-agent")
+logger = logging.getLogger("relaydesk-agent")
 
 load_dotenv(".env.local")
 load_dotenv(".env")
@@ -53,7 +53,7 @@ DEFAULT_LLM_MODEL = "grok-4-1-fast-non-reasoning"
 DEFAULT_MEETING_TIMEZONE = os.getenv("MEETING_TIMEZONE", "Asia/Kolkata")
 DEFAULT_TURN_ENDPOINTING_MAX_DELAY = 1.0
 DEFAULT_TURN_ENDPOINTING_MIN_DELAY = 0.3
-AGENT_MODE = "telephone-agent-pipeline"
+AGENT_MODE = "relaydesk-pipeline"
 
 
 def build_turn_handling_options(client_config: ClientConfig) -> TurnHandlingOptions:
@@ -280,7 +280,7 @@ def prewarm(proc: JobProcess) -> None:
 server.setup_fnc = prewarm
 
 
-@server.rtc_session(agent_name=os.getenv("AGENT_NAME", "telephone-agent"))
+@server.rtc_session(agent_name=os.getenv("AGENT_NAME", "relaydesk-agent"))
 async def entrypoint(ctx: JobContext) -> None:
     await ctx.connect()
     client_config = await _resolve_session_client(ctx)

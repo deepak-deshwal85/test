@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from client_config import ClientConfig
 
-logger = logging.getLogger("agent-telephone-agent")
+logger = logging.getLogger("relaydesk-agent")
 
 SUPPORTED_RAG_BACKENDS = frozenset({"xai", "qdrant"})
 

@@ -12,4 +12,4 @@ def configure_logging() -> None:
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
         force=True,
     )
-    logging.getLogger("telephone-rag-api").setLevel(level)
+    logging.getLogger("relaydesk-api").setLevel(level)

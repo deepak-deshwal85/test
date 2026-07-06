@@ -9,7 +9,7 @@ from livekit import api
 from app.core.config import Settings
 from app.domain.customer_models import CallAttemptResult, Customer, format_sip_phone
 
-logger = logging.getLogger("telephone-rag-api")
+logger = logging.getLogger("relaydesk-api")
 
 
 class LiveKitOutboundCaller:

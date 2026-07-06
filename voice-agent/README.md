@@ -1,6 +1,6 @@
 # Voice Agent
 
-LiveKit voice agent for telephone calls. Handles speech-to-text, LLM reasoning, text-to-speech, Cal.com meeting scheduling, and document Q&A via the [RAG API](../api/).
+RelayDesk LiveKit voice agent for phone calls. Handles speech-to-text, LLM reasoning, text-to-speech, Cal.com meeting scheduling, and document Q&A via the [RAG API](../api/).
 
 ## Features
 

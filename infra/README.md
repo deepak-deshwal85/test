@@ -53,8 +53,8 @@ terraform apply
 After apply, set secret values (Console → Systems Manager → Parameter Store, or CLI):
 
 ```bash
-aws ssm put-parameter --name "/telephone-agent/prod/api/OPENAI_API_KEY" --value "sk-..." --type SecureString --overwrite
-aws ssm put-parameter --name "/telephone-agent/prod/api/DATABASE_URL" --value "postgresql+asyncpg://..." --type SecureString --overwrite
+aws ssm put-parameter --name "/relaydesk/prod/api/OPENAI_API_KEY" --value "sk-..." --type SecureString --overwrite
+aws ssm put-parameter --name "/relaydesk/prod/api/DATABASE_URL" --value "postgresql+asyncpg://..." --type SecureString --overwrite
 # ... repeat for all parameters listed in terraform output ssm_parameter_names
 ```
 
@@ -62,8 +62,8 @@ Build and push initial images (or let GitHub Actions do it on first merge to `ma
 
 ```bash
 aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin <account>.dkr.ecr.ap-south-1.amazonaws.com
-docker build -t telephone-agent-api:latest ./api
-docker build -t telephone-agent-voice:latest ./voice-agent
+docker build -t relaydesk-api:latest ./api
+docker build -t relaydesk-voice:latest ./voice-agent
 # tag and push to ECR URLs from terraform output
 ```
 

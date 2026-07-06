@@ -13,7 +13,7 @@ from app.db.qdrant_repository import QdrantRepository, new_document_id, new_poin
 from app.domain.models import DocumentSummary, IndexedChunk, IngestResult
 from app.services.embedding_service import EmbeddingService
 
-logger = logging.getLogger("telephone-rag-api")
+logger = logging.getLogger("relaydesk-api")
 
 SUPPORTED_SUFFIXES = {".txt", ".md", ".pdf"}
 

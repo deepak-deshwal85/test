@@ -11,7 +11,7 @@ from calcom_client import CalComClient, CalComError, CalComEventConfig
 from client_config import CalComConfig
 from paths import MEETINGS_DIR
 
-logger = logging.getLogger("agent-telephone-agent")
+logger = logging.getLogger("relaydesk-agent")
 
 DEFAULT_MEETINGS_FILE = MEETINGS_DIR / "scheduled_meetings.jsonl"
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")

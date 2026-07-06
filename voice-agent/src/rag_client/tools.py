@@ -15,7 +15,7 @@ from rag_client.config import (
 )
 from rag_client.models import filter_relevant_hits, format_search_hits
 
-logger = logging.getLogger("agent-telephone-agent")
+logger = logging.getLogger("relaydesk-agent")
 
 XAI_SEARCH_TOOL_LABEL = "file search"
 QDRANT_SEARCH_TOOL_NAME = "search_knowledge_base"
