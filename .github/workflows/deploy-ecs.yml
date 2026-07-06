@@ -1,0 +1,98 @@
+name: Deploy to ECS (EC2)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/**"
+      - "voice-agent/**"
+      - "infra/**"
+      - ".github/workflows/deploy-ecs.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+  ECS_CLUSTER: ${{ vars.ECS_CLUSTER || 'telephone-agent-prod' }}
+  ECS_SERVICE_API: ${{ vars.ECS_SERVICE_API || 'telephone-agent-prod-api' }}
+  ECS_SERVICE_VOICE: ${{ vars.ECS_SERVICE_VOICE || 'telephone-agent-prod-voice-agent' }}
+  ECR_API_REPO: ${{ vars.ECR_API_REPO || 'telephone-agent-api' }}
+  ECR_VOICE_REPO: ${{ vars.ECR_VOICE_REPO || 'telephone-agent-voice-agent' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ vars.AWS_ROLE_ARN != '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push API image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t "$ECR_REGISTRY/$ECR_API_REPO:$IMAGE_TAG" -t "$ECR_REGISTRY/$ECR_API_REPO:latest" ./api
+          docker push "$ECR_REGISTRY/$ECR_API_REPO:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_API_REPO:latest"
+
+      - name: Build and push voice-agent image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t "$ECR_REGISTRY/$ECR_VOICE_REPO:$IMAGE_TAG" -t "$ECR_REGISTRY/$ECR_VOICE_REPO:latest" ./voice-agent
+          docker push "$ECR_REGISTRY/$ECR_VOICE_REPO:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_VOICE_REPO:latest"
+
+      - name: Deploy API to ECS
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          TASK_FAMILY="${ECS_SERVICE_API}"
+          aws ecs describe-task-definition --task-definition "$TASK_FAMILY" \
+            --query 'taskDefinition' > task-def-api.json
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' \
+            task-def-api.json > task-def-api-clean.json
+          jq --arg img "$ECR_REGISTRY/$ECR_API_REPO:$IMAGE_TAG" \
+            '.containerDefinitions[0].image = $img' task-def-api-clean.json > task-def-api-new.json
+          NEW_ARN=$(aws ecs register-task-definition --cli-input-json file://task-def-api-new.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE_API" \
+            --task-definition "$NEW_ARN" --force-new-deployment
+
+      - name: Deploy voice-agent to ECS
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          TASK_FAMILY="${ECS_SERVICE_VOICE}"
+          aws ecs describe-task-definition --task-definition "$TASK_FAMILY" \
+            --query 'taskDefinition' > task-def-voice.json
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' \
+            task-def-voice.json > task-def-voice-clean.json
+          jq --arg img "$ECR_REGISTRY/$ECR_VOICE_REPO:$IMAGE_TAG" \
+            '.containerDefinitions[0].image = $img' task-def-voice-clean.json > task-def-voice-new.json
+          NEW_ARN=$(aws ecs register-task-definition --cli-input-json file://task-def-voice-new.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE_VOICE" \
+            --task-definition "$NEW_ARN" --force-new-deployment
+
+      - name: Wait for services stable
+        run: |
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE_API" "$ECS_SERVICE_VOICE"

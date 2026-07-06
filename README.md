@@ -62,13 +62,13 @@ telephone-agent/
 └── README.md
 ```
 
-## AWS deployment (summary)
+## AWS deployment (ECS on EC2)
 
-- **voice-agent** → LiveKit Cloud (`lk agent create`)
-- **api** → ECS Fargate or EC2
-- **Qdrant** → Qdrant Cloud or ECS with persistent volume
+**Recommendation:** run **two separate containers** (voice agent + RAG API) on one ECS cluster backed by EC2.
 
-See each project's README for details.
+Full guide: **[iac.md](iac.md)** (architecture, Terraform bootstrap, GitHub Actions, sizing, secrets).
+
+Quick path: `cd infra/terraform && cp terraform.tfvars.example terraform.tfvars` → `terraform apply` → set SSM secrets → push to `main` for CI deploy.
 
 ## Development
 

@@ -15,6 +15,9 @@ RUN uv sync
 
 COPY . .
 
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+  && rm -rf /var/lib/apt/lists/*
+
 ENV RAG_API_HOST=0.0.0.0
 ENV RAG_API_PORT=8090
 EXPOSE 8090
