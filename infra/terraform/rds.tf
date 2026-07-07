@@ -60,14 +60,7 @@ resource "aws_db_instance" "postgres" {
   backup_retention_period = 7
 
   lifecycle {
-    precondition {
-      condition     = var.rds_master_password != ""
-      error_message = "rds_master_password must be set when enable_rds_postgres is true."
-    }
-    precondition {
-      condition     = length(var.rds_master_password) >= 8
-      error_message = "rds_master_password must be at least 8 characters (AWS RDS requirement)."
-    }
+    ignore_changes = [password]
   }
 
   tags = {

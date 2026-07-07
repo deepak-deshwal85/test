@@ -55,7 +55,7 @@ After apply, set secret values (Console → Systems Manager → Parameter Store,
 ```powershell
 # From api/.env + voice-agent/.env (recommended)
 python infra/scripts/sync_ssm_parameters.py --from-local-env --dry-run
-python infra/scripts/sync_ssm_parameters.py --from-local-env --region ap-south-1
+python infra/scripts/sync_ssm_parameters.py --from-local-env --region ap-south-1 --profile relaydesk-admin
 
 # Or build infra/scripts/env.properties first, then upload
 python infra/scripts/sync_ssm_parameters.py --write-env-properties --from-local-env
@@ -112,8 +112,33 @@ docker push "${ECR_VOICE}:latest"
 
 | Component | ECS task | EC2 instance |
 |-----------|----------|--------------|
-| Voice agent | Desired count `0` on Free Tier | Run locally until you scale ECS host |
-| API | 0.25 vCPU, 0.5 GB RAM | Runs on `t3.micro` by default |
+| API | 0.25 vCPU, 512 MiB RAM | `t3.medium` when voice agent enabled |
+| Voice agent | 0.5 vCPU, 2816 MiB RAM (smoke test) | Same host as API |
+
+**Free Tier (API only):** set `ecs_instance_type = "t3.micro"` and `voice_agent_desired_count = 0` in `terraform.tfvars`.
+
+**Production voice:** increase to `t3.large`+ and `voice_agent_memory = 5120` after smoke testing.
+
+Changing `ecs_instance_type` updates the launch template only — **existing EC2 instances are not replaced automatically**. Run an ASG instance refresh after apply (see `infra/scripts/asg-instance-refresh-prefs.json`). If refresh stalls with *instance is protected*, remove scale-in protection on the old node first:
+
+```powershell
+aws autoscaling set-instance-protection `
+  --instance-ids <instance-id> `
+  --auto-scaling-group-name relaydesk-prod-ecs `
+  --no-protected-from-scale-in `
+  --region ap-south-1 `
+  --profile relaydesk-admin
+```
+
+Preferences file for manual refresh: `infra/scripts/asg-instance-refresh-prefs.json`.
+
+```powershell
+aws autoscaling start-instance-refresh `
+  --auto-scaling-group-name relaydesk-prod-ecs `
+  --region ap-south-1 `
+  --profile relaydesk-admin `
+  --preferences file://c:/Users/Swati/Downloads/telephone-agent/infra/scripts/asg-instance-refresh-prefs.json
+```
 
 For production with many concurrent calls, increase `ecs_instance_desired_capacity` and/or run dedicated instance types via a second capacity provider (advanced).
 

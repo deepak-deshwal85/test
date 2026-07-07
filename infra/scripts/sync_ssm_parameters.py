@@ -96,29 +96,31 @@ def put_parameter(
     name: str,
     value: str,
     region: str,
+    profile: str | None,
     dry_run: bool,
 ) -> None:
     if dry_run:
         print(f"[dry-run] would set {name}")
         return
 
-    subprocess.run(
-        [
-            "aws",
-            "ssm",
-            "put-parameter",
-            "--name",
-            name,
-            "--value",
-            value,
-            "--type",
-            "SecureString",
-            "--overwrite",
-            "--region",
-            region,
-        ],
-        check=True,
-    )
+    cmd = [
+        "aws",
+        "ssm",
+        "put-parameter",
+        "--name",
+        name,
+        "--value",
+        value,
+        "--type",
+        "SecureString",
+        "--overwrite",
+        "--region",
+        region,
+    ]
+    if profile:
+        cmd.extend(["--profile", profile])
+
+    subprocess.run(cmd, check=True)
     print(f"set {name}")
 
 
@@ -164,6 +166,11 @@ def main() -> int:
     parser.add_argument("--project", default="relaydesk")
     parser.add_argument("--environment", default="prod")
     parser.add_argument("--region", default="ap-south-1")
+    parser.add_argument(
+        "--profile",
+        default=None,
+        help="AWS CLI profile (or set AWS_PROFILE in the environment)",
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -209,6 +216,7 @@ def main() -> int:
                 name=ssm_name(api_prefix, key),
                 value=value,
                 region=args.region,
+                profile=args.profile,
                 dry_run=args.dry_run,
             )
         except subprocess.CalledProcessError:
@@ -225,6 +233,7 @@ def main() -> int:
                 name=ssm_name(voice_prefix, key),
                 value=value,
                 region=args.region,
+                profile=args.profile,
                 dry_run=args.dry_run,
             )
         except subprocess.CalledProcessError:

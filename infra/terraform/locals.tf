@@ -12,8 +12,8 @@ locals {
   ssm_prefix_api         = "/${var.project_name}/${var.environment}/api"
   ssm_prefix_voice_agent = "/${var.project_name}/${var.environment}/voice-agent"
 
-  api_image = "${aws_ecr_repository.api.repository_url}:latest"
-  voice_image = "${aws_ecr_repository.voice_agent.repository_url}:latest"
+  api_image   = "${aws_ecr_repository.api.repository_url}:${var.api_ecr_image_tag}"
+  voice_image = "${aws_ecr_repository.voice_agent.repository_url}:${var.voice_ecr_image_tag}"
 
   service_discovery_namespace = "${var.project_name}.local"
   api_service_dns             = "api.${local.service_discovery_namespace}"

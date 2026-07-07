@@ -21,6 +21,18 @@ variable "vpc_cidr" {
   default = "10.20.0.0/16"
 }
 
+variable "api_ecr_image_tag" {
+  description = "Docker image tag for the API ECR image."
+  type        = string
+  default     = "latest"
+}
+
+variable "voice_ecr_image_tag" {
+  description = "Docker image tag for the voice-agent ECR image."
+  type        = string
+  default     = "v1"
+}
+
 variable "ecs_instance_type" {
   description = "EC2 type for ECS container instances. t3.micro is Free Tier eligible (1 vCPU burst, 1 GiB RAM) — fits API only; scale up for voice-agent."
   type        = string
@@ -73,13 +85,13 @@ variable "manage_github_oidc_provider" {
 
 variable "voice_agent_cpu" {
   type    = number
-  default = 1024
+  default = 512
 }
 
 variable "voice_agent_memory" {
-  description = "Voice agent needs several GiB; not runnable on t3.micro. Increase instance + memory before setting voice_agent_desired_count > 0."
+  description = "Voice agent task memory (MiB). t3.medium (~3.6 GiB for tasks) fits API 512 + voice 2816."
   type        = number
-  default     = 5120
+  default     = 2816
 }
 
 variable "api_cpu" {
@@ -98,7 +110,7 @@ variable "api_desired_count" {
 }
 
 variable "voice_agent_desired_count" {
-  description = "Set to 0 on Free Tier (t3.micro cannot run the voice agent). Run voice-agent locally or scale EC2 first."
+  description = "ECS desired count for voice-agent. Requires ecs_instance_type large enough for API + voice task memory."
   type        = number
   default     = 0
 }
@@ -151,10 +163,15 @@ variable "rds_master_username" {
 }
 
 variable "rds_master_password" {
-  description = "Master password for RDS PostgreSQL (min 8 characters). Set via TF_VAR_rds_master_password — do not commit."
+  description = "Master password for RDS PostgreSQL (min 8 characters). Required only on first RDS create; set TF_VAR_rds_master_password."
   type        = string
   sensitive   = true
   default     = ""
+
+  validation {
+    condition     = var.rds_master_password == "" || length(var.rds_master_password) >= 8
+    error_message = "rds_master_password must be at least 8 characters when set."
+  }
 }
 
 variable "log_retention_days" {

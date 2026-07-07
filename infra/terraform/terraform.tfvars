@@ -6,12 +6,15 @@ project_name = "relaydesk"
 github_org  = "YOUR_GITHUB_ORG_OR_USER"
 github_repo = "relaydesk"
 
-# Free Tier: t3.micro (750 hrs/mo for 12 months) — API only on ECS
-ecs_instance_type             = "t3.micro"
+# Smoke-test sizing on one host: API 512 MiB + voice 2816 MiB on t3.medium
+ecs_instance_type             = "t3.medium"
 ecs_instance_desired_capacity = 1
+api_ecr_image_tag             = "latest"
+voice_ecr_image_tag           = "v1"
 
-# Voice agent needs t3.large+; run locally until you scale up
-voice_agent_desired_count = 0
+voice_agent_desired_count = 1
+voice_agent_cpu           = 512
+voice_agent_memory        = 2816
 
 # Set true only if you need to upload documents from the public internet
 api_publicly_accessible = false
