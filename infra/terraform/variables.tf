@@ -79,7 +79,7 @@ variable "voice_agent_cpu" {
 variable "voice_agent_memory" {
   description = "Voice agent needs several GiB; not runnable on t3.micro. Increase instance + memory before setting voice_agent_desired_count > 0."
   type        = number
-  default     5120
+  default     = 5120
 }
 
 variable "api_cpu" {
