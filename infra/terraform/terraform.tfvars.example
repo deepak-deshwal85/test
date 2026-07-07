@@ -6,9 +6,12 @@ project_name = "relaydesk"
 github_org  = "YOUR_GITHUB_ORG_OR_USER"
 github_repo = "relaydesk"
 
-# EC2 backing ECS — t3.xlarge fits voice-agent (8GB) + API (1GB) on one node
-ecs_instance_type             = "t3.xlarge"
+# Free Tier: t3.micro (750 hrs/mo for 12 months) — API only on ECS
+ecs_instance_type             = "t3.micro"
 ecs_instance_desired_capacity = 1
+
+# Voice agent needs t3.large+; run locally until you scale up
+voice_agent_desired_count = 0
 
 # Set true only if you need to upload documents from the public internet
 api_publicly_accessible = false

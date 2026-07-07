@@ -22,9 +22,9 @@ variable "vpc_cidr" {
 }
 
 variable "ecs_instance_type" {
-  description = "EC2 type for ECS container instances (t3.xlarge fits voice-agent + API on one node)."
+  description = "EC2 type for ECS container instances. t3.micro is Free Tier eligible (1 vCPU burst, 1 GiB RAM) — fits API only; scale up for voice-agent."
   type        = string
-  default     = "t3.xlarge"
+  default     = "t3.micro"
 }
 
 variable "ecs_instance_desired_capacity" {
@@ -39,7 +39,7 @@ variable "ecs_instance_min_size" {
 
 variable "ecs_instance_max_size" {
   type    = number
-  default = 3
+  default = 1
 }
 
 variable "api_publicly_accessible" {
@@ -73,22 +73,23 @@ variable "manage_github_oidc_provider" {
 
 variable "voice_agent_cpu" {
   type    = number
-  default = 2048
+  default = 1024
 }
 
 variable "voice_agent_memory" {
-  type    = number
-  default = 8192
+  description = "Voice agent needs several GiB; not runnable on t3.micro. Increase instance + memory before setting voice_agent_desired_count > 0."
+  type        = number
+  default     5120
 }
 
 variable "api_cpu" {
   type    = number
-  default = 512
+  default = 256
 }
 
 variable "api_memory" {
   type    = number
-  default = 1024
+  default = 512
 }
 
 variable "api_desired_count" {
@@ -97,11 +98,12 @@ variable "api_desired_count" {
 }
 
 variable "voice_agent_desired_count" {
-  type    = number
-  default = 1
+  description = "Set to 0 on Free Tier (t3.micro cannot run the voice agent). Run voice-agent locally or scale EC2 first."
+  type        = number
+  default     = 0
 }
 
 variable "log_retention_days" {
   type    = number
-  default = 14
+  default = 7
 }
