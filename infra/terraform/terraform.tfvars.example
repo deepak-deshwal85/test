@@ -8,18 +8,21 @@ github_repo = "relaydesk"
 
 # --- ECS sizing ---
 # API-only on Free Tier:
-#   ecs_instance_type = "t3.micro"
+#   api_ecs_instance_type = "t3.micro"
 #   voice_agent_desired_count = 0
 #
-# API + voice (voice task: 2 vCPU, 8 GiB):
-ecs_instance_type             = "t3.large"
-ecs_instance_desired_capacity = 1
-api_ecr_image_tag             = "latest"
-voice_ecr_image_tag           = "v1"
+# Separate hosts (default when voice agent is enabled):
+api_ecs_instance_type             = "t3.small"
+api_ecs_instance_desired_capacity = 1
+voice_ecs_instance_type             = "t3.large"
+voice_ecs_instance_desired_capacity = 1
+
+api_ecr_image_tag   = "latest"
+voice_ecr_image_tag = "v1"
 
 voice_agent_desired_count = 1
-voice_agent_cpu           = 1792
-voice_agent_memory        = 7040
+voice_agent_cpu           = 2048
+voice_agent_memory        = 7680
 
 # Set true only if you need to upload documents from the public internet
 api_publicly_accessible = false
@@ -39,7 +42,7 @@ rds_master_username = "relaydesk_admin"
 # Required only on first RDS create:
 #   $env:TF_VAR_rds_master_password="StrongPasswordHere"
 
-# Cost monitoring (Budget + CloudWatch billing dashboard)
+# Cost monitoring
 enable_cost_monitoring = true
 monthly_budget_usd     = 75
 # budget_alert_emails  = ["you@example.com"]

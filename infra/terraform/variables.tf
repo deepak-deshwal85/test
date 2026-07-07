@@ -33,23 +33,46 @@ variable "voice_ecr_image_tag" {
   default     = "v1"
 }
 
-variable "ecs_instance_type" {
-  description = "EC2 type for the shared ECS host. Voice-only task sizing is set via voice_agent_cpu / voice_agent_memory."
+variable "api_ecs_instance_type" {
+  description = "EC2 instance type for the API-only ECS host."
+  type        = string
+  default     = "t3.small"
+}
+
+variable "voice_ecs_instance_type" {
+  description = "EC2 instance type for the voice-agent-only ECS host."
   type        = string
   default     = "t3.large"
 }
 
-variable "ecs_instance_desired_capacity" {
+variable "api_ecs_instance_desired_capacity" {
+  description = "Desired EC2 instances in the API Auto Scaling group."
+  type        = number
+  default     = 1
+}
+
+variable "voice_ecs_instance_desired_capacity" {
+  description = "Desired EC2 instances in the voice-agent Auto Scaling group."
+  type        = number
+  default     = 1
+}
+
+variable "api_ecs_instance_min_size" {
   type    = number
   default = 1
 }
 
-variable "ecs_instance_min_size" {
+variable "api_ecs_instance_max_size" {
   type    = number
   default = 1
 }
 
-variable "ecs_instance_max_size" {
+variable "voice_ecs_instance_min_size" {
+  type    = number
+  default = 1
+}
+
+variable "voice_ecs_instance_max_size" {
   type    = number
   default = 1
 }
@@ -84,15 +107,15 @@ variable "manage_github_oidc_provider" {
 }
 
 variable "voice_agent_cpu" {
-  description = "Voice agent task CPU units (1024 = 1 vCPU). On a shared t3.large with API, use <= 1792."
+  description = "Voice agent task CPU units (1024 = 1 vCPU). Dedicated voice host can use 2048 on t3.large."
   type        = number
-  default     = 1792
+  default     = 2048
 }
 
 variable "voice_agent_memory" {
-  description = "Voice agent task memory (MiB). On a shared t3.large with API (512 MiB), use <= 7040."
+  description = "Voice agent task memory (MiB). Dedicated t3.large voice host supports up to ~7680."
   type        = number
-  default     = 7040
+  default     = 7680
 }
 
 variable "api_cpu" {
@@ -111,7 +134,7 @@ variable "api_desired_count" {
 }
 
 variable "voice_agent_desired_count" {
-  description = "ECS desired count for voice-agent. Requires ecs_instance_type large enough for API + voice task memory."
+  description = "ECS desired count for voice-agent. Runs on the dedicated voice EC2 pool (voice_ecs_instance_type)."
   type        = number
   default     = 0
 }

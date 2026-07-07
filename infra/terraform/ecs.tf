@@ -2,6 +2,24 @@ data "aws_ssm_parameter" "ecs_optimized_ami" {
   name = "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id"
 }
 
+locals {
+  # Separate EC2 pools — API and voice agent do not share a host.
+  ecs_host_pools = {
+    api = {
+      instance_type    = var.api_ecs_instance_type
+      desired_capacity = var.api_ecs_instance_desired_capacity
+      min_size         = var.api_ecs_instance_min_size
+      max_size         = var.api_ecs_instance_max_size
+    }
+    voice = {
+      instance_type    = var.voice_ecs_instance_type
+      desired_capacity = var.voice_agent_desired_count > 0 ? var.voice_ecs_instance_desired_capacity : 0
+      min_size         = var.voice_agent_desired_count > 0 ? var.voice_ecs_instance_min_size : 0
+      max_size         = var.voice_ecs_instance_max_size
+    }
+  }
+}
+
 resource "aws_ecs_cluster" "main" {
   name = local.name_prefix
 
@@ -12,9 +30,11 @@ resource "aws_ecs_cluster" "main" {
 }
 
 resource "aws_launch_template" "ecs" {
-  name_prefix   = "${local.name_prefix}-ecs-"
+  for_each = local.ecs_host_pools
+
+  name_prefix   = "${local.name_prefix}-ecs-${each.key}-"
   image_id      = data.aws_ssm_parameter.ecs_optimized_ami.value
-  instance_type = var.ecs_instance_type
+  instance_type = each.value.instance_type
 
   iam_instance_profile {
     name = aws_iam_instance_profile.ecs.name
@@ -46,7 +66,8 @@ resource "aws_launch_template" "ecs" {
   tag_specifications {
     resource_type = "instance"
     tags = {
-      Name = "${local.name_prefix}-ecs"
+      Name = "${local.name_prefix}-ecs-${each.key}"
+      Role = each.key
     }
   }
 
@@ -56,14 +77,16 @@ resource "aws_launch_template" "ecs" {
 }
 
 resource "aws_autoscaling_group" "ecs" {
-  name                = "${local.name_prefix}-ecs"
+  for_each = local.ecs_host_pools
+
+  name                = "${local.name_prefix}-ecs-${each.key}"
   vpc_zone_identifier = aws_subnet.private[*].id
-  min_size            = var.ecs_instance_min_size
-  max_size            = var.ecs_instance_max_size
-  desired_capacity    = var.ecs_instance_desired_capacity
+  min_size            = each.value.min_size
+  max_size            = each.value.max_size
+  desired_capacity    = each.value.desired_capacity
 
   launch_template {
-    id      = aws_launch_template.ecs.id
+    id      = aws_launch_template.ecs[each.key].id
     version = "$Latest"
   }
 
@@ -73,7 +96,7 @@ resource "aws_autoscaling_group" "ecs" {
 
   tag {
     key                 = "Name"
-    value               = "${local.name_prefix}-ecs"
+    value               = "${local.name_prefix}-ecs-${each.key}"
     propagate_at_launch = true
   }
 
@@ -83,16 +106,24 @@ resource "aws_autoscaling_group" "ecs" {
     propagate_at_launch = true
   }
 
+  tag {
+    key                 = "Role"
+    value               = each.key
+    propagate_at_launch = true
+  }
+
   lifecycle {
     ignore_changes = [desired_capacity]
   }
 }
 
 resource "aws_ecs_capacity_provider" "ec2" {
-  name = "${local.name_prefix}-ec2"
+  for_each = local.ecs_host_pools
+
+  name = "${local.name_prefix}-ecs-${each.key}"
 
   auto_scaling_group_provider {
-    auto_scaling_group_arn         = aws_autoscaling_group.ecs.arn
+    auto_scaling_group_arn         = aws_autoscaling_group.ecs[each.key].arn
     managed_termination_protection = "ENABLED"
 
     managed_scaling {
@@ -107,13 +138,10 @@ resource "aws_ecs_capacity_provider" "ec2" {
 resource "aws_ecs_cluster_capacity_providers" "main" {
   cluster_name = aws_ecs_cluster.main.name
 
-  capacity_providers = [aws_ecs_capacity_provider.ec2.name]
-
-  default_capacity_provider_strategy {
-    capacity_provider = aws_ecs_capacity_provider.ec2.name
-    weight            = 1
-    base              = 1
-  }
+  capacity_providers = [
+    aws_ecs_capacity_provider.ec2["api"].name,
+    aws_ecs_capacity_provider.ec2["voice"].name,
+  ]
 }
 
 resource "aws_ecs_task_definition" "api" {
@@ -210,8 +238,9 @@ resource "aws_ecs_service" "api" {
   launch_type     = null
 
   capacity_provider_strategy {
-    capacity_provider = aws_ecs_capacity_provider.ec2.name
+    capacity_provider = aws_ecs_capacity_provider.ec2["api"].name
     weight            = 1
+    base              = 1
   }
 
   network_configuration {
@@ -244,8 +273,9 @@ resource "aws_ecs_service" "voice_agent" {
   launch_type     = null
 
   capacity_provider_strategy {
-    capacity_provider = aws_ecs_capacity_provider.ec2.name
+    capacity_provider = aws_ecs_capacity_provider.ec2["voice"].name
     weight            = 1
+    base              = 1
   }
 
   network_configuration {

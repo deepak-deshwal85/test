@@ -6,6 +6,16 @@ output "ecs_cluster_name" {
   value = aws_ecs_cluster.main.name
 }
 
+output "ecs_api_asg_name" {
+  description = "Auto Scaling group for the API-dedicated ECS host."
+  value       = aws_autoscaling_group.ecs["api"].name
+}
+
+output "ecs_voice_asg_name" {
+  description = "Auto Scaling group for the voice-agent-dedicated ECS host."
+  value       = aws_autoscaling_group.ecs["voice"].name
+}
+
 output "ecs_service_api_name" {
   value = aws_ecs_service.api.name
 }

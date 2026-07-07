@@ -193,13 +193,13 @@ Push to `main` (paths under `api/`, `voice-agent/`, `infra/`) or run the workflo
 
 | Resource | Default | Notes |
 |----------|---------|--------|
-| EC2 instance (ECS host) | `t3.large` (2 vCPU, 8 GiB) | Shared by API + voice |
-| Voice agent task | **2 vCPU, 8 GiB RAM**, desired `1` | `voice_agent_cpu` / `voice_agent_memory` only |
-| API task | 0.25 vCPU, 512 MiB RAM | Unchanged |
-| ASG | min 1, max 1, desired 1 | Keeps cost low for initial setup |
+| API EC2 host | `t3.small` | Dedicated — API task only |
+| Voice EC2 host | `t3.large` (2 vCPU, 8 GiB) | Dedicated — voice task only |
+| Voice agent task | 2 vCPU, 7680 MiB RAM, desired `1` | On voice host only |
+| API task | 0.25 vCPU, 512 MiB RAM | On API host only |
 | NAT gateway | Always on | Required for outbound to LiveKit, OpenAI, Qdrant |
 
-Override in `terraform.tfvars`: `ecs_instance_type`, `voice_agent_cpu`, `voice_agent_memory`, `api_cpu`, `api_memory`, `voice_agent_desired_count`, `ecs_instance_desired_capacity`.
+Override in `terraform.tfvars`: `api_ecs_instance_type`, `voice_ecs_instance_type`, `voice_agent_cpu`, `voice_agent_memory`, `api_cpu`, `api_memory`, `voice_agent_desired_count`, `*_ecs_instance_desired_capacity`.
 
 ---
 

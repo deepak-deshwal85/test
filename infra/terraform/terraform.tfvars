@@ -6,15 +6,18 @@ project_name = "relaydesk"
 github_org  = "YOUR_GITHUB_ORG_OR_USER"
 github_repo = "relaydesk"
 
-# Shared EC2 host (t3.large fits API 512 MiB + voice 8192 MiB)
-ecs_instance_type             = "t3.large"
-ecs_instance_desired_capacity = 1
-api_ecr_image_tag             = "latest"
-voice_ecr_image_tag           = "v1"
+# Separate EC2 hosts (API and voice agent do not share a machine)
+api_ecs_instance_type             = "t3.small"
+api_ecs_instance_desired_capacity = 1
+voice_ecs_instance_type             = "t3.large"
+voice_ecs_instance_desired_capacity = 1
+
+api_ecr_image_tag   = "latest"
+voice_ecr_image_tag = "v1"
 
 voice_agent_desired_count = 1
-voice_agent_cpu           = 1792   # max on t3.large with API (256 CPU); host has 2048 CPU total
-voice_agent_memory        = 7040   # max on t3.large with API (512 MiB) + ECS overhead
+voice_agent_cpu           = 2048   # 2 vCPU on dedicated voice host
+voice_agent_memory        = 7680   # ~7.5 GiB on t3.large
 
 # Set true only if you need to upload documents from the public internet
 api_publicly_accessible = false
@@ -35,4 +38,4 @@ rds_master_username = "relaydesk_admin"
 # Cost monitoring
 enable_cost_monitoring = true
 monthly_budget_usd     = 75
-budget_alert_emails  = ["deepakdeshwal85@gmail.com"]
+budget_alert_emails    = ["deepakdeshwal85@gmail.com"]

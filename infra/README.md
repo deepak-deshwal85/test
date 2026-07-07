@@ -110,14 +110,36 @@ docker push "${ECR_VOICE}:latest"
 
 ## Sizing (default)
 
-| Component | ECS task | EC2 host |
-|-----------|----------|----------|
-| API | 0.25 vCPU, 512 MiB RAM | `t3.large` (shared) |
-| Voice agent | **~1.75 vCPU, 7040 MiB RAM** | Same host as API (fits t3.large with API) |
+**API and voice agent run on separate EC2 instances** (different launch templates / Auto Scaling groups).
 
-**Free Tier (API only):** `ecs_instance_type = "t3.micro"` and `voice_agent_desired_count = 0`.
+| Component | ECS task | Dedicated EC2 host |
+|-----------|----------|-------------------|
+| API | 0.25 vCPU, 512 MiB RAM | `t3.small` (`api_ecs_instance_type`) |
+| Voice agent | 2 vCPU, 7680 MiB RAM | `t3.large` (`voice_ecs_instance_type`) |
 
-Changing `ecs_instance_type` updates the launch template only — **existing EC2 instances are not replaced automatically**. Run an ASG instance refresh after apply (see `infra/scripts/asg-instance-refresh-prefs.json`). If refresh stalls with *instance is protected*, remove scale-in protection on the old node first:
+Both services stay on the **same ECS cluster** and talk over VPC DNS (`api.relaydesk.local`).
+
+**Free Tier (API only):** `api_ecs_instance_type = "t3.micro"`, `voice_agent_desired_count = 0` (voice ASG scales to 0).
+
+Changing an instance type updates the launch template only — run an **ASG instance refresh** per group after apply:
+
+```powershell
+# API host
+aws autoscaling start-instance-refresh `
+  --auto-scaling-group-name relaydesk-prod-ecs-api `
+  --region ap-south-1 `
+  --profile relaydesk-admin `
+  --preferences file://c:/Users/Swati/Downloads/telephone-agent/infra/scripts/asg-instance-refresh-prefs.json
+
+# Voice host
+aws autoscaling start-instance-refresh `
+  --auto-scaling-group-name relaydesk-prod-ecs-voice `
+  --region ap-south-1 `
+  --profile relaydesk-admin `
+  --preferences file://c:/Users/Swati/Downloads/telephone-agent/infra/scripts/asg-instance-refresh-prefs.json
+```
+
+If refresh stalls with *instance is protected*, remove scale-in protection on the old node first:
 
 ```powershell
 aws autoscaling set-instance-protection `
@@ -129,16 +151,6 @@ aws autoscaling set-instance-protection `
 ```
 
 Preferences file for manual refresh: `infra/scripts/asg-instance-refresh-prefs.json`.
-
-```powershell
-aws autoscaling start-instance-refresh `
-  --auto-scaling-group-name relaydesk-prod-ecs `
-  --region ap-south-1 `
-  --profile relaydesk-admin `
-  --preferences file://c:/Users/Swati/Downloads/telephone-agent/infra/scripts/asg-instance-refresh-prefs.json
-```
-
-For production with many concurrent calls, increase `ecs_instance_desired_capacity` and/or run dedicated instance types via a second capacity provider (advanced).
 
 ## Live logs (ECS / CloudWatch)
 
