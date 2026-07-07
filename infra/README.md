@@ -142,6 +142,23 @@ aws autoscaling start-instance-refresh `
 
 For production with many concurrent calls, increase `ecs_instance_desired_capacity` and/or run dedicated instance types via a second capacity provider (advanced).
 
+## Live logs (ECS / CloudWatch)
+
+Log groups (from Terraform): `/ecs/relaydesk-prod/api` and `/ecs/relaydesk-prod/voice-agent`.
+
+```powershell
+$PROFILE_NAME = "relaydesk-admin"
+$AWS_REGION   = "ap-south-1"
+
+# API
+aws logs tail /ecs/relaydesk-prod/api --since 10m --follow --region $AWS_REGION --profile $PROFILE_NAME
+
+# Voice agent (separate terminal)
+aws logs tail /ecs/relaydesk-prod/voice-agent --since 10m --follow --region $AWS_REGION --profile $PROFILE_NAME
+```
+
+Set `$env:AWS_PROFILE = "relaydesk-admin"` instead of `--profile` if you prefer.
+
 ## Region
 
 Default: `ap-south-1` (Mumbai). Change `aws_region` in `terraform.tfvars` if needed. Co-locate with LiveKit **India West** and Qdrant/RDS in the same region when possible.

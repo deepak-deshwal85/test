@@ -265,11 +265,14 @@ terraform output api_alb_dns_name
 | GitHub Action skipped | `AWS_ROLE_ARN` repository variable set? |
 | OIDC assume role failed | `github_org` / `github_repo` in tfvars match repository? Branch is `main`? |
 
-**Logs**
+**Logs** (live tail — set profile/region; use two terminals for both services)
 
-```bash
-aws logs tail /ecs/relaydesk-prod/api --follow
-aws logs tail /ecs/relaydesk-prod/voice-agent --follow
+```powershell
+$PROFILE_NAME = "relaydesk-admin"
+$AWS_REGION   = "ap-south-1"
+
+aws logs tail /ecs/relaydesk-prod/api --since 10m --follow --region $AWS_REGION --profile $PROFILE_NAME
+aws logs tail /ecs/relaydesk-prod/voice-agent --since 10m --follow --region $AWS_REGION --profile $PROFILE_NAME
 ```
 
 **SSM into ECS host (debugging)**

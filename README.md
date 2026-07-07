@@ -70,6 +70,8 @@ Full guide: **[iac.md](iac.md)** (architecture, Terraform bootstrap, GitHub Acti
 
 Quick path: `cd infra/terraform && copy terraform.tfvars.example terraform.tfvars` → `terraform apply` → set SSM secrets → push to `main` for CI deploy.
 
+**Live ECS logs:** see [infra/README.md](infra/README.md#live-logs-ecs--cloudwatch).
+
 ## Development
 
 ```powershell
