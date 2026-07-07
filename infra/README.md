@@ -38,13 +38,13 @@ Qdrant Cloud / RDS — external managed services (not in this Terraform)
 
 ## Bootstrap (one time)
 
-```bash
+```powershell
 cd infra/terraform
 
 # Copy and edit variables (no secrets in git)
-cp terraform.tfvars.example terraform.tfvars
+copy terraform.tfvars.example terraform.tfvars
 
-# Remote state (recommended): create S3 bucket (enable versioning), then copy backend.tf.example → backend.tf
+# Remote state (recommended): create S3 bucket (enable versioning), then copy backend.tf.example -> backend.tf
 terraform init
 terraform plan
 terraform apply
@@ -52,7 +52,7 @@ terraform apply
 
 After apply, set secret values (Console → Systems Manager → Parameter Store, or script):
 
-```bash
+```powershell
 # From api/.env + voice-agent/.env (recommended)
 python infra/scripts/sync_ssm_parameters.py --from-local-env --dry-run
 python infra/scripts/sync_ssm_parameters.py --from-local-env --region ap-south-1
@@ -71,17 +71,36 @@ PowerShell:
 
 Manual single parameter:
 
-```bash
+```powershell
 aws ssm put-parameter --name "/relaydesk/prod/api/OPENAI_API_KEY" --value "sk-..." --type SecureString --overwrite
 ```
 
 Build and push initial images (or let GitHub Actions do it on first merge to `main`):
 
-```bash
-aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin <account>.dkr.ecr.ap-south-1.amazonaws.com
+```powershell
+$PROFILE_NAME = "relaydesk-admin"
+$AWS_REGION   = "ap-south-1"
+$ACCOUNT_ID   = terraform output -raw aws_account_id
+$ECR_API      = terraform output -raw ecr_api_repository_url
+$ECR_VOICE    = terraform output -raw ecr_voice_agent_repository_url
+$IMAGE_TAG    = "v1" # or git SHA
+
+aws ecr get-login-password --profile $PROFILE_NAME --region $AWS_REGION |
+  docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+
+cd ../..
 docker build -t relaydesk-api:latest ./api
 docker build -t relaydesk-voice:latest ./voice-agent
-# tag and push to ECR URLs from terraform output
+
+docker tag relaydesk-api:latest "${ECR_API}:${IMAGE_TAG}"
+docker tag relaydesk-api:latest "${ECR_API}:latest"
+docker push "${ECR_API}:${IMAGE_TAG}"
+docker push "${ECR_API}:latest"
+
+docker tag relaydesk-voice:latest "${ECR_VOICE}:${IMAGE_TAG}"
+docker tag relaydesk-voice:latest "${ECR_VOICE}:latest"
+docker push "${ECR_VOICE}:${IMAGE_TAG}"
+docker push "${ECR_VOICE}:latest"
 ```
 
 ## GitHub Actions
@@ -93,8 +112,8 @@ docker build -t relaydesk-voice:latest ./voice-agent
 
 | Component | ECS task | EC2 instance |
 |-----------|----------|--------------|
-| Voice agent | 2 vCPU, 8 GB RAM | ASG: `t3.xlarge` (4 vCPU, 16 GB) fits agent + API + overhead |
-| API | 0.5 vCPU, 1 GB RAM | Same instance initially; scale ASG for more calls |
+| Voice agent | Desired count `0` on Free Tier | Run locally until you scale ECS host |
+| API | 0.25 vCPU, 0.5 GB RAM | Runs on `t3.micro` by default |
 
 For production with many concurrent calls, increase `ecs_instance_desired_capacity` and/or run dedicated instance types via a second capacity provider (advanced).
 

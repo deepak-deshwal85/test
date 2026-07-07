@@ -88,10 +88,10 @@ api/Dockerfile                    # FastAPI (uvicorn on :8090)
 
 ### 1. Terraform
 
-```bash
+```powershell
 cd infra/terraform
 
-cp terraform.tfvars.example terraform.tfvars
+copy terraform.tfvars.example terraform.tfvars
 # Edit: github_org, aws_region (default ap-south-1), sizing if needed
 
 # Optional: remote state — see backend.tf.example (S3 + native lockfile)
@@ -103,7 +103,7 @@ terraform apply
 
 Note useful outputs:
 
-```bash
+```powershell
 terraform output github_actions_role_arn
 terraform output ecr_api_repository_url
 terraform output ecr_voice_agent_repository_url
@@ -116,22 +116,14 @@ terraform output voice_agent_rag_api_base_url
 
 Terraform creates placeholder `SecureString` parameters. Set real values after apply (values are **not** stored in Terraform state after you change them):
 
-```bash
-aws ssm put-parameter \
-  --name "/relaydesk/prod/api/OPENAI_API_KEY" \
-  --value "sk-..." \
-  --type SecureString \
-  --overwrite
+```powershell
+# From api/.env + voice-agent/.env
+python infra/scripts/sync_ssm_parameters.py --from-local-env --dry-run
+python infra/scripts/sync_ssm_parameters.py --from-local-env --region ap-south-1
 
-aws ssm put-parameter \
-  --name "/relaydesk/prod/api/DATABASE_URL" \
-  --value "postgresql+asyncpg://user:pass@host:5432/relaydesk" \
-  --type SecureString \
-  --overwrite
-
-# Repeat for all parameters from:
-#   terraform output ssm_api_parameter_names
-#   terraform output ssm_voice_agent_parameter_names
+# Or generate infra/scripts/env.properties first, then upload
+python infra/scripts/sync_ssm_parameters.py --write-env-properties --from-local-env
+python infra/scripts/sync_ssm_parameters.py --region ap-south-1
 ```
 
 **API parameters:** `OPENAI_API_KEY`, `DATABASE_URL`, `RAG_API_KEY`, `QDRANT_API_KEY`, `QDRANT_CLUSTER_ENDPOINT`, `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `LIVEKIT_SIP_OUTBOUND_TRUNK_ID`
@@ -142,23 +134,32 @@ aws ssm put-parameter \
 
 GitHub Actions can do this on first push to `main`. To push manually:
 
-```bash
-AWS_REGION=ap-south-1
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-ECR_API=$(terraform output -raw ecr_api_repository_url)
-ECR_VOICE=$(terraform output -raw ecr_voice_agent_repository_url)
+```powershell
+$PROFILE_NAME = "relaydesk-admin"
+$AWS_REGION   = "ap-south-1"
+$ACCOUNT_ID   = terraform output -raw aws_account_id
+$ECR_API      = terraform output -raw ecr_api_repository_url
+$ECR_VOICE    = terraform output -raw ecr_voice_agent_repository_url
+$IMAGE_TAG    = "v1"
 
-aws ecr get-login-password --region $AWS_REGION | \
-  docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+aws ecr get-login-password --profile $PROFILE_NAME --region $AWS_REGION |
+  docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
 
-docker build -t $ECR_API:latest ./api
-docker push $ECR_API:latest
+cd ../..
+docker build -t relaydesk-api:latest ./api
+docker build -t relaydesk-voice:latest ./voice-agent
 
-docker build -t $ECR_VOICE:latest ./voice-agent
-docker push $ECR_VOICE:latest
+docker tag relaydesk-api:latest "${ECR_API}:${IMAGE_TAG}"
+docker tag relaydesk-api:latest "${ECR_API}:latest"
+docker push "${ECR_API}:${IMAGE_TAG}"
+docker push "${ECR_API}:latest"
 
-aws ecs update-service --cluster relaydesk-prod --service relaydesk-prod-api --force-new-deployment
-aws ecs update-service --cluster relaydesk-prod --service relaydesk-prod-voice-agent --force-new-deployment
+docker tag relaydesk-voice:latest "${ECR_VOICE}:${IMAGE_TAG}"
+docker tag relaydesk-voice:latest "${ECR_VOICE}:latest"
+docker push "${ECR_VOICE}:${IMAGE_TAG}"
+docker push "${ECR_VOICE}:latest"
+
+aws ecs update-service --profile $PROFILE_NAME --region $AWS_REGION --cluster relaydesk-prod --service relaydesk-prod-api --force-new-deployment
 ```
 
 ### 4. GitHub repository variables
@@ -192,13 +193,13 @@ Push to `main` (paths under `api/`, `voice-agent/`, `infra/`) or run the workflo
 
 | Resource | Default | Notes |
 |----------|---------|--------|
-| EC2 instance (ECS host) | `t3.xlarge` (4 vCPU, 16 GB) | Fits voice agent + API + ECS agent on one node |
-| Voice agent task | 2 vCPU, 8 GB RAM | Turn detector inference needs ~2–3 GB |
-| API task | 0.5 vCPU, 1 GB RAM | I/O-bound FastAPI |
-| ASG | min 1, max 3, desired 1 | Increase for more concurrent calls |
+| EC2 instance (ECS host) | `t3.micro` (Free Tier eligible) | API-only bootstrap profile |
+| Voice agent task | desired count `0` | Run locally until instance is scaled up |
+| API task | 0.25 vCPU, 0.5 GB RAM | Minimal profile for bootstrap |
+| ASG | min 1, max 1, desired 1 | Keeps cost low for initial setup |
 | NAT gateway | Always on | Required for outbound to LiveKit, OpenAI, Qdrant |
 
-Override in `terraform.tfvars`: `ecs_instance_type`, `voice_agent_cpu`, `voice_agent_memory`, `api_cpu`, `api_memory`, `ecs_instance_desired_capacity`.
+Override in `terraform.tfvars`: `ecs_instance_type`, `voice_agent_cpu`, `voice_agent_memory`, `api_cpu`, `api_memory`, `voice_agent_desired_count`, `ecs_instance_desired_capacity`.
 
 ---
 
@@ -234,7 +235,7 @@ terraform output api_alb_dns_name
 
 | Service | Estimate |
 |---------|----------|
-| `t3.xlarge` EC2 (1 node) | ~$120 |
+| `t3.micro` EC2 (Free Tier eligible) | ~$0 (within Free Tier limits) |
 | NAT gateway | ~$32 + data transfer |
 | ALB | ~$20 |
 | ECR / CloudWatch | ~$5–15 |

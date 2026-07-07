@@ -21,3 +21,10 @@ manage_github_oidc_provider = true
 
 # Must match aws_region — Mumbai only (avoid ap-south-1c)
 availability_zones = ["ap-south-1a", "ap-south-1b"]
+
+# RDS PostgreSQL (used by API DATABASE_URL)
+enable_rds_postgres = true
+rds_engine_version  = "16.14"
+rds_instance_class  = "db.t3.micro"
+rds_database_name   = "relaydesk"
+rds_master_username = "relaydesk_admin"

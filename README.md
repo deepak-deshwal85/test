@@ -68,7 +68,7 @@ relaydesk/
 
 Full guide: **[iac.md](iac.md)** (architecture, Terraform bootstrap, GitHub Actions, sizing, secrets).
 
-Quick path: `cd infra/terraform && cp terraform.tfvars.example terraform.tfvars` → `terraform apply` → set SSM secrets → push to `main` for CI deploy.
+Quick path: `cd infra/terraform && copy terraform.tfvars.example terraform.tfvars` → `terraform apply` → set SSM secrets → push to `main` for CI deploy.
 
 ## Development
 

@@ -47,3 +47,23 @@ output "voice_agent_rag_api_base_url" {
   description = "Injected into voice-agent task as RAG_API_BASE_URL."
   value       = "http://${local.api_service_dns}:8090"
 }
+
+output "rds_endpoint" {
+  description = "RDS PostgreSQL endpoint hostname."
+  value       = var.enable_rds_postgres ? aws_db_instance.postgres[0].address : null
+}
+
+output "rds_port" {
+  description = "RDS PostgreSQL port."
+  value       = var.enable_rds_postgres ? aws_db_instance.postgres[0].port : null
+}
+
+output "rds_database_name" {
+  description = "RDS PostgreSQL database name."
+  value       = var.enable_rds_postgres ? aws_db_instance.postgres[0].db_name : null
+}
+
+output "rds_master_username" {
+  description = "RDS PostgreSQL master username."
+  value       = var.enable_rds_postgres ? aws_db_instance.postgres[0].username : null
+}

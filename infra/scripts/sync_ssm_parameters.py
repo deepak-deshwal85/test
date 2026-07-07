@@ -17,6 +17,7 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = Path(__file__).resolve().parent
@@ -78,6 +79,16 @@ def merge_sources(*sources: dict[str, str]) -> dict[str, str]:
 
 def ssm_name(prefix: str, key: str) -> str:
     return f"{prefix.rstrip('/')}/{key}"
+
+
+def validate_database_url(value: str) -> None:
+    parsed = urlparse(value)
+    if parsed.scheme != "postgresql+asyncpg":
+        raise ValueError(
+            "DATABASE_URL must start with postgresql+asyncpg://"
+        )
+    if not parsed.hostname or not parsed.path or parsed.path == "/":
+        raise ValueError("DATABASE_URL is missing host or database name.")
 
 
 def put_parameter(
@@ -186,6 +197,13 @@ def main() -> int:
         if not value:
             missing.append(f"{api_prefix}/{key}")
             continue
+        if key == "DATABASE_URL":
+            try:
+                validate_database_url(value)
+            except ValueError as exc:
+                errors += 1
+                print(f"invalid {api_prefix}/{key}: {exc}", file=sys.stderr)
+                continue
         try:
             put_parameter(
                 name=ssm_name(api_prefix, key),

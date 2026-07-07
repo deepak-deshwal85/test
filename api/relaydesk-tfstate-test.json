@@ -1,0 +1,3286 @@
+{
+  "version": 4,
+  "terraform_version": "1.15.7",
+  "serial": 11,
+  "lineage": "cbe35d1e-9568-9e26-0ac7-05f46a686c69",
+  "outputs": {
+    "api_alb_dns_name": {
+      "value": "internal-relaydesk-prod-api-1415698317.ap-south-1.elb.amazonaws.com",
+      "type": "string"
+    },
+    "api_internal_dns": {
+      "value": "api.relaydesk.local",
+      "type": "string"
+    },
+    "aws_account_id": {
+      "value": "646605541675",
+      "type": "string"
+    },
+    "ecr_api_repository_url": {
+      "value": "646605541675.dkr.ecr.ap-south-1.amazonaws.com/relaydesk-api",
+      "type": "string"
+    },
+    "ecr_voice_agent_repository_url": {
+      "value": "646605541675.dkr.ecr.ap-south-1.amazonaws.com/relaydesk-voice-agent",
+      "type": "string"
+    },
+    "ecs_cluster_name": {
+      "value": "relaydesk-prod",
+      "type": "string"
+    },
+    "ecs_service_api_name": {
+      "value": "relaydesk-prod-api",
+      "type": "string"
+    },
+    "ecs_service_voice_agent_name": {
+      "value": "relaydesk-prod-voice-agent",
+      "type": "string"
+    },
+    "github_actions_role_arn": {
+      "value": "arn:aws:iam::646605541675:role/relaydesk-prod-github-actions",
+      "type": "string"
+    },
+    "ssm_api_parameter_names": {
+      "value": [
+        "/relaydesk/prod/api/OPENAI_API_KEY",
+        "/relaydesk/prod/api/DATABASE_URL",
+        "/relaydesk/prod/api/RAG_API_KEY",
+        "/relaydesk/prod/api/QDRANT_API_KEY",
+        "/relaydesk/prod/api/QDRANT_CLUSTER_ENDPOINT",
+        "/relaydesk/prod/api/LIVEKIT_URL",
+        "/relaydesk/prod/api/LIVEKIT_API_KEY",
+        "/relaydesk/prod/api/LIVEKIT_API_SECRET",
+        "/relaydesk/prod/api/LIVEKIT_SIP_OUTBOUND_TRUNK_ID"
+      ],
+      "type": [
+        "tuple",
+        [
+          "string",
+          "string",
+          "string",
+          "string",
+          "string",
+          "string",
+          "string",
+          "string",
+          "string"
+        ]
+      ]
+    },
+    "ssm_voice_agent_parameter_names": {
+      "value": [
+        "/relaydesk/prod/voice-agent/LIVEKIT_URL",
+        "/relaydesk/prod/voice-agent/LIVEKIT_API_KEY",
+        "/relaydesk/prod/voice-agent/LIVEKIT_API_SECRET",
+        "/relaydesk/prod/voice-agent/XAI_API_KEY",
+        "/relaydesk/prod/voice-agent/DEEPGRAM_API_KEY",
+        "/relaydesk/prod/voice-agent/CARTESIA_API_KEY",
+        "/relaydesk/prod/voice-agent/CALCOM_API_KEY",
+        "/relaydesk/prod/voice-agent/RAG_API_KEY"
+      ],
+      "type": [
+        "tuple",
+        [
+          "string",
+          "string",
+          "string",
+          "string",
+          "string",
+          "string",
+          "string",
+          "string"
+        ]
+      ]
+    },
+    "voice_agent_rag_api_base_url": {
+      "value": "http://api.relaydesk.local:8090",
+      "type": "string"
+    }
+  },
+  "resources": [
+    {
+      "mode": "data",
+      "type": "aws_caller_identity",
+      "name": "current",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "account_id": "646605541675",
+            "arn": "arn:aws:iam::646605541675:user/relaydesk-admin",
+            "id": "646605541675",
+            "user_id": "AIDAZNDFRSEVYKNPUXQGI"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "data",
+      "type": "aws_region",
+      "name": "current",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "description": "Asia Pacific (Mumbai)",
+            "endpoint": "ec2.ap-south-1.amazonaws.com",
+            "id": "ap-south-1",
+            "name": "ap-south-1"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "data",
+      "type": "aws_ssm_parameter",
+      "name": "ecs_optimized_ami",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ssm:ap-south-1::parameter/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id",
+            "id": "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id",
+            "insecure_value": "ami-0ef6dfec7c8e505c6",
+            "name": "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id",
+            "type": "String",
+            "value": "ami-0ef6dfec7c8e505c6",
+            "version": 136,
+            "with_decryption": true
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ]
+          ],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_autoscaling_group",
+      "name": "ecs",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:autoscaling:ap-south-1:646605541675:autoScalingGroup:7184aa93-d04b-42e9-9818-d7e5f598a9a9:autoScalingGroupName/relaydesk-prod-ecs",
+            "availability_zone_distribution": [
+              {
+                "capacity_distribution_strategy": "balanced-best-effort"
+              }
+            ],
+            "availability_zones": [
+              "ap-south-1a",
+              "ap-south-1b"
+            ],
+            "capacity_rebalance": false,
+            "capacity_reservation_specification": [
+              {
+                "capacity_reservation_preference": "default",
+                "capacity_reservation_target": []
+              }
+            ],
+            "context": "",
+            "default_cooldown": 300,
+            "default_instance_warmup": 0,
+            "desired_capacity": 1,
+            "desired_capacity_type": "",
+            "enabled_metrics": null,
+            "force_delete": false,
+            "force_delete_warm_pool": false,
+            "health_check_grace_period": 300,
+            "health_check_type": "EC2",
+            "id": "relaydesk-prod-ecs",
+            "ignore_failed_scaling_activities": false,
+            "initial_lifecycle_hook": [],
+            "instance_maintenance_policy": [],
+            "instance_refresh": [],
+            "launch_configuration": "",
+            "launch_template": [
+              {
+                "id": "lt-01adace7ac2a20980",
+                "name": "relaydesk-prod-ecs-20260707052050985000000006",
+                "version": "$Latest"
+              }
+            ],
+            "load_balancers": [],
+            "max_instance_lifetime": 0,
+            "max_size": 1,
+            "metrics_granularity": "1Minute",
+            "min_elb_capacity": null,
+            "min_size": 1,
+            "mixed_instances_policy": [],
+            "name": "relaydesk-prod-ecs",
+            "name_prefix": "",
+            "placement_group": "",
+            "predicted_capacity": 0,
+            "protect_from_scale_in": true,
+            "service_linked_role_arn": "arn:aws:iam::646605541675:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling",
+            "suspended_processes": null,
+            "tag": [
+              {
+                "key": "AmazonECSManaged",
+                "propagate_at_launch": true,
+                "value": "true"
+              },
+              {
+                "key": "Name",
+                "propagate_at_launch": true,
+                "value": "relaydesk-prod-ecs"
+              }
+            ],
+            "target_group_arns": [],
+            "termination_policies": null,
+            "timeouts": null,
+            "traffic_source": [],
+            "vpc_zone_identifier": [
+              "subnet-0508e047d8019a74a",
+              "subnet-0ac42ec7f51e9ed18"
+            ],
+            "wait_for_capacity_timeout": "10m",
+            "wait_for_elb_capacity": null,
+            "warm_pool": [],
+            "warm_pool_size": 0
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjo2MDAwMDAwMDAwMDAsInVwZGF0ZSI6NjAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0=",
+          "dependencies": [
+            "aws_ecs_cluster.main",
+            "aws_iam_instance_profile.ecs",
+            "aws_iam_role.ecs_instance",
+            "aws_launch_template.ecs",
+            "aws_security_group.ecs_instances",
+            "aws_subnet.private",
+            "aws_vpc.main",
+            "data.aws_ssm_parameter.ecs_optimized_ami"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_cloudwatch_log_group",
+      "name": "api",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:logs:ap-south-1:646605541675:log-group:/ecs/relaydesk-prod/api",
+            "id": "/ecs/relaydesk-prod/api",
+            "kms_key_id": "",
+            "log_group_class": "STANDARD",
+            "name": "/ecs/relaydesk-prod/api",
+            "name_prefix": "",
+            "retention_in_days": 7,
+            "skip_destroy": false,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            }
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_cloudwatch_log_group",
+      "name": "voice_agent",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:logs:ap-south-1:646605541675:log-group:/ecs/relaydesk-prod/voice-agent",
+            "id": "/ecs/relaydesk-prod/voice-agent",
+            "kms_key_id": "",
+            "log_group_class": "STANDARD",
+            "name": "/ecs/relaydesk-prod/voice-agent",
+            "name_prefix": "",
+            "retention_in_days": 7,
+            "skip_destroy": false,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            }
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecr_lifecycle_policy",
+      "name": "api",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "relaydesk-api",
+            "policy": "{\"rules\":[{\"action\":{\"type\":\"expire\"},\"description\":\"Keep last 20 images\",\"rulePriority\":1,\"selection\":{\"countNumber\":20,\"countType\":\"imageCountMoreThan\",\"tagStatus\":\"any\"}}]}",
+            "registry_id": "646605541675",
+            "repository": "relaydesk-api"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_ecr_repository.api"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecr_lifecycle_policy",
+      "name": "voice_agent",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "relaydesk-voice-agent",
+            "policy": "{\"rules\":[{\"action\":{\"type\":\"expire\"},\"description\":\"Keep last 20 images\",\"rulePriority\":1,\"selection\":{\"countNumber\":20,\"countType\":\"imageCountMoreThan\",\"tagStatus\":\"any\"}}]}",
+            "registry_id": "646605541675",
+            "repository": "relaydesk-voice-agent"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_ecr_repository.voice_agent"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecr_repository",
+      "name": "api",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ecr:ap-south-1:646605541675:repository/relaydesk-api",
+            "encryption_configuration": [
+              {
+                "encryption_type": "AES256",
+                "kms_key": ""
+              }
+            ],
+            "force_delete": true,
+            "id": "relaydesk-api",
+            "image_scanning_configuration": [
+              {
+                "scan_on_push": true
+              }
+            ],
+            "image_tag_mutability": "MUTABLE",
+            "name": "relaydesk-api",
+            "registry_id": "646605541675",
+            "repository_url": "646605541675.dkr.ecr.ap-south-1.amazonaws.com/relaydesk-api",
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjoxMjAwMDAwMDAwMDAwfX0="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecr_repository",
+      "name": "voice_agent",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ecr:ap-south-1:646605541675:repository/relaydesk-voice-agent",
+            "encryption_configuration": [
+              {
+                "encryption_type": "AES256",
+                "kms_key": ""
+              }
+            ],
+            "force_delete": true,
+            "id": "relaydesk-voice-agent",
+            "image_scanning_configuration": [
+              {
+                "scan_on_push": true
+              }
+            ],
+            "image_tag_mutability": "MUTABLE",
+            "name": "relaydesk-voice-agent",
+            "registry_id": "646605541675",
+            "repository_url": "646605541675.dkr.ecr.ap-south-1.amazonaws.com/relaydesk-voice-agent",
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjoxMjAwMDAwMDAwMDAwfX0="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecs_capacity_provider",
+      "name": "ec2",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ecs:ap-south-1:646605541675:capacity-provider/relaydesk-prod-ec2",
+            "auto_scaling_group_provider": [
+              {
+                "auto_scaling_group_arn": "arn:aws:autoscaling:ap-south-1:646605541675:autoScalingGroup:7184aa93-d04b-42e9-9818-d7e5f598a9a9:autoScalingGroupName/relaydesk-prod-ecs",
+                "managed_draining": "ENABLED",
+                "managed_scaling": [
+                  {
+                    "instance_warmup_period": 0,
+                    "maximum_scaling_step_size": 2,
+                    "minimum_scaling_step_size": 1,
+                    "status": "ENABLED",
+                    "target_capacity": 85
+                  }
+                ],
+                "managed_termination_protection": "ENABLED"
+              }
+            ],
+            "id": "arn:aws:ecs:ap-south-1:646605541675:capacity-provider/relaydesk-prod-ec2",
+            "name": "relaydesk-prod-ec2",
+            "tags": null,
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            }
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_autoscaling_group.ecs",
+            "aws_ecs_cluster.main",
+            "aws_iam_instance_profile.ecs",
+            "aws_iam_role.ecs_instance",
+            "aws_launch_template.ecs",
+            "aws_security_group.ecs_instances",
+            "aws_subnet.private",
+            "aws_vpc.main",
+            "data.aws_ssm_parameter.ecs_optimized_ami"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecs_cluster",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ecs:ap-south-1:646605541675:cluster/relaydesk-prod",
+            "configuration": [],
+            "id": "arn:aws:ecs:ap-south-1:646605541675:cluster/relaydesk-prod",
+            "name": "relaydesk-prod",
+            "service_connect_defaults": [],
+            "setting": [
+              {
+                "name": "containerInsights",
+                "value": "enabled"
+              }
+            ],
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            }
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecs_cluster_capacity_providers",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "capacity_providers": [
+              "relaydesk-prod-ec2"
+            ],
+            "cluster_name": "relaydesk-prod",
+            "default_capacity_provider_strategy": [
+              {
+                "base": 1,
+                "capacity_provider": "relaydesk-prod-ec2",
+                "weight": 1
+              }
+            ],
+            "id": "relaydesk-prod"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_autoscaling_group.ecs",
+            "aws_ecs_capacity_provider.ec2",
+            "aws_ecs_cluster.main",
+            "aws_iam_instance_profile.ecs",
+            "aws_iam_role.ecs_instance",
+            "aws_launch_template.ecs",
+            "aws_security_group.ecs_instances",
+            "aws_subnet.private",
+            "aws_vpc.main",
+            "data.aws_ssm_parameter.ecs_optimized_ami"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecs_service",
+      "name": "api",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "alarms": [],
+            "availability_zone_rebalancing": "DISABLED",
+            "capacity_provider_strategy": [
+              {
+                "base": null,
+                "capacity_provider": "relaydesk-prod-ec2",
+                "weight": 1
+              }
+            ],
+            "cluster": "arn:aws:ecs:ap-south-1:646605541675:cluster/relaydesk-prod",
+            "deployment_circuit_breaker": [
+              {
+                "enable": false,
+                "rollback": false
+              }
+            ],
+            "deployment_controller": [
+              {
+                "type": "ECS"
+              }
+            ],
+            "deployment_maximum_percent": 100,
+            "deployment_minimum_healthy_percent": 0,
+            "desired_count": 1,
+            "enable_ecs_managed_tags": false,
+            "enable_execute_command": false,
+            "force_delete": null,
+            "force_new_deployment": null,
+            "health_check_grace_period_seconds": 0,
+            "iam_role": "/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+            "id": "arn:aws:ecs:ap-south-1:646605541675:service/relaydesk-prod/relaydesk-prod-api",
+            "launch_type": "",
+            "load_balancer": [
+              {
+                "container_name": "api",
+                "container_port": 8090,
+                "elb_name": "",
+                "target_group_arn": "arn:aws:elasticloadbalancing:ap-south-1:646605541675:targetgroup/relaydesk-prod-api/be59422cbf3279ca"
+              }
+            ],
+            "name": "relaydesk-prod-api",
+            "network_configuration": [
+              {
+                "assign_public_ip": false,
+                "security_groups": [
+                  "sg-032f45e1bd375623e"
+                ],
+                "subnets": [
+                  "subnet-0508e047d8019a74a",
+                  "subnet-0ac42ec7f51e9ed18"
+                ]
+              }
+            ],
+            "ordered_placement_strategy": [],
+            "placement_constraints": [],
+            "platform_version": "",
+            "propagate_tags": "NONE",
+            "scheduling_strategy": "REPLICA",
+            "service_connect_configuration": [],
+            "service_registries": [
+              {
+                "container_name": "",
+                "container_port": 0,
+                "port": 0,
+                "registry_arn": "arn:aws:servicediscovery:ap-south-1:646605541675:service/srv-s3trmnihiqiu4ryf"
+              }
+            ],
+            "tags": null,
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "task_definition": "arn:aws:ecs:ap-south-1:646605541675:task-definition/relaydesk-prod-api:3",
+            "timeouts": null,
+            "triggers": {},
+            "volume_configuration": [],
+            "vpc_lattice_configurations": [],
+            "wait_for_steady_state": false
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDAwLCJkZWxldGUiOjEyMDAwMDAwMDAwMDAsInVwZGF0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "aws_autoscaling_group.ecs",
+            "aws_cloudwatch_log_group.api",
+            "aws_ecr_repository.api",
+            "aws_ecs_capacity_provider.ec2",
+            "aws_ecs_cluster.main",
+            "aws_ecs_task_definition.api",
+            "aws_iam_instance_profile.ecs",
+            "aws_iam_role.ecs_instance",
+            "aws_iam_role.ecs_task",
+            "aws_iam_role.ecs_task_execution",
+            "aws_launch_template.ecs",
+            "aws_lb.api",
+            "aws_lb_listener.api",
+            "aws_lb_target_group.api",
+            "aws_security_group.alb_api",
+            "aws_security_group.ecs_instances",
+            "aws_security_group.ecs_tasks",
+            "aws_service_discovery_private_dns_namespace.main",
+            "aws_service_discovery_service.api",
+            "aws_ssm_parameter.api",
+            "aws_subnet.private",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_ssm_parameter.ecs_optimized_ami"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecs_service",
+      "name": "voice_agent",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "alarms": [],
+            "availability_zone_rebalancing": "DISABLED",
+            "capacity_provider_strategy": [
+              {
+                "base": null,
+                "capacity_provider": "relaydesk-prod-ec2",
+                "weight": 1
+              }
+            ],
+            "cluster": "arn:aws:ecs:ap-south-1:646605541675:cluster/relaydesk-prod",
+            "deployment_circuit_breaker": [
+              {
+                "enable": false,
+                "rollback": false
+              }
+            ],
+            "deployment_controller": [
+              {
+                "type": "ECS"
+              }
+            ],
+            "deployment_maximum_percent": 100,
+            "deployment_minimum_healthy_percent": 0,
+            "desired_count": 0,
+            "enable_ecs_managed_tags": false,
+            "enable_execute_command": false,
+            "force_delete": null,
+            "force_new_deployment": null,
+            "health_check_grace_period_seconds": 0,
+            "iam_role": "/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+            "id": "arn:aws:ecs:ap-south-1:646605541675:service/relaydesk-prod/relaydesk-prod-voice-agent",
+            "launch_type": "",
+            "load_balancer": [],
+            "name": "relaydesk-prod-voice-agent",
+            "network_configuration": [
+              {
+                "assign_public_ip": false,
+                "security_groups": [
+                  "sg-032f45e1bd375623e"
+                ],
+                "subnets": [
+                  "subnet-0508e047d8019a74a",
+                  "subnet-0ac42ec7f51e9ed18"
+                ]
+              }
+            ],
+            "ordered_placement_strategy": [],
+            "placement_constraints": [],
+            "platform_version": "",
+            "propagate_tags": "NONE",
+            "scheduling_strategy": "REPLICA",
+            "service_connect_configuration": [],
+            "service_registries": [],
+            "tags": null,
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "task_definition": "arn:aws:ecs:ap-south-1:646605541675:task-definition/relaydesk-prod-voice-agent:3",
+            "timeouts": null,
+            "triggers": {},
+            "volume_configuration": [],
+            "vpc_lattice_configurations": [],
+            "wait_for_steady_state": false
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDAwLCJkZWxldGUiOjEyMDAwMDAwMDAwMDAsInVwZGF0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "aws_autoscaling_group.ecs",
+            "aws_cloudwatch_log_group.voice_agent",
+            "aws_ecr_repository.voice_agent",
+            "aws_ecs_capacity_provider.ec2",
+            "aws_ecs_cluster.main",
+            "aws_ecs_task_definition.voice_agent",
+            "aws_iam_instance_profile.ecs",
+            "aws_iam_role.ecs_instance",
+            "aws_iam_role.ecs_task",
+            "aws_iam_role.ecs_task_execution",
+            "aws_launch_template.ecs",
+            "aws_security_group.alb_api",
+            "aws_security_group.ecs_instances",
+            "aws_security_group.ecs_tasks",
+            "aws_ssm_parameter.voice_agent",
+            "aws_subnet.private",
+            "aws_vpc.main",
+            "data.aws_ssm_parameter.ecs_optimized_ami"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecs_task_definition",
+      "name": "api",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ecs:ap-south-1:646605541675:task-definition/relaydesk-prod-api:3",
+            "arn_without_revision": "arn:aws:ecs:ap-south-1:646605541675:task-definition/relaydesk-prod-api",
+            "container_definitions": "[{\"cpu\":256,\"environment\":[{\"name\":\"RAG_API_HOST\",\"value\":\"0.0.0.0\"},{\"name\":\"RAG_API_PORT\",\"value\":\"8090\"},{\"name\":\"RAG_BACKEND\",\"value\":\"qdrant\"}],\"essential\":true,\"healthCheck\":{\"command\":[\"CMD-SHELL\",\"curl -f http://localhost:8090/health || exit 1\"],\"interval\":30,\"retries\":3,\"startPeriod\":60,\"timeout\":5},\"image\":\"646605541675.dkr.ecr.ap-south-1.amazonaws.com/relaydesk-api:latest\",\"logConfiguration\":{\"logDriver\":\"awslogs\",\"options\":{\"awslogs-region\":\"ap-south-1\",\"awslogs-stream-prefix\":\"api\",\"awslogs-group\":\"/ecs/relaydesk-prod/api\"}},\"memory\":512,\"mountPoints\":[],\"name\":\"api\",\"portMappings\":[{\"containerPort\":8090,\"hostPort\":8090,\"protocol\":\"tcp\"}],\"secrets\":[{\"name\":\"DATABASE_URL\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/DATABASE_URL\"},{\"name\":\"LIVEKIT_API_KEY\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/LIVEKIT_API_KEY\"},{\"name\":\"LIVEKIT_API_SECRET\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/LIVEKIT_API_SECRET\"},{\"name\":\"LIVEKIT_SIP_OUTBOUND_TRUNK_ID\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/LIVEKIT_SIP_OUTBOUND_TRUNK_ID\"},{\"name\":\"LIVEKIT_URL\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/LIVEKIT_URL\"},{\"name\":\"OPENAI_API_KEY\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/OPENAI_API_KEY\"},{\"name\":\"QDRANT_API_KEY\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/QDRANT_API_KEY\"},{\"name\":\"QDRANT_CLUSTER_ENDPOINT\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/QDRANT_CLUSTER_ENDPOINT\"},{\"name\":\"RAG_API_KEY\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/RAG_API_KEY\"}],\"systemControls\":[],\"volumesFrom\":[]}]",
+            "cpu": "256",
+            "enable_fault_injection": false,
+            "ephemeral_storage": [],
+            "execution_role_arn": "arn:aws:iam::646605541675:role/relaydesk-prod-ecs-task-execution",
+            "family": "relaydesk-prod-api",
+            "id": "relaydesk-prod-api",
+            "inference_accelerator": [],
+            "ipc_mode": "",
+            "memory": "512",
+            "network_mode": "awsvpc",
+            "pid_mode": "",
+            "placement_constraints": [],
+            "proxy_configuration": [],
+            "requires_compatibilities": [
+              "EC2"
+            ],
+            "revision": 3,
+            "runtime_platform": [],
+            "skip_destroy": false,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "task_role_arn": "arn:aws:iam::646605541675:role/relaydesk-prod-ecs-task",
+            "track_latest": false,
+            "volume": []
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "aws_cloudwatch_log_group.api",
+            "aws_ecr_repository.api",
+            "aws_iam_role.ecs_task",
+            "aws_iam_role.ecs_task_execution",
+            "aws_ssm_parameter.api"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecs_task_definition",
+      "name": "voice_agent",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ecs:ap-south-1:646605541675:task-definition/relaydesk-prod-voice-agent:3",
+            "arn_without_revision": "arn:aws:ecs:ap-south-1:646605541675:task-definition/relaydesk-prod-voice-agent",
+            "container_definitions": "[{\"cpu\":1024,\"environment\":[{\"name\":\"AGENT_NAME\",\"value\":\"relaydesk-agent\"},{\"name\":\"RAG_API_BASE_URL\",\"value\":\"http://api.relaydesk.local:8090\"},{\"name\":\"RAG_BACKEND\",\"value\":\"qdrant\"},{\"name\":\"TURN_ENDPOINTING_MAX_DELAY\",\"value\":\"1.0\"},{\"name\":\"TURN_ENDPOINTING_MIN_DELAY\",\"value\":\"0.3\"}],\"essential\":true,\"image\":\"646605541675.dkr.ecr.ap-south-1.amazonaws.com/relaydesk-voice-agent:latest\",\"logConfiguration\":{\"logDriver\":\"awslogs\",\"options\":{\"awslogs-region\":\"ap-south-1\",\"awslogs-stream-prefix\":\"voice-agent\",\"awslogs-group\":\"/ecs/relaydesk-prod/voice-agent\"}},\"memory\":5120,\"mountPoints\":[],\"name\":\"voice-agent\",\"portMappings\":[],\"secrets\":[{\"name\":\"CALCOM_API_KEY\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/voice-agent/CALCOM_API_KEY\"},{\"name\":\"CARTESIA_API_KEY\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/voice-agent/CARTESIA_API_KEY\"},{\"name\":\"DEEPGRAM_API_KEY\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/voice-agent/DEEPGRAM_API_KEY\"},{\"name\":\"LIVEKIT_API_KEY\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/voice-agent/LIVEKIT_API_KEY\"},{\"name\":\"LIVEKIT_API_SECRET\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/voice-agent/LIVEKIT_API_SECRET\"},{\"name\":\"LIVEKIT_URL\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/voice-agent/LIVEKIT_URL\"},{\"name\":\"RAG_API_KEY\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/voice-agent/RAG_API_KEY\"},{\"name\":\"XAI_API_KEY\",\"valueFrom\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/voice-agent/XAI_API_KEY\"}],\"systemControls\":[],\"volumesFrom\":[]}]",
+            "cpu": "1024",
+            "enable_fault_injection": false,
+            "ephemeral_storage": [],
+            "execution_role_arn": "arn:aws:iam::646605541675:role/relaydesk-prod-ecs-task-execution",
+            "family": "relaydesk-prod-voice-agent",
+            "id": "relaydesk-prod-voice-agent",
+            "inference_accelerator": [],
+            "ipc_mode": "",
+            "memory": "5120",
+            "network_mode": "awsvpc",
+            "pid_mode": "",
+            "placement_constraints": [],
+            "proxy_configuration": [],
+            "requires_compatibilities": [
+              "EC2"
+            ],
+            "revision": 3,
+            "runtime_platform": [],
+            "skip_destroy": false,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "task_role_arn": "arn:aws:iam::646605541675:role/relaydesk-prod-ecs-task",
+            "track_latest": false,
+            "volume": []
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "aws_cloudwatch_log_group.voice_agent",
+            "aws_ecr_repository.voice_agent",
+            "aws_iam_role.ecs_task",
+            "aws_iam_role.ecs_task_execution",
+            "aws_ssm_parameter.voice_agent"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_eip",
+      "name": "nat",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "address": null,
+            "allocation_id": "eipalloc-066c78fea3efab1a2",
+            "arn": "arn:aws:ec2:ap-south-1:646605541675:elastic-ip/eipalloc-066c78fea3efab1a2",
+            "associate_with_private_ip": null,
+            "association_id": "",
+            "carrier_ip": "",
+            "customer_owned_ip": "",
+            "customer_owned_ipv4_pool": "",
+            "domain": "vpc",
+            "id": "eipalloc-066c78fea3efab1a2",
+            "instance": "",
+            "ipam_pool_id": null,
+            "network_border_group": "ap-south-1",
+            "network_interface": "",
+            "private_dns": null,
+            "private_ip": "",
+            "ptr_record": "",
+            "public_dns": "ec2-13-207-16-98.ap-south-1.compute.amazonaws.com",
+            "public_ip": "13.207.16.98",
+            "public_ipv4_pool": "amazon",
+            "tags": {
+              "Name": "relaydesk-prod-nat-eip"
+            },
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Name": "relaydesk-prod-nat-eip",
+              "Project": "relaydesk"
+            },
+            "timeouts": null,
+            "vpc": true
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjoxODAwMDAwMDAwMDAsInJlYWQiOjkwMDAwMDAwMDAwMCwidXBkYXRlIjozMDAwMDAwMDAwMDB9fQ=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_instance_profile",
+      "name": "ecs",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:iam::646605541675:instance-profile/relaydesk-prod-ecs-instance",
+            "create_date": "2026-07-07T05:20:37Z",
+            "id": "relaydesk-prod-ecs-instance",
+            "name": "relaydesk-prod-ecs-instance",
+            "name_prefix": "",
+            "path": "/",
+            "role": "relaydesk-prod-ecs-instance",
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "unique_id": "AIPAZNDFRSEVYHNVVNQDQ"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_iam_role.ecs_instance"
+          ],
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_openid_connect_provider",
+      "name": "github",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:iam::646605541675:oidc-provider/token.actions.githubusercontent.com",
+            "client_id_list": [
+              "sts.amazonaws.com"
+            ],
+            "id": "arn:aws:iam::646605541675:oidc-provider/token.actions.githubusercontent.com",
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "thumbprint_list": [
+              "6938fd4d98bab03faadb97b34396831e3780aea1"
+            ],
+            "url": "token.actions.githubusercontent.com"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "ecs_instance",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:iam::646605541675:role/relaydesk-prod-ecs-instance",
+            "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+            "create_date": "2026-07-07T05:20:35Z",
+            "description": "",
+            "force_detach_policies": false,
+            "id": "relaydesk-prod-ecs-instance",
+            "inline_policy": [],
+            "managed_policy_arns": [
+              "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+              "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+            ],
+            "max_session_duration": 3600,
+            "name": "relaydesk-prod-ecs-instance",
+            "name_prefix": "",
+            "path": "/",
+            "permissions_boundary": "",
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "unique_id": "AROAZNDFRSEVSANXO2NEO"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "ecs_task",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:iam::646605541675:role/relaydesk-prod-ecs-task",
+            "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+            "create_date": "2026-07-07T05:20:36Z",
+            "description": "",
+            "force_detach_policies": false,
+            "id": "relaydesk-prod-ecs-task",
+            "inline_policy": [],
+            "managed_policy_arns": [],
+            "max_session_duration": 3600,
+            "name": "relaydesk-prod-ecs-task",
+            "name_prefix": "",
+            "path": "/",
+            "permissions_boundary": "",
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "unique_id": "AROAZNDFRSEV4ZW3WV3KG"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "ecs_task_execution",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:iam::646605541675:role/relaydesk-prod-ecs-task-execution",
+            "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+            "create_date": "2026-07-07T05:20:35Z",
+            "description": "",
+            "force_detach_policies": false,
+            "id": "relaydesk-prod-ecs-task-execution",
+            "inline_policy": [
+              {
+                "name": "relaydesk-prod-ssm-read",
+                "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"ssm:GetParameters\",\"ssm:GetParameter\"],\"Effect\":\"Allow\",\"Resource\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/*\"}]}"
+              }
+            ],
+            "managed_policy_arns": [
+              "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+            ],
+            "max_session_duration": 3600,
+            "name": "relaydesk-prod-ecs-task-execution",
+            "name_prefix": "",
+            "path": "/",
+            "permissions_boundary": "",
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "unique_id": "AROAZNDFRSEV4RADMUUKC"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "github_actions",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:iam::646605541675:role/relaydesk-prod-github-actions",
+            "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRoleWithWebIdentity\",\"Condition\":{\"StringEquals\":{\"token.actions.githubusercontent.com:aud\":\"sts.amazonaws.com\"},\"StringLike\":{\"token.actions.githubusercontent.com:sub\":\"repo:YOUR_GITHUB_ORG_OR_USER/relaydesk:ref:refs/heads/main\"}},\"Effect\":\"Allow\",\"Principal\":{\"Federated\":\"arn:aws:iam::646605541675:oidc-provider/token.actions.githubusercontent.com\"}}],\"Version\":\"2012-10-17\"}",
+            "create_date": "2026-07-07T05:20:36Z",
+            "description": "",
+            "force_detach_policies": false,
+            "id": "relaydesk-prod-github-actions",
+            "inline_policy": [
+              {
+                "name": "relaydesk-prod-deploy",
+                "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"ecr:GetAuthorizationToken\"],\"Effect\":\"Allow\",\"Resource\":\"*\"},{\"Action\":[\"ecr:BatchCheckLayerAvailability\",\"ecr:CompleteLayerUpload\",\"ecr:InitiateLayerUpload\",\"ecr:PutImage\",\"ecr:UploadLayerPart\",\"ecr:BatchGetImage\",\"ecr:GetDownloadUrlForLayer\"],\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:ecr:ap-south-1:646605541675:repository/relaydesk-api\",\"arn:aws:ecr:ap-south-1:646605541675:repository/relaydesk-voice-agent\"]},{\"Action\":[\"ecs:UpdateService\",\"ecs:DescribeServices\",\"ecs:DescribeTaskDefinition\",\"ecs:RegisterTaskDefinition\",\"ecs:DescribeClusters\"],\"Effect\":\"Allow\",\"Resource\":\"*\"},{\"Action\":\"iam:PassRole\",\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:iam::646605541675:role/relaydesk-prod-ecs-task-execution\",\"arn:aws:iam::646605541675:role/relaydesk-prod-ecs-task\"]}]}"
+              }
+            ],
+            "managed_policy_arns": [],
+            "max_session_duration": 3600,
+            "name": "relaydesk-prod-github-actions",
+            "name_prefix": "",
+            "path": "/",
+            "permissions_boundary": "",
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "unique_id": "AROAZNDFRSEVTVMB7WA77"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_iam_openid_connect_provider.github",
+            "data.aws_iam_openid_connect_provider.github"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role_policy",
+      "name": "ecs_task_execution_ssm",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "relaydesk-prod-ecs-task-execution:relaydesk-prod-ssm-read",
+            "name": "relaydesk-prod-ssm-read",
+            "name_prefix": "",
+            "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"ssm:GetParameters\",\"ssm:GetParameter\"],\"Effect\":\"Allow\",\"Resource\":\"arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/*\"}]}",
+            "role": "relaydesk-prod-ecs-task-execution"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_iam_role.ecs_task_execution",
+            "data.aws_caller_identity.current"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role_policy",
+      "name": "github_actions_deploy",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "relaydesk-prod-github-actions:relaydesk-prod-deploy",
+            "name": "relaydesk-prod-deploy",
+            "name_prefix": "",
+            "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"ecr:GetAuthorizationToken\"],\"Effect\":\"Allow\",\"Resource\":\"*\"},{\"Action\":[\"ecr:BatchCheckLayerAvailability\",\"ecr:CompleteLayerUpload\",\"ecr:InitiateLayerUpload\",\"ecr:PutImage\",\"ecr:UploadLayerPart\",\"ecr:BatchGetImage\",\"ecr:GetDownloadUrlForLayer\"],\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:ecr:ap-south-1:646605541675:repository/relaydesk-api\",\"arn:aws:ecr:ap-south-1:646605541675:repository/relaydesk-voice-agent\"]},{\"Action\":[\"ecs:UpdateService\",\"ecs:DescribeServices\",\"ecs:DescribeTaskDefinition\",\"ecs:RegisterTaskDefinition\",\"ecs:DescribeClusters\"],\"Effect\":\"Allow\",\"Resource\":\"*\"},{\"Action\":\"iam:PassRole\",\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:iam::646605541675:role/relaydesk-prod-ecs-task-execution\",\"arn:aws:iam::646605541675:role/relaydesk-prod-ecs-task\"]}]}",
+            "role": "relaydesk-prod-github-actions"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_ecr_repository.api",
+            "aws_ecr_repository.voice_agent",
+            "aws_iam_openid_connect_provider.github",
+            "aws_iam_role.ecs_task",
+            "aws_iam_role.ecs_task_execution",
+            "aws_iam_role.github_actions",
+            "data.aws_iam_openid_connect_provider.github"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role_policy_attachment",
+      "name": "ecs_instance",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "relaydesk-prod-ecs-instance-20260707052039377400000002",
+            "policy_arn": "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role",
+            "role": "relaydesk-prod-ecs-instance"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_iam_role.ecs_instance"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role_policy_attachment",
+      "name": "ecs_instance_ssm",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "relaydesk-prod-ecs-instance-20260707052039353900000001",
+            "policy_arn": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+            "role": "relaydesk-prod-ecs-instance"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_iam_role.ecs_instance"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role_policy_attachment",
+      "name": "ecs_task_execution",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "relaydesk-prod-ecs-task-execution-20260707052039636300000003",
+            "policy_arn": "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
+            "role": "relaydesk-prod-ecs-task-execution"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_iam_role.ecs_task_execution"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_internet_gateway",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ec2:ap-south-1:646605541675:internet-gateway/igw-0160c74c67f26174a",
+            "id": "igw-0160c74c67f26174a",
+            "owner_id": "646605541675",
+            "tags": {
+              "Name": "relaydesk-prod-igw"
+            },
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Name": "relaydesk-prod-igw",
+              "Project": "relaydesk"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-090d281de07cfac1f"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDAwLCJkZWxldGUiOjEyMDAwMDAwMDAwMDAsInVwZGF0ZSI6MTIwMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_launch_template",
+      "name": "ecs",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ec2:ap-south-1:646605541675:launch-template/lt-01adace7ac2a20980",
+            "block_device_mappings": [
+              {
+                "device_name": "/dev/xvda",
+                "ebs": [
+                  {
+                    "delete_on_termination": "true",
+                    "encrypted": "true",
+                    "iops": 0,
+                    "kms_key_id": "",
+                    "snapshot_id": "",
+                    "throughput": 0,
+                    "volume_initialization_rate": 0,
+                    "volume_size": 30,
+                    "volume_type": "gp2"
+                  }
+                ],
+                "no_device": "",
+                "virtual_name": ""
+              }
+            ],
+            "capacity_reservation_specification": [],
+            "cpu_options": [],
+            "credit_specification": [],
+            "default_version": 1,
+            "description": "",
+            "disable_api_stop": false,
+            "disable_api_termination": false,
+            "ebs_optimized": "",
+            "elastic_gpu_specifications": [],
+            "elastic_inference_accelerator": [],
+            "enclave_options": [],
+            "hibernation_options": [],
+            "iam_instance_profile": [
+              {
+                "arn": "",
+                "name": "relaydesk-prod-ecs-instance"
+              }
+            ],
+            "id": "lt-01adace7ac2a20980",
+            "image_id": "ami-0ef6dfec7c8e505c6",
+            "instance_initiated_shutdown_behavior": "",
+            "instance_market_options": [],
+            "instance_requirements": [],
+            "instance_type": "t3.micro",
+            "kernel_id": "",
+            "key_name": "",
+            "latest_version": 1,
+            "license_specification": [],
+            "maintenance_options": [],
+            "metadata_options": [],
+            "monitoring": [
+              {
+                "enabled": true
+              }
+            ],
+            "name": "relaydesk-prod-ecs-20260707052050985000000006",
+            "name_prefix": "relaydesk-prod-ecs-",
+            "network_interfaces": [],
+            "placement": [],
+            "private_dns_name_options": [],
+            "ram_disk_id": "",
+            "security_group_names": [],
+            "tag_specifications": [
+              {
+                "resource_type": "instance",
+                "tags": {
+                  "Name": "relaydesk-prod-ecs"
+                }
+              }
+            ],
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "update_default_version": null,
+            "user_data": "IyEvYmluL2Jhc2gKZWNobyBFQ1NfQ0xVU1RFUj1yZWxheWRlc2stcHJvZCA+PiAvZXRjL2Vjcy9lY3MuY29uZmlnCmVjaG8gRUNTX0VOQUJMRV9DT05UQUlORVJfTUVUQURBVEE9dHJ1ZSA+PiAvZXRjL2Vjcy9lY3MuY29uZmlnCg==",
+            "vpc_security_group_ids": [
+              "sg-00528a6fa9e950b90"
+            ]
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "image_id"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_ecs_cluster.main",
+            "aws_iam_instance_profile.ecs",
+            "aws_iam_role.ecs_instance",
+            "aws_security_group.ecs_instances",
+            "aws_vpc.main",
+            "data.aws_ssm_parameter.ecs_optimized_ami"
+          ],
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lb",
+      "name": "api",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "access_logs": [
+              {
+                "bucket": "",
+                "enabled": false,
+                "prefix": ""
+              }
+            ],
+            "arn": "arn:aws:elasticloadbalancing:ap-south-1:646605541675:loadbalancer/app/relaydesk-prod-api/84d89f9d202a4a6c",
+            "arn_suffix": "app/relaydesk-prod-api/84d89f9d202a4a6c",
+            "client_keep_alive": 3600,
+            "connection_logs": [
+              {
+                "bucket": "",
+                "enabled": false,
+                "prefix": ""
+              }
+            ],
+            "customer_owned_ipv4_pool": "",
+            "desync_mitigation_mode": "defensive",
+            "dns_name": "internal-relaydesk-prod-api-1415698317.ap-south-1.elb.amazonaws.com",
+            "dns_record_client_routing_policy": null,
+            "drop_invalid_header_fields": false,
+            "enable_cross_zone_load_balancing": true,
+            "enable_deletion_protection": false,
+            "enable_http2": true,
+            "enable_tls_version_and_cipher_suite_headers": false,
+            "enable_waf_fail_open": false,
+            "enable_xff_client_port": false,
+            "enable_zonal_shift": false,
+            "enforce_security_group_inbound_rules_on_private_link_traffic": "",
+            "id": "arn:aws:elasticloadbalancing:ap-south-1:646605541675:loadbalancer/app/relaydesk-prod-api/84d89f9d202a4a6c",
+            "idle_timeout": 60,
+            "internal": true,
+            "ip_address_type": "ipv4",
+            "ipam_pools": [],
+            "load_balancer_type": "application",
+            "minimum_load_balancer_capacity": [],
+            "name": "relaydesk-prod-api",
+            "name_prefix": "",
+            "preserve_host_header": false,
+            "security_groups": [
+              "sg-0c14131981576867f"
+            ],
+            "subnet_mapping": [
+              {
+                "allocation_id": "",
+                "ipv6_address": "",
+                "outpost_id": "",
+                "private_ipv4_address": "",
+                "subnet_id": "subnet-0508e047d8019a74a"
+              },
+              {
+                "allocation_id": "",
+                "ipv6_address": "",
+                "outpost_id": "",
+                "private_ipv4_address": "",
+                "subnet_id": "subnet-0ac42ec7f51e9ed18"
+              }
+            ],
+            "subnets": [
+              "subnet-0508e047d8019a74a",
+              "subnet-0ac42ec7f51e9ed18"
+            ],
+            "tags": {
+              "Name": "relaydesk-prod-api-alb"
+            },
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Name": "relaydesk-prod-api-alb",
+              "Project": "relaydesk"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-090d281de07cfac1f",
+            "xff_header_processing_mode": "append",
+            "zone_id": "ZP97RAFLXTNZK"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6NjAwMDAwMDAwMDAwLCJ1cGRhdGUiOjYwMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_security_group.alb_api",
+            "aws_subnet.private",
+            "aws_subnet.public",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lb_listener",
+      "name": "api",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "alpn_policy": null,
+            "arn": "arn:aws:elasticloadbalancing:ap-south-1:646605541675:listener/app/relaydesk-prod-api/84d89f9d202a4a6c/a108465f64470d08",
+            "certificate_arn": null,
+            "default_action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [],
+                "forward": [],
+                "order": 1,
+                "redirect": [],
+                "target_group_arn": "arn:aws:elasticloadbalancing:ap-south-1:646605541675:targetgroup/relaydesk-prod-api/be59422cbf3279ca",
+                "type": "forward"
+              }
+            ],
+            "id": "arn:aws:elasticloadbalancing:ap-south-1:646605541675:listener/app/relaydesk-prod-api/84d89f9d202a4a6c/a108465f64470d08",
+            "load_balancer_arn": "arn:aws:elasticloadbalancing:ap-south-1:646605541675:loadbalancer/app/relaydesk-prod-api/84d89f9d202a4a6c",
+            "mutual_authentication": [],
+            "port": 80,
+            "protocol": "HTTP",
+            "routing_http_request_x_amzn_mtls_clientcert_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_issuer_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_leaf_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_serial_number_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_subject_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_validity_header_name": null,
+            "routing_http_request_x_amzn_tls_cipher_suite_header_name": null,
+            "routing_http_request_x_amzn_tls_version_header_name": null,
+            "routing_http_response_access_control_allow_credentials_header_value": "",
+            "routing_http_response_access_control_allow_headers_header_value": "",
+            "routing_http_response_access_control_allow_methods_header_value": "",
+            "routing_http_response_access_control_allow_origin_header_value": "",
+            "routing_http_response_access_control_expose_headers_header_value": "",
+            "routing_http_response_access_control_max_age_header_value": "",
+            "routing_http_response_content_security_policy_header_value": "",
+            "routing_http_response_server_enabled": true,
+            "routing_http_response_strict_transport_security_header_value": "",
+            "routing_http_response_x_content_type_options_header_value": "",
+            "routing_http_response_x_frame_options_header_value": "",
+            "ssl_policy": "",
+            "tags": null,
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tcp_idle_timeout_seconds": null,
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsInVwZGF0ZSI6MzAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "aws_lb.api",
+            "aws_lb_target_group.api",
+            "aws_security_group.alb_api",
+            "aws_subnet.private",
+            "aws_subnet.public",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lb_target_group",
+      "name": "api",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:elasticloadbalancing:ap-south-1:646605541675:targetgroup/relaydesk-prod-api/be59422cbf3279ca",
+            "arn_suffix": "targetgroup/relaydesk-prod-api/be59422cbf3279ca",
+            "connection_termination": null,
+            "deregistration_delay": "300",
+            "health_check": [
+              {
+                "enabled": true,
+                "healthy_threshold": 2,
+                "interval": 30,
+                "matcher": "200",
+                "path": "/health",
+                "port": "traffic-port",
+                "protocol": "HTTP",
+                "timeout": 5,
+                "unhealthy_threshold": 3
+              }
+            ],
+            "id": "arn:aws:elasticloadbalancing:ap-south-1:646605541675:targetgroup/relaydesk-prod-api/be59422cbf3279ca",
+            "ip_address_type": "ipv4",
+            "lambda_multi_value_headers_enabled": false,
+            "load_balancer_arns": [],
+            "load_balancing_algorithm_type": "round_robin",
+            "load_balancing_anomaly_mitigation": "off",
+            "load_balancing_cross_zone_enabled": "use_load_balancer_configuration",
+            "name": "relaydesk-prod-api",
+            "name_prefix": "",
+            "port": 8090,
+            "preserve_client_ip": null,
+            "protocol": "HTTP",
+            "protocol_version": "HTTP1",
+            "proxy_protocol_v2": false,
+            "slow_start": 0,
+            "stickiness": [
+              {
+                "cookie_duration": 86400,
+                "cookie_name": "",
+                "enabled": false,
+                "type": "lb_cookie"
+              }
+            ],
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "target_failover": [
+              {
+                "on_deregistration": null,
+                "on_unhealthy": null
+              }
+            ],
+            "target_group_health": [
+              {
+                "dns_failover": [
+                  {
+                    "minimum_healthy_targets_count": "1",
+                    "minimum_healthy_targets_percentage": "off"
+                  }
+                ],
+                "unhealthy_state_routing": [
+                  {
+                    "minimum_healthy_targets_count": 1,
+                    "minimum_healthy_targets_percentage": "off"
+                  }
+                ]
+              }
+            ],
+            "target_health_state": [
+              {
+                "enable_unhealthy_connection_termination": null,
+                "unhealthy_draining_interval": null
+              }
+            ],
+            "target_type": "ip",
+            "vpc_id": "vpc-090d281de07cfac1f"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_nat_gateway",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "allocation_id": "eipalloc-066c78fea3efab1a2",
+            "association_id": "eipassoc-062cd340b76e1891c",
+            "connectivity_type": "public",
+            "id": "nat-096a896158f8daeeb",
+            "network_interface_id": "eni-0d901760879736a64",
+            "private_ip": "10.20.0.158",
+            "public_ip": "13.207.16.98",
+            "secondary_allocation_ids": null,
+            "secondary_private_ip_address_count": 0,
+            "secondary_private_ip_addresses": [],
+            "subnet_id": "subnet-0b22eab7e2ce78941",
+            "tags": {
+              "Name": "relaydesk-prod-nat"
+            },
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Name": "relaydesk-prod-nat",
+              "Project": "relaydesk"
+            },
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTgwMDAwMDAwMDAwMCwidXBkYXRlIjo2MDAwMDAwMDAwMDB9fQ==",
+          "dependencies": [
+            "aws_eip.nat",
+            "aws_internet_gateway.main",
+            "aws_subnet.public",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_route_table",
+      "name": "private",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ec2:ap-south-1:646605541675:route-table/rtb-0a80e553933ad3a8d",
+            "id": "rtb-0a80e553933ad3a8d",
+            "owner_id": "646605541675",
+            "propagating_vgws": [],
+            "route": [
+              {
+                "carrier_gateway_id": "",
+                "cidr_block": "0.0.0.0/0",
+                "core_network_arn": "",
+                "destination_prefix_list_id": "",
+                "egress_only_gateway_id": "",
+                "gateway_id": "",
+                "ipv6_cidr_block": "",
+                "local_gateway_id": "",
+                "nat_gateway_id": "nat-096a896158f8daeeb",
+                "network_interface_id": "",
+                "transit_gateway_id": "",
+                "vpc_endpoint_id": "",
+                "vpc_peering_connection_id": ""
+              }
+            ],
+            "tags": {
+              "Name": "relaydesk-prod-private-rt"
+            },
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Name": "relaydesk-prod-private-rt",
+              "Project": "relaydesk"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-090d281de07cfac1f"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_eip.nat",
+            "aws_internet_gateway.main",
+            "aws_nat_gateway.main",
+            "aws_subnet.public",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_route_table",
+      "name": "public",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ec2:ap-south-1:646605541675:route-table/rtb-026e7273f93c737bb",
+            "id": "rtb-026e7273f93c737bb",
+            "owner_id": "646605541675",
+            "propagating_vgws": [],
+            "route": [
+              {
+                "carrier_gateway_id": "",
+                "cidr_block": "0.0.0.0/0",
+                "core_network_arn": "",
+                "destination_prefix_list_id": "",
+                "egress_only_gateway_id": "",
+                "gateway_id": "igw-0160c74c67f26174a",
+                "ipv6_cidr_block": "",
+                "local_gateway_id": "",
+                "nat_gateway_id": "",
+                "network_interface_id": "",
+                "transit_gateway_id": "",
+                "vpc_endpoint_id": "",
+                "vpc_peering_connection_id": ""
+              }
+            ],
+            "tags": {
+              "Name": "relaydesk-prod-public-rt"
+            },
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Name": "relaydesk-prod-public-rt",
+              "Project": "relaydesk"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-090d281de07cfac1f"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_internet_gateway.main",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_route_table_association",
+      "name": "private",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-00b6deb0d2a0b527e",
+            "route_table_id": "rtb-0a80e553933ad3a8d",
+            "subnet_id": "subnet-0508e047d8019a74a",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_eip.nat",
+            "aws_internet_gateway.main",
+            "aws_nat_gateway.main",
+            "aws_route_table.private",
+            "aws_subnet.private",
+            "aws_subnet.public",
+            "aws_vpc.main"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-0c17a1bab92e6d005",
+            "route_table_id": "rtb-0a80e553933ad3a8d",
+            "subnet_id": "subnet-0ac42ec7f51e9ed18",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_eip.nat",
+            "aws_internet_gateway.main",
+            "aws_nat_gateway.main",
+            "aws_route_table.private",
+            "aws_subnet.private",
+            "aws_subnet.public",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_route_table_association",
+      "name": "public",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-0c6fbf7d88f30645a",
+            "route_table_id": "rtb-026e7273f93c737bb",
+            "subnet_id": "subnet-0b22eab7e2ce78941",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_internet_gateway.main",
+            "aws_route_table.public",
+            "aws_subnet.public",
+            "aws_vpc.main"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-0b34c2cf68c131be8",
+            "route_table_id": "rtb-026e7273f93c737bb",
+            "subnet_id": "subnet-0947dd641b5d4d920",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_internet_gateway.main",
+            "aws_route_table.public",
+            "aws_subnet.public",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "alb_api",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:ap-south-1:646605541675:security-group/sg-0c14131981576867f",
+            "description": "ALB for RAG API",
+            "egress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "-1",
+                "security_groups": [],
+                "self": false,
+                "to_port": 0
+              }
+            ],
+            "id": "sg-0c14131981576867f",
+            "ingress": [
+              {
+                "cidr_blocks": [
+                  "10.20.0.0/16"
+                ],
+                "description": "HTTP",
+                "from_port": 80,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 80
+              }
+            ],
+            "name": "relaydesk-prod-alb-api",
+            "name_prefix": "",
+            "owner_id": "646605541675",
+            "revoke_rules_on_delete": false,
+            "tags": {
+              "Name": "relaydesk-prod-alb-api"
+            },
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Name": "relaydesk-prod-alb-api",
+              "Project": "relaydesk"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-090d281de07cfac1f"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6OTAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0=",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "ecs_instances",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:ap-south-1:646605541675:security-group/sg-00528a6fa9e950b90",
+            "description": "EC2 hosts for ECS",
+            "egress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "-1",
+                "security_groups": [],
+                "self": false,
+                "to_port": 0
+              }
+            ],
+            "id": "sg-00528a6fa9e950b90",
+            "ingress": [
+              {
+                "cidr_blocks": [
+                  "10.20.0.0/16"
+                ],
+                "description": "Container host traffic within VPC",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 65535
+              }
+            ],
+            "name": "relaydesk-prod-ecs-instances",
+            "name_prefix": "",
+            "owner_id": "646605541675",
+            "revoke_rules_on_delete": false,
+            "tags": {
+              "Name": "relaydesk-prod-ecs-instances"
+            },
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Name": "relaydesk-prod-ecs-instances",
+              "Project": "relaydesk"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-090d281de07cfac1f"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6OTAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0=",
+          "dependencies": [
+            "aws_vpc.main"
+          ],
+          "create_before_destroy": true
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "ecs_tasks",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:ap-south-1:646605541675:security-group/sg-032f45e1bd375623e",
+            "description": "ECS tasks (API + voice agent)",
+            "egress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "-1",
+                "security_groups": [],
+                "self": false,
+                "to_port": 0
+              }
+            ],
+            "id": "sg-032f45e1bd375623e",
+            "ingress": [
+              {
+                "cidr_blocks": [
+                  "10.20.0.0/16"
+                ],
+                "description": "API from VPC (voice agent via Cloud Map)",
+                "from_port": 8090,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 8090
+              },
+              {
+                "cidr_blocks": [],
+                "description": "API from ALB",
+                "from_port": 8090,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [
+                  "sg-0c14131981576867f"
+                ],
+                "self": false,
+                "to_port": 8090
+              }
+            ],
+            "name": "relaydesk-prod-ecs-tasks",
+            "name_prefix": "",
+            "owner_id": "646605541675",
+            "revoke_rules_on_delete": false,
+            "tags": {
+              "Name": "relaydesk-prod-ecs-tasks"
+            },
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Name": "relaydesk-prod-ecs-tasks",
+              "Project": "relaydesk"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-090d281de07cfac1f"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6OTAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0=",
+          "dependencies": [
+            "aws_security_group.alb_api",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_service_discovery_private_dns_namespace",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:servicediscovery:ap-south-1:646605541675:namespace/ns-lvgysq6bakw2ya2z",
+            "description": "Private DNS for ECS services",
+            "hosted_zone": "Z07344661LPPPUR6PCE3L",
+            "id": "ns-lvgysq6bakw2ya2z",
+            "name": "relaydesk.local",
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "vpc": "vpc-090d281de07cfac1f"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_service_discovery_service",
+      "name": "api",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:servicediscovery:ap-south-1:646605541675:service/srv-s3trmnihiqiu4ryf",
+            "description": "",
+            "dns_config": [
+              {
+                "dns_records": [
+                  {
+                    "ttl": 10,
+                    "type": "A"
+                  }
+                ],
+                "namespace_id": "ns-lvgysq6bakw2ya2z",
+                "routing_policy": "MULTIVALUE"
+              }
+            ],
+            "force_destroy": false,
+            "health_check_config": [],
+            "health_check_custom_config": [
+              {
+                "failure_threshold": 1
+              }
+            ],
+            "id": "srv-s3trmnihiqiu4ryf",
+            "name": "api",
+            "namespace_id": "ns-lvgysq6bakw2ya2z",
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "type": "DNS_HTTP"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_service_discovery_private_dns_namespace.main",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ssm_parameter",
+      "name": "api",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": "DATABASE_URL",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/DATABASE_URL",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/api/DATABASE_URL",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/api/DATABASE_URL",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        },
+        {
+          "index_key": "LIVEKIT_API_KEY",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/LIVEKIT_API_KEY",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/api/LIVEKIT_API_KEY",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/api/LIVEKIT_API_KEY",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        },
+        {
+          "index_key": "LIVEKIT_API_SECRET",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/LIVEKIT_API_SECRET",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/api/LIVEKIT_API_SECRET",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/api/LIVEKIT_API_SECRET",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        },
+        {
+          "index_key": "LIVEKIT_SIP_OUTBOUND_TRUNK_ID",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/LIVEKIT_SIP_OUTBOUND_TRUNK_ID",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/api/LIVEKIT_SIP_OUTBOUND_TRUNK_ID",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/api/LIVEKIT_SIP_OUTBOUND_TRUNK_ID",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        },
+        {
+          "index_key": "LIVEKIT_URL",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/LIVEKIT_URL",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/api/LIVEKIT_URL",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/api/LIVEKIT_URL",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        },
+        {
+          "index_key": "OPENAI_API_KEY",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/OPENAI_API_KEY",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/api/OPENAI_API_KEY",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/api/OPENAI_API_KEY",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        },
+        {
+          "index_key": "QDRANT_API_KEY",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/QDRANT_API_KEY",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/api/QDRANT_API_KEY",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/api/QDRANT_API_KEY",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        },
+        {
+          "index_key": "QDRANT_CLUSTER_ENDPOINT",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/QDRANT_CLUSTER_ENDPOINT",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/api/QDRANT_CLUSTER_ENDPOINT",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/api/QDRANT_CLUSTER_ENDPOINT",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        },
+        {
+          "index_key": "RAG_API_KEY",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/api/RAG_API_KEY",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/api/RAG_API_KEY",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/api/RAG_API_KEY",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ssm_parameter",
+      "name": "voice_agent",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": "CALCOM_API_KEY",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/voice-agent/CALCOM_API_KEY",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/voice-agent/CALCOM_API_KEY",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/voice-agent/CALCOM_API_KEY",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        },
+        {
+          "index_key": "CARTESIA_API_KEY",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/voice-agent/CARTESIA_API_KEY",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/voice-agent/CARTESIA_API_KEY",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/voice-agent/CARTESIA_API_KEY",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        },
+        {
+          "index_key": "DEEPGRAM_API_KEY",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/voice-agent/DEEPGRAM_API_KEY",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/voice-agent/DEEPGRAM_API_KEY",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/voice-agent/DEEPGRAM_API_KEY",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        },
+        {
+          "index_key": "LIVEKIT_API_KEY",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/voice-agent/LIVEKIT_API_KEY",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/voice-agent/LIVEKIT_API_KEY",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/voice-agent/LIVEKIT_API_KEY",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        },
+        {
+          "index_key": "LIVEKIT_API_SECRET",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/voice-agent/LIVEKIT_API_SECRET",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/voice-agent/LIVEKIT_API_SECRET",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/voice-agent/LIVEKIT_API_SECRET",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        },
+        {
+          "index_key": "LIVEKIT_URL",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/voice-agent/LIVEKIT_URL",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/voice-agent/LIVEKIT_URL",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/voice-agent/LIVEKIT_URL",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        },
+        {
+          "index_key": "RAG_API_KEY",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/voice-agent/RAG_API_KEY",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/voice-agent/RAG_API_KEY",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/voice-agent/RAG_API_KEY",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        },
+        {
+          "index_key": "XAI_API_KEY",
+          "schema_version": 0,
+          "attributes": {
+            "allowed_pattern": "",
+            "arn": "arn:aws:ssm:ap-south-1:646605541675:parameter/relaydesk/prod/voice-agent/XAI_API_KEY",
+            "data_type": "text",
+            "description": "",
+            "has_value_wo": null,
+            "id": "/relaydesk/prod/voice-agent/XAI_API_KEY",
+            "insecure_value": null,
+            "key_id": "alias/aws/ssm",
+            "name": "/relaydesk/prod/voice-agent/XAI_API_KEY",
+            "overwrite": null,
+            "tags": {},
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Project": "relaydesk"
+            },
+            "tier": "Standard",
+            "type": "SecureString",
+            "value": "CHANGEME",
+            "value_wo": null,
+            "value_wo_version": null,
+            "version": 1
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "value_wo"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_subnet",
+      "name": "private",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:ap-south-1:646605541675:subnet/subnet-0508e047d8019a74a",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "ap-south-1a",
+            "availability_zone_id": "aps1-az1",
+            "cidr_block": "10.20.10.0/24",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-0508e047d8019a74a",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": false,
+            "outpost_arn": "",
+            "owner_id": "646605541675",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "tags": {
+              "Name": "relaydesk-prod-private-ap-south-1a"
+            },
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Name": "relaydesk-prod-private-ap-south-1a",
+              "Project": "relaydesk"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-090d281de07cfac1f"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:ap-south-1:646605541675:subnet/subnet-0ac42ec7f51e9ed18",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "ap-south-1b",
+            "availability_zone_id": "aps1-az3",
+            "cidr_block": "10.20.11.0/24",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-0ac42ec7f51e9ed18",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": false,
+            "outpost_arn": "",
+            "owner_id": "646605541675",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "tags": {
+              "Name": "relaydesk-prod-private-ap-south-1b"
+            },
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Name": "relaydesk-prod-private-ap-south-1b",
+              "Project": "relaydesk"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-090d281de07cfac1f"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_subnet",
+      "name": "public",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:ap-south-1:646605541675:subnet/subnet-0b22eab7e2ce78941",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "ap-south-1a",
+            "availability_zone_id": "aps1-az1",
+            "cidr_block": "10.20.0.0/24",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-0b22eab7e2ce78941",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": true,
+            "outpost_arn": "",
+            "owner_id": "646605541675",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "tags": {
+              "Name": "relaydesk-prod-public-ap-south-1a"
+            },
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Name": "relaydesk-prod-public-ap-south-1a",
+              "Project": "relaydesk"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-090d281de07cfac1f"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:ap-south-1:646605541675:subnet/subnet-0947dd641b5d4d920",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "ap-south-1b",
+            "availability_zone_id": "aps1-az3",
+            "cidr_block": "10.20.1.0/24",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-0947dd641b5d4d920",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": true,
+            "outpost_arn": "",
+            "owner_id": "646605541675",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "tags": {
+              "Name": "relaydesk-prod-public-ap-south-1b"
+            },
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Name": "relaydesk-prod-public-ap-south-1b",
+              "Project": "relaydesk"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-090d281de07cfac1f"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_vpc",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:ap-south-1:646605541675:vpc/vpc-090d281de07cfac1f",
+            "assign_generated_ipv6_cidr_block": false,
+            "cidr_block": "10.20.0.0/16",
+            "default_network_acl_id": "acl-0bfed254cf5da80d3",
+            "default_route_table_id": "rtb-04bb34eb4ad79fbc4",
+            "default_security_group_id": "sg-0c5118097e1eaca77",
+            "dhcp_options_id": "dopt-07fabf1044dafd872",
+            "enable_dns_hostnames": true,
+            "enable_dns_support": true,
+            "enable_network_address_usage_metrics": false,
+            "id": "vpc-090d281de07cfac1f",
+            "instance_tenancy": "default",
+            "ipv4_ipam_pool_id": null,
+            "ipv4_netmask_length": null,
+            "ipv6_association_id": "",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_network_border_group": "",
+            "ipv6_ipam_pool_id": "",
+            "ipv6_netmask_length": 0,
+            "main_route_table_id": "rtb-04bb34eb4ad79fbc4",
+            "owner_id": "646605541675",
+            "tags": {
+              "Name": "relaydesk-prod-vpc"
+            },
+            "tags_all": {
+              "Environment": "prod",
+              "ManagedBy": "terraform",
+              "Name": "relaydesk-prod-vpc",
+              "Project": "relaydesk"
+            }
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "create_before_destroy": true
+        }
+      ]
+    }
+  ],
+  "check_results": [
+    {
+      "object_kind": "var",
+      "config_addr": "var.availability_zones",
+      "status": "pass",
+      "objects": [
+        {
+          "object_addr": "var.availability_zones",
+          "status": "pass"
+        }
+      ]
+    }
+  ]
+}

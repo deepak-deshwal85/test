@@ -114,6 +114,49 @@ variable "availability_zones" {
   }
 }
 
+variable "enable_rds_postgres" {
+  description = "Create an RDS PostgreSQL instance for the API."
+  type        = bool
+  default     = true
+}
+
+variable "rds_engine_version" {
+  description = "PostgreSQL engine version. Must be available in your region (ap-south-1: 16.9–16.14 as of 2026)."
+  type        = string
+  default     = "16.14"
+}
+
+variable "rds_instance_class" {
+  description = "RDS instance class."
+  type        = string
+  default     = "db.t3.micro"
+}
+
+variable "rds_allocated_storage" {
+  description = "Initial storage for RDS in GiB."
+  type        = number
+  default     = 20
+}
+
+variable "rds_database_name" {
+  description = "PostgreSQL database name for the API."
+  type        = string
+  default     = "relaydesk"
+}
+
+variable "rds_master_username" {
+  description = "Master username for RDS PostgreSQL."
+  type        = string
+  default     = "relaydesk_admin"
+}
+
+variable "rds_master_password" {
+  description = "Master password for RDS PostgreSQL (min 8 characters). Set via TF_VAR_rds_master_password — do not commit."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "log_retention_days" {
   type    = number
   default = 7
