@@ -19,6 +19,7 @@ api/data/
 # Terraform
 .terraform/
 .terraform.lock.hcl
+infra/scripts/env.properties
 
 # Claude Code
 .claude/settings.local.json

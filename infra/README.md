@@ -50,12 +50,29 @@ terraform plan
 terraform apply
 ```
 
-After apply, set secret values (Console → Systems Manager → Parameter Store, or CLI):
+After apply, set secret values (Console → Systems Manager → Parameter Store, or script):
+
+```bash
+# From api/.env + voice-agent/.env (recommended)
+python infra/scripts/sync_ssm_parameters.py --from-local-env --dry-run
+python infra/scripts/sync_ssm_parameters.py --from-local-env --region ap-south-1
+
+# Or build infra/scripts/env.properties first, then upload
+python infra/scripts/sync_ssm_parameters.py --write-env-properties --from-local-env
+python infra/scripts/sync_ssm_parameters.py --region ap-south-1
+```
+
+PowerShell:
+
+```powershell
+.\infra\scripts\sync-ssm-parameters.ps1 -FromLocalEnv -DryRun
+.\infra\scripts\sync-ssm-parameters.ps1 -FromLocalEnv
+```
+
+Manual single parameter:
 
 ```bash
 aws ssm put-parameter --name "/relaydesk/prod/api/OPENAI_API_KEY" --value "sk-..." --type SecureString --overwrite
-aws ssm put-parameter --name "/relaydesk/prod/api/DATABASE_URL" --value "postgresql+asyncpg://..." --type SecureString --overwrite
-# ... repeat for all parameters listed in terraform output ssm_parameter_names
 ```
 
 Build and push initial images (or let GitHub Actions do it on first merge to `main`):
