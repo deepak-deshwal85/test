@@ -54,8 +54,8 @@ output "ssm_voice_agent_parameter_names" {
 }
 
 output "voice_agent_rag_api_base_url" {
-  description = "Injected into voice-agent task as RAG_API_BASE_URL."
-  value       = "http://${local.api_service_dns}:8090"
+  description = "Injected into voice-agent task as RAG_API_BASE_URL (internal ALB)."
+  value       = local.api_rag_base_url
 }
 
 output "rds_endpoint" {

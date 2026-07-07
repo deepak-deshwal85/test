@@ -259,8 +259,9 @@ resource "aws_ecs_service" "api" {
     registry_arn = aws_service_discovery_service.api.arn
   }
 
-  deployment_minimum_healthy_percent = 0
-  deployment_maximum_percent         = 100
+  # Keep at least one API task running during deploys (avoids Cloud Map / ALB gaps).
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
 
   depends_on = [aws_lb_listener.api]
 }

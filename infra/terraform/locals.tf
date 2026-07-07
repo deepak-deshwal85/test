@@ -17,6 +17,8 @@ locals {
 
   service_discovery_namespace = "${var.project_name}.local"
   api_service_dns             = "api.${local.service_discovery_namespace}"
+  # Internal ALB DNS always resolves inside the VPC; Cloud Map only has records while API tasks are healthy.
+  api_rag_base_url = "http://${aws_lb.api.dns_name}"
 
   # Non-secret env injected into tasks
   api_environment = [
@@ -27,7 +29,7 @@ locals {
 
   voice_agent_environment = [
     { name = "RAG_BACKEND", value = "qdrant" },
-    { name = "RAG_API_BASE_URL", value = "http://${local.api_service_dns}:8090" },
+    { name = "RAG_API_BASE_URL", value = local.api_rag_base_url },
     { name = "AGENT_NAME", value = "relaydesk-agent" },
     { name = "TURN_ENDPOINTING_MAX_DELAY", value = "1.0" },
     { name = "TURN_ENDPOINTING_MIN_DELAY", value = "0.3" },
