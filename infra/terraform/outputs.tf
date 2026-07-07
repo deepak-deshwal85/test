@@ -67,3 +67,25 @@ output "rds_master_username" {
   description = "RDS PostgreSQL master username."
   value       = var.enable_rds_postgres ? aws_db_instance.postgres[0].username : null
 }
+
+output "billing_dashboard_name" {
+  description = "CloudWatch dashboard for month-to-date estimated AWS charges (us-east-1)."
+  value       = var.enable_cost_monitoring ? aws_cloudwatch_dashboard.billing[0].dashboard_name : null
+}
+
+output "billing_dashboard_url" {
+  description = "Open CloudWatch billing dashboard (EstimatedCharges; updates every few hours)."
+  value = var.enable_cost_monitoring ? (
+    "https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=${aws_cloudwatch_dashboard.billing[0].dashboard_name}"
+  ) : null
+}
+
+output "cost_explorer_url" {
+  description = "Cost Explorer home — filter Tag: Project = <project_name> for RelayDesk-only spend."
+  value       = var.enable_cost_monitoring ? "https://console.aws.amazon.com/cost-management/home#/cost-explorer" : null
+}
+
+output "monthly_budget_name" {
+  description = "AWS Budget name for Project-tagged monthly spend."
+  value       = var.enable_cost_monitoring ? aws_budgets_budget.monthly[0].name : null
+}

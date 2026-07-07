@@ -179,3 +179,21 @@ variable "log_retention_days" {
   type    = number
   default = 7
 }
+
+variable "enable_cost_monitoring" {
+  description = "Create monthly AWS Budget, cost allocation tags, and CloudWatch billing dashboard."
+  type        = bool
+  default     = true
+}
+
+variable "monthly_budget_usd" {
+  description = "Monthly cost budget (USD) for resources tagged Project=<project_name>."
+  type        = number
+  default     = 75
+}
+
+variable "budget_alert_emails" {
+  description = "Email addresses for budget alerts (actual 80%%, forecasted 100%%). Leave empty to skip notifications."
+  type        = list(string)
+  default     = []
+}

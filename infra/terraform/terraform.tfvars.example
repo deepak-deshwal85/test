@@ -38,3 +38,8 @@ rds_database_name   = "relaydesk"
 rds_master_username = "relaydesk_admin"
 # Required only on first RDS create:
 #   $env:TF_VAR_rds_master_password="StrongPasswordHere"
+
+# Cost monitoring (Budget + CloudWatch billing dashboard)
+enable_cost_monitoring = true
+monthly_budget_usd     = 75
+# budget_alert_emails  = ["you@example.com"]

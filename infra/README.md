@@ -160,3 +160,34 @@ Set `$env:AWS_PROFILE = "relaydesk-admin"` instead of `--profile` if you prefer.
 ## Region
 
 Default: `ap-south-1` (Mumbai). Change `aws_region` in `terraform.tfvars` if needed. Co-locate with LiveKit **India West** and Qdrant/RDS in the same region when possible.
+
+## Cost monitoring (Budget + dashboard)
+
+Terraform creates:
+
+| Resource | Purpose |
+|----------|---------|
+| **CloudWatch dashboard** `relaydesk-prod-billing` | Month-to-date **estimated** charges (total + by service). Metrics in `us-east-1`, update every few hours. |
+| **AWS Budget** `relaydesk-prod-monthly` | Monthly limit for resources tagged `Project=relaydesk`; optional email alerts. |
+| **Cost allocation tags** | Activates `Project` and `Environment` tags in Cost Explorer. |
+
+Configure in `terraform.tfvars`:
+
+```hcl
+enable_cost_monitoring = true
+monthly_budget_usd     = 75
+budget_alert_emails    = ["you@example.com"]  # optional
+```
+
+After `terraform apply`, open the dashboard:
+
+```powershell
+terraform output billing_dashboard_url
+terraform output cost_explorer_url
+```
+
+**Cost Explorer (recommended for forecast):** Billing → Cost Explorer → set date range **Month-to-date** → **Group by: Service** → add filter **Tag: Project = relaydesk**. The **Forecasted month end** line shows projected monthly cost from current usage.
+
+**Enable billing metrics** (one-time, if the dashboard is empty): Billing → Billing preferences → turn on **Receive Billing Alerts**.
+
+**Note:** New cost allocation tags can take up to **24 hours** before tagged spend appears in Cost Explorer.

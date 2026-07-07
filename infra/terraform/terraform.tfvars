@@ -31,3 +31,8 @@ rds_engine_version  = "16.14"
 rds_instance_class  = "db.t3.micro"
 rds_database_name   = "relaydesk"
 rds_master_username = "relaydesk_admin"
+
+# Cost monitoring
+enable_cost_monitoring = true
+monthly_budget_usd     = 75
+# budget_alert_emails  = ["you@example.com"]
