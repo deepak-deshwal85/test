@@ -13,8 +13,8 @@ api_ecr_image_tag             = "latest"
 voice_ecr_image_tag           = "v1"
 
 voice_agent_desired_count = 1
-voice_agent_cpu           = 2048   # 2 vCPU
-voice_agent_memory        = 8192   # 8 GiB
+voice_agent_cpu           = 1792   # max on t3.large with API (256 CPU); host has 2048 CPU total
+voice_agent_memory        = 7040   # max on t3.large with API (512 MiB) + ECS overhead
 
 # Set true only if you need to upload documents from the public internet
 api_publicly_accessible = false
@@ -35,4 +35,4 @@ rds_master_username = "relaydesk_admin"
 # Cost monitoring
 enable_cost_monitoring = true
 monthly_budget_usd     = 75
-# budget_alert_emails  = ["you@example.com"]
+budget_alert_emails  = ["deepakdeshwal85@gmail.com"]

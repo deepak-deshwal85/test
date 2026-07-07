@@ -18,8 +18,8 @@ api_ecr_image_tag             = "latest"
 voice_ecr_image_tag           = "v1"
 
 voice_agent_desired_count = 1
-voice_agent_cpu           = 2048
-voice_agent_memory        = 8192
+voice_agent_cpu           = 1792
+voice_agent_memory        = 7040
 
 # Set true only if you need to upload documents from the public internet
 api_publicly_accessible = false

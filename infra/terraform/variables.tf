@@ -84,15 +84,15 @@ variable "manage_github_oidc_provider" {
 }
 
 variable "voice_agent_cpu" {
-  description = "Voice agent task CPU units (1024 = 1 vCPU)."
+  description = "Voice agent task CPU units (1024 = 1 vCPU). On a shared t3.large with API, use <= 1792."
   type        = number
-  default     = 2048
+  default     = 1792
 }
 
 variable "voice_agent_memory" {
-  description = "Voice agent task memory (MiB). Default 8192 (8 GiB) for the voice container only."
+  description = "Voice agent task memory (MiB). On a shared t3.large with API (512 MiB), use <= 7040."
   type        = number
-  default     = 8192
+  default     = 7040
 }
 
 variable "api_cpu" {

@@ -113,7 +113,7 @@ docker push "${ECR_VOICE}:latest"
 | Component | ECS task | EC2 host |
 |-----------|----------|----------|
 | API | 0.25 vCPU, 512 MiB RAM | `t3.large` (shared) |
-| Voice agent | **2 vCPU, 8192 MiB RAM** | Same host as API |
+| Voice agent | **~1.75 vCPU, 7040 MiB RAM** | Same host as API (fits t3.large with API) |
 
 **Free Tier (API only):** `ecs_instance_type = "t3.micro"` and `voice_agent_desired_count = 0`.
 
