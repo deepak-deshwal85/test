@@ -7,7 +7,4 @@ terraform {
       version = "~> 5.0"
     }
   }
-
-  # Uncomment after creating the S3 bucket and DynamoDB table (see backend.tf.example).
-  # backend "s3" {}
 }

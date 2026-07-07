@@ -44,7 +44,7 @@ cd infra/terraform
 # Copy and edit variables (no secrets in git)
 cp terraform.tfvars.example terraform.tfvars
 
-# Remote state (recommended): create S3 bucket + DynamoDB lock table, then uncomment backend.tf
+# Remote state (recommended): create S3 bucket (enable versioning), then copy backend.tf.example → backend.tf
 terraform init
 terraform plan
 terraform apply

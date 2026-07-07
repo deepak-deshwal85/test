@@ -94,7 +94,7 @@ cd infra/terraform
 cp terraform.tfvars.example terraform.tfvars
 # Edit: github_org, aws_region (default ap-south-1), sizing if needed
 
-# Optional: remote state — see backend.tf.example (S3 + DynamoDB lock)
+# Optional: remote state — see backend.tf.example (S3 + native lockfile)
 
 terraform init
 terraform plan
@@ -249,7 +249,7 @@ terraform output api_alb_dns_name
 - Use SSM SecureString for all API keys and database URLs.
 - GitHub Actions uses OIDC with branch-scoped trust (`refs/heads/main`).
 - Voice agent has no inbound ports; only the API ALB accepts HTTP.
-- Enable S3 remote state + DynamoDB locking for team use (`backend.tf.example`).
+- Enable S3 remote state with native lockfile for team use (`backend.tf.example`).
 
 ---
 

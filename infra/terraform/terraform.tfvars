@@ -1,0 +1,17 @@
+aws_region   = "ap-south-1"
+environment  = "prod"
+project_name = "relaydesk"
+
+# Required: your GitHub org or username (for OIDC deploy role trust)
+github_org  = "YOUR_GITHUB_ORG_OR_USER"
+github_repo = "relaydesk"
+
+# EC2 backing ECS — t3.xlarge fits voice-agent (8GB) + API (1GB) on one node
+ecs_instance_type             = "t3.xlarge"
+ecs_instance_desired_capacity = 1
+
+# Set true only if you need to upload documents from the public internet
+api_publicly_accessible = false
+
+# Set false if GitHub OIDC provider already exists in this AWS account
+manage_github_oidc_provider = true
