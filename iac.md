@@ -193,9 +193,9 @@ Push to `main` (paths under `api/`, `voice-agent/`, `infra/`) or run the workflo
 
 | Resource | Default | Notes |
 |----------|---------|--------|
-| EC2 instance (ECS host) | `t3.micro` (Free Tier eligible) | API-only bootstrap profile |
-| Voice agent task | desired count `0` | Run locally until instance is scaled up |
-| API task | 0.25 vCPU, 0.5 GB RAM | Minimal profile for bootstrap |
+| EC2 instance (ECS host) | `t3.large` (2 vCPU, 8 GiB) | Shared by API + voice |
+| Voice agent task | **2 vCPU, 8 GiB RAM**, desired `1` | `voice_agent_cpu` / `voice_agent_memory` only |
+| API task | 0.25 vCPU, 512 MiB RAM | Unchanged |
 | ASG | min 1, max 1, desired 1 | Keeps cost low for initial setup |
 | NAT gateway | Always on | Required for outbound to LiveKit, OpenAI, Qdrant |
 

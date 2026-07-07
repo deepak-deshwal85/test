@@ -34,9 +34,9 @@ variable "voice_ecr_image_tag" {
 }
 
 variable "ecs_instance_type" {
-  description = "EC2 type for ECS container instances. t3.micro is Free Tier eligible (1 vCPU burst, 1 GiB RAM) — fits API only; scale up for voice-agent."
+  description = "EC2 type for the shared ECS host. Voice-only task sizing is set via voice_agent_cpu / voice_agent_memory."
   type        = string
-  default     = "t3.micro"
+  default     = "t3.large"
 }
 
 variable "ecs_instance_desired_capacity" {
@@ -84,14 +84,15 @@ variable "manage_github_oidc_provider" {
 }
 
 variable "voice_agent_cpu" {
-  type    = number
-  default = 512
+  description = "Voice agent task CPU units (1024 = 1 vCPU)."
+  type        = number
+  default     = 2048
 }
 
 variable "voice_agent_memory" {
-  description = "Voice agent task memory (MiB). t3.medium (~3.6 GiB for tasks) fits API 512 + voice 2816."
+  description = "Voice agent task memory (MiB). Default 8192 (8 GiB) for the voice container only."
   type        = number
-  default     = 2816
+  default     = 8192
 }
 
 variable "api_cpu" {

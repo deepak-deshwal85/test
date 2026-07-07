@@ -11,15 +11,15 @@ github_repo = "relaydesk"
 #   ecs_instance_type = "t3.micro"
 #   voice_agent_desired_count = 0
 #
-# API + voice smoke test (current prod default):
-ecs_instance_type             = "t3.medium"
+# API + voice (voice task: 2 vCPU, 8 GiB):
+ecs_instance_type             = "t3.large"
 ecs_instance_desired_capacity = 1
 api_ecr_image_tag             = "latest"
 voice_ecr_image_tag           = "v1"
 
 voice_agent_desired_count = 1
-voice_agent_cpu           = 512
-voice_agent_memory        = 2816
+voice_agent_cpu           = 2048
+voice_agent_memory        = 8192
 
 # Set true only if you need to upload documents from the public internet
 api_publicly_accessible = false

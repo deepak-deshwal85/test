@@ -110,14 +110,12 @@ docker push "${ECR_VOICE}:latest"
 
 ## Sizing (default)
 
-| Component | ECS task | EC2 instance |
-|-----------|----------|--------------|
-| API | 0.25 vCPU, 512 MiB RAM | `t3.medium` when voice agent enabled |
-| Voice agent | 0.5 vCPU, 2816 MiB RAM (smoke test) | Same host as API |
+| Component | ECS task | EC2 host |
+|-----------|----------|----------|
+| API | 0.25 vCPU, 512 MiB RAM | `t3.large` (shared) |
+| Voice agent | **2 vCPU, 8192 MiB RAM** | Same host as API |
 
-**Free Tier (API only):** set `ecs_instance_type = "t3.micro"` and `voice_agent_desired_count = 0` in `terraform.tfvars`.
-
-**Production voice:** increase to `t3.large`+ and `voice_agent_memory = 5120` after smoke testing.
+**Free Tier (API only):** `ecs_instance_type = "t3.micro"` and `voice_agent_desired_count = 0`.
 
 Changing `ecs_instance_type` updates the launch template only — **existing EC2 instances are not replaced automatically**. Run an ASG instance refresh after apply (see `infra/scripts/asg-instance-refresh-prefs.json`). If refresh stalls with *instance is protected*, remove scale-in protection on the old node first:
 
