@@ -16,6 +16,10 @@ data/embedding_cache.sqlite-*
 voice-agent/data/
 api/data/
 
+# Terraform
+.terraform/
+.terraform.lock.hcl
+
 # Claude Code
 .claude/settings.local.json
 .claude/worktrees/

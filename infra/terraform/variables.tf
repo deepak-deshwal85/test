@@ -103,6 +103,17 @@ variable "voice_agent_desired_count" {
   default     = 0
 }
 
+variable "availability_zones" {
+  description = "Two AZs for VPC subnets. ap-south-1c lacks NAT, ALB, and gp3 — use a+b in Mumbai."
+  type        = list(string)
+  default     = ["ap-south-1a", "ap-south-1b"]
+
+  validation {
+    condition     = length(var.availability_zones) == 2
+    error_message = "Provide exactly two availability zones."
+  }
+}
+
 variable "log_retention_days" {
   type    = number
   default = 7

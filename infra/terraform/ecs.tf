@@ -22,6 +22,16 @@ resource "aws_launch_template" "ecs" {
 
   vpc_security_group_ids = [aws_security_group.ecs_instances.id]
 
+  block_device_mappings {
+    device_name = "/dev/xvda"
+    ebs {
+      volume_size           = 30
+      volume_type           = "gp2"
+      delete_on_termination = true
+      encrypted             = true
+    }
+  }
+
   user_data = base64encode(<<-EOF
     #!/bin/bash
     echo ECS_CLUSTER=${aws_ecs_cluster.main.name} >> /etc/ecs/ecs.config
