@@ -18,3 +18,6 @@ api_publicly_accessible = false
 
 # Set false if GitHub OIDC provider already exists in this AWS account
 manage_github_oidc_provider = true
+
+# Must match aws_region — Mumbai only (avoid ap-south-1c)
+availability_zones = ["ap-south-1a", "ap-south-1b"]
