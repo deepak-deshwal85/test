@@ -68,7 +68,7 @@ output "ssm_cognito_parameter_names" {
 
 
 output "voice_agent_rag_api_base_url" {
-  description = "Injected into voice-agent task as RAG_API_BASE_URL (internal ALB)."
+  description = "Injected into voice-agent task as RAG_API_BASE_URL (Cloud Map internal DNS)."
   value       = local.api_rag_base_url
 }
 

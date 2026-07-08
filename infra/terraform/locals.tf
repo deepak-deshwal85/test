@@ -26,7 +26,8 @@ locals {
 
   service_discovery_namespace = "${var.project_name}.local"
   api_service_dns             = "api.${local.service_discovery_namespace}"
-  api_rag_base_url            = "http://${aws_lb.api.dns_name}"
+  # Voice agent → API via Cloud Map (bypasses ALB HTTP→HTTPS redirect on custom domain).
+  api_rag_base_url            = "http://${local.api_service_dns}:8090"
 
   cognito_enabled = var.enable_cognito && var.enable_ui
   cognito_issuer = local.cognito_enabled ? (
