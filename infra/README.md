@@ -181,6 +181,41 @@ aws ecs update-service --cluster relaydesk-prod --service relaydesk-prod-ui --fo
 - Sign in with Cognito (email/password or Google)
 - API docs: `https://relaydesk.uk/docs`
 
+**UI parameters:** `AUTH_SECRET`, `COGNITO_CLIENT_SECRET`
+
+### Fix API database connection (RDS)
+
+If customer/call-job APIs fail with SQLAlchemy/asyncpg errors connecting to `127.0.0.1:5432`, SSM `DATABASE_URL` still points at **localhost** (often synced from local `api/.env`).
+
+Set it from Terraform RDS outputs:
+
+```bash
+# Use the RDS master password from terraform apply (TF_VAR_rds_master_password)
+export RDS_DB_PASSWORD='your-rds-password'
+
+python infra/scripts/set_database_url_from_rds.py \
+  --profile relaydesk-admin \
+  --region ap-south-1 \
+  --dry-run
+
+python infra/scripts/set_database_url_from_rds.py \
+  --profile relaydesk-admin \
+  --region ap-south-1
+```
+
+Restart the API ECS task to pick up the new secret:
+
+```bash
+aws ecs update-service \
+  --cluster relaydesk-prod \
+  --service relaydesk-prod-api \
+  --force-new-deployment \
+  --profile relaydesk-admin \
+  --region ap-south-1
+```
+
+The API auto-creates tables on startup (`bootstrap_database_schema`). `/health` works without DB; customer/call-job routes need a valid RDS URL.
+
 Manual single parameter:
 
 ```bash

@@ -43,6 +43,11 @@ def main() -> int:
         help="Path to Terraform directory (default: infra/terraform)",
     )
     parser.add_argument("--region", default="ap-south-1")
+    parser.add_argument(
+        "--profile",
+        default=os.getenv("AWS_PROFILE"),
+        help="AWS CLI profile (or set AWS_PROFILE).",
+    )
     parser.add_argument("--project", default="relaydesk")
     parser.add_argument("--environment", default="prod")
     parser.add_argument(
@@ -75,23 +80,24 @@ def main() -> int:
         print(database_url)
         return 0
 
-    subprocess.run(
-        [
-            "aws",
-            "ssm",
-            "put-parameter",
-            "--name",
-            ssm_name,
-            "--value",
-            database_url,
-            "--type",
-            "SecureString",
-            "--overwrite",
-            "--region",
-            args.region,
-        ],
-        check=True,
-    )
+    cmd = [
+        "aws",
+        "ssm",
+        "put-parameter",
+        "--name",
+        ssm_name,
+        "--value",
+        database_url,
+        "--type",
+        "SecureString",
+        "--overwrite",
+        "--region",
+        args.region,
+    ]
+    if args.profile:
+        cmd.extend(["--profile", args.profile])
+
+    subprocess.run(cmd, check=True)
     print(f"set {ssm_name}")
     return 0
 

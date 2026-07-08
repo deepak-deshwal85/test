@@ -103,6 +103,11 @@ def validate_database_url(value: str) -> None:
         )
     if not parsed.hostname or not parsed.path or parsed.path == "/":
         raise ValueError("DATABASE_URL is missing host or database name.")
+    if parsed.hostname in {"localhost", "127.0.0.1"}:
+        raise ValueError(
+            "DATABASE_URL points to localhost. For AWS, run: "
+            "python infra/scripts/set_database_url_from_rds.py --password <RDS_PASSWORD>"
+        )
 
 
 def put_parameter(
