@@ -252,7 +252,7 @@ Build and push initial images (or let GitHub Actions do it on first merge to `ma
 ```bash
 PROFILE_NAME="relaydesk-admin"
 AWS_REGION="ap-south-1"
-IMAGE_TAG="v1" # or git SHA
+IMAGE_TAG="latest" # must match api_ecr_image_tag / voice_ecr_image_tag in terraform.tfvars
 
 cd infra/terraform
 ACCOUNT_ID="$(terraform output -raw aws_account_id)"
