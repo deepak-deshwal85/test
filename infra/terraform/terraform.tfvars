@@ -13,7 +13,7 @@ voice_ecs_instance_type             = "t3.large"
 voice_ecs_instance_desired_capacity = 1
 
 api_ecr_image_tag   = "latest"
-voice_ecr_image_tag = "v1"
+voice_ecr_image_tag = "latest"
 
 voice_agent_desired_count = 1
 voice_agent_cpu           = 2048   # 2 vCPU on dedicated voice host

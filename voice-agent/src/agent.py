@@ -274,7 +274,17 @@ server = AgentServer()
 def prewarm(proc: JobProcess) -> None:
     # AgentSession uses bundled silero VAD by default — no explicit load needed.
     # Keep this setup_fnc so the framework keeps a warm process pool ready.
-    pass
+    from rag_client.oauth_token import get_cognito_token_provider
+
+    provider = get_cognito_token_provider()
+    logger.info(
+        "cognito m2m ready=%s token_url_set=%s client_id_set=%s secret_set=%s scope=%s",
+        provider is not None,
+        bool(os.getenv("COGNITO_TOKEN_URL", "").strip()),
+        bool(os.getenv("COGNITO_CLIENT_ID", "").strip()),
+        bool(os.getenv("COGNITO_CLIENT_SECRET", "").strip()),
+        os.getenv("COGNITO_SCOPE", "relaydesk-api/access"),
+    )
 
 
 server.setup_fnc = prewarm
