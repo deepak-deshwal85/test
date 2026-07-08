@@ -70,7 +70,5 @@ resource "aws_ssm_parameter" "cognito_voice_client_secret" {
   type  = "SecureString"
   value = aws_cognito_user_pool_client.voice_m2m[0].client_secret
 
-  lifecycle {
-    ignore_changes = [value]
-  }
+  # Keep in sync with Cognito — voice-agent M2M auth breaks if this drifts.
 }

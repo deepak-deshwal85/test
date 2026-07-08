@@ -59,6 +59,12 @@ class CognitoTokenProvider:
                 },
                 headers={"content-type": "application/x-www-form-urlencoded"},
             )
+            if response.status_code >= 400:
+                logger.error(
+                    "cognito token request failed status=%s body=%s",
+                    response.status_code,
+                    response.text[:300],
+                )
             response.raise_for_status()
             payload = response.json()
             token = str(payload.get("access_token", "")).strip()
@@ -81,6 +87,16 @@ def get_cognito_token_provider() -> CognitoTokenProvider | None:
     client_secret = os.getenv("COGNITO_CLIENT_SECRET", "").strip()
     scope = os.getenv("COGNITO_SCOPE", "relaydesk-api/access").strip()
     if not token_url or not client_id or not client_secret:
+        missing = [
+            name
+            for name, value in (
+                ("COGNITO_TOKEN_URL", token_url),
+                ("COGNITO_CLIENT_ID", client_id),
+                ("COGNITO_CLIENT_SECRET", client_secret),
+            )
+            if not value
+        ]
+        logger.warning("cognito m2m auth disabled; missing env: %s", ", ".join(missing))
         return None
     if _provider is None:
         _provider = CognitoTokenProvider(

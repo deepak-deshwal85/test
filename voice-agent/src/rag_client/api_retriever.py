@@ -66,11 +66,22 @@ class ApiRagRetriever:
             "max_results": max_results,
         }
         started = time.perf_counter()
+        headers = await self._headers()
+        if self._token_provider is not None and "Authorization" not in headers:
+            raise RuntimeError("Cognito token provider is configured but no bearer token was produced")
+
         response = await self._client().post(
             "/v1/search",
             json=payload,
-            headers=await self._headers(),
+            headers=headers,
         )
+        if response.status_code == 401:
+            logger.error(
+                "rag api unauthorized phone=%s detail=%s auth_configured=%s",
+                self._phone_number,
+                response.text[:300],
+                self._token_provider is not None,
+            )
         response.raise_for_status()
         data = response.json()
         hits = self._parse_hits(data)

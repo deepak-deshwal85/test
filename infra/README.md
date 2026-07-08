@@ -214,6 +214,28 @@ aws ecs update-service \
   --region ap-south-1
 ```
 
+### Fix voice-agent RAG 401 (Cognito M2M secret drift)
+
+If voice-agent logs show `401 Unauthorized` on `POST /v1/search`, the M2M client secret in SSM may be stale (`invalid_client_secret` at Cognito token endpoint).
+
+Re-sync from Terraform (updates `/relaydesk/prod/voice-agent/COGNITO_CLIENT_SECRET`):
+
+```bash
+cd infra/terraform
+terraform apply -target=aws_ssm_parameter.cognito_voice_client_secret[0]
+```
+
+Then redeploy voice-agent so the task reloads secrets:
+
+```bash
+aws ecs update-service \
+  --cluster relaydesk-prod \
+  --service relaydesk-prod-voice-agent \
+  --force-new-deployment \
+  --profile relaydesk-admin \
+  --region ap-south-1
+```
+
 The API auto-creates tables on startup (`bootstrap_database_schema`). `/health` works without DB; customer/call-job routes need a valid RDS URL.
 
 Manual single parameter:

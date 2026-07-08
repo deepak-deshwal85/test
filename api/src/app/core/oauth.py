@@ -83,7 +83,7 @@ def validate_access_token(token: str, settings: Settings) -> AuthenticatedPrinci
             },
         )
     except jwt.PyJWTError as exc:
-        logger.info("jwt validation failed: %s", exc)
+        logger.warning("jwt validation failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid access token",
@@ -100,6 +100,11 @@ def validate_access_token(token: str, settings: Settings) -> AuthenticatedPrinci
 
     allowed_clients = _allowed_client_ids(settings)
     if allowed_clients and client_id_str not in allowed_clients:
+        logger.warning(
+            "untrusted oauth client client_id=%r allowed=%s",
+            client_id_str,
+            sorted(allowed_clients),
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Untrusted OAuth client",
