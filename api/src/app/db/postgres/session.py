@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import ssl
 from collections.abc import AsyncGenerator
+from urllib.parse import urlparse
 
 from sqlalchemy import text
 from sqlalchemy.exc import ArgumentError
@@ -19,6 +21,18 @@ _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 
 
+def _engine_connect_args(database_url: str) -> dict:
+    hostname = urlparse(database_url).hostname or ""
+    if hostname in {"", "localhost", "127.0.0.1"}:
+        return {}
+
+    # AWS RDS PostgreSQL requires encrypted connections (pg_hba: no encryption).
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    return {"ssl": ssl_context}
+
+
 def init_engine(settings: Settings) -> AsyncEngine:
     global _engine, _session_factory
     if _engine is None:
@@ -27,6 +41,7 @@ def init_engine(settings: Settings) -> AsyncEngine:
                 settings.database_url,
                 echo=settings.database_echo,
                 pool_pre_ping=True,
+                connect_args=_engine_connect_args(settings.database_url),
             )
         except ArgumentError as exc:
             raise RuntimeError(
