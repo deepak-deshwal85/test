@@ -1,7 +1,14 @@
 import { auth } from "@/lib/auth";
+import { isAuthDisabledForLocal } from "@/lib/runtime-config";
 import { NextResponse } from "next/server";
 
+const skipSsoInLocal = isAuthDisabledForLocal();
+
 export default auth((req) => {
+  if (skipSsoInLocal) {
+    return NextResponse.next();
+  }
+
   const isLoggedIn = !!req.auth;
   const isLoginPage = req.nextUrl.pathname.startsWith("/login");
   const isAuthApi = req.nextUrl.pathname.startsWith("/api/auth");

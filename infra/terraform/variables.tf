@@ -127,20 +127,6 @@ variable "cognito_google_client_secret" {
   sensitive   = true
 }
 
-variable "cognito_github_client_id" {
-  description = "GitHub OAuth client ID for Cognito federation (optional)."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "cognito_github_client_secret" {
-  description = "GitHub OAuth client secret for Cognito federation (optional)."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
 variable "ui_ecr_image_tag" {
   description = "Docker image tag for the UI ECR image."
   type        = string

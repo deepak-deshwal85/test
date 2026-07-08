@@ -1,10 +1,16 @@
 import { auth } from "@/lib/auth";
+import { isAuthDisabledForLocal, resolveApiBaseUrl } from "@/lib/runtime-config";
 
-const API_URL = process.env.RELAYDESK_API_URL ?? "http://127.0.0.1:8090";
+const API_URL = resolveApiBaseUrl();
+const skipSsoInLocal = isAuthDisabledForLocal();
 
 async function authHeaders(): Promise<Headers> {
-  const session = await auth();
   const headers = new Headers({ "content-type": "application/json" });
+  if (skipSsoInLocal) {
+    return headers;
+  }
+
+  const session = await auth();
   if (session?.accessToken) {
     headers.set("authorization", `Bearer ${session.accessToken}`);
   }
@@ -16,7 +22,7 @@ export async function serverApiFetch<T>(
   init?: RequestInit,
 ): Promise<T> {
   const session = await auth();
-  if (!session?.user) {
+  if (!skipSsoInLocal && !session?.user) {
     throw new Error("Unauthorized");
   }
 

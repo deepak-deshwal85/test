@@ -42,8 +42,6 @@ cognito_ui_callback_urls = ["http://localhost:3000/api/auth/callback/cognito"]
 cognito_ui_logout_urls   = ["http://localhost:3000/login"]
 # cognito_google_client_id = ""
 # cognito_google_client_secret = ""
-# cognito_github_client_id = ""
-# cognito_github_client_secret = ""
 
 # Set false if GitHub OIDC provider already exists in this AWS account
 manage_github_oidc_provider = true

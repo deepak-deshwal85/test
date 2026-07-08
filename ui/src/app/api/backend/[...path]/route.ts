@@ -1,14 +1,16 @@
 import { auth } from "@/lib/auth";
+import { isAuthDisabledForLocal, resolveApiBaseUrl } from "@/lib/runtime-config";
 import { NextRequest, NextResponse } from "next/server";
 
-const API_URL = process.env.RELAYDESK_API_URL ?? "http://127.0.0.1:8090";
+const API_URL = resolveApiBaseUrl();
+const skipSsoInLocal = isAuthDisabledForLocal();
 
 async function proxy(request: NextRequest, path: string[]) {
   const session = await auth();
-  if (!session?.user) {
+  if (!skipSsoInLocal && !session?.user) {
     return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
   }
-  if (!session.accessToken) {
+  if (!skipSsoInLocal && !session?.accessToken) {
     return NextResponse.json(
       { detail: "Missing OAuth access token — sign in with Cognito SSO" },
       { status: 401 },
@@ -26,7 +28,9 @@ async function proxy(request: NextRequest, path: string[]) {
   if (contentType) {
     headers.set("content-type", contentType);
   }
-  headers.set("authorization", `Bearer ${session.accessToken}`);
+  if (!skipSsoInLocal && session?.accessToken) {
+    headers.set("authorization", `Bearer ${session.accessToken}`);
+  }
 
   const init: RequestInit = {
     method: request.method,

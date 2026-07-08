@@ -13,18 +13,25 @@ Modern operations console for the RelayDesk API. Built with **Next.js 15**, **Ty
 
 ## Authentication
 
-End users sign in with **GitHub** or **Google** via [NextAuth.js](https://authjs.dev). The UI never exposes `RAG_API_KEY` to the browser — authenticated server routes proxy requests to the FastAPI backend.
+The UI uses **AWS Cognito OIDC** through [NextAuth.js](https://authjs.dev).
+Browser requests never contain static API secrets; the server proxy forwards OAuth access tokens to the API.
 
 ### OAuth setup
 
-1. Copy `.env.example` to `.env.local`
+1. Copy `.env.example` to `.env.local` (or `.env`).
 2. Generate `AUTH_SECRET`: `openssl rand -base64 32`
-3. Create OAuth apps:
-   - **GitHub**: Settings → Developer settings → OAuth Apps  
-     Callback: `http://localhost:3000/api/auth/callback/github`
-   - **Google**: Cloud Console → APIs & Credentials → OAuth client  
-     Callback: `http://localhost:3000/api/auth/callback/google`
-4. Set `RELAYDESK_API_URL` and `RAG_API_KEY` to match your running API
+3. Set Cognito values:
+   - `COGNITO_ISSUER`
+   - `COGNITO_CLIENT_ID`
+   - `COGNITO_CLIENT_SECRET`
+4. Configure API target:
+   - `RELAYDESK_API_TARGET=local|aws|auto`
+   - `RELAYDESK_API_URL_LOCAL`, `RELAYDESK_API_URL_AWS`
+
+### Local mode without SSO
+
+Set `AUTH_DISABLE_SSO=true` to bypass login locally. This is intended for development only.
+When using this mode, set API `OAUTH_DISABLED=true` (or an API instance that accepts unauthenticated local traffic).
 
 ## Local development
 
@@ -42,12 +49,13 @@ Ensure the API is running (`cd api && uv run uvicorn app.main:app --host 127.0.0
 
 ## Production (ECS)
 
-The UI runs as a Next.js standalone container on the shared ALB:
+The UI runs as a Next.js standalone container on ECS.
 
-- Browser → ALB `:80` → UI (`:3000`)
+- Browser → CloudFront/ALB → UI (`:3000`)
 - API routes → ALB `/v1/*`, `/health`, `/docs` → API (`:8090`)
 
-Set OAuth callback URLs to `https://<your-alb-or-domain>/api/auth/callback/<provider>`.
+Set OAuth callback URL to:
+- `https://<public-ui-host>/api/auth/callback/cognito`
 
 ## Stack rationale
 
@@ -56,4 +64,4 @@ Set OAuth callback URLs to `https://<your-alb-or-domain>/api/auth/callback/<prov
 | Next.js 15 | SSR for auth, API proxy, industry-standard React framework |
 | TypeScript | Type-safe API contracts, matches modern full-stack practice |
 | Tailwind CSS 4 | Responsive mobile-first styling with minimal bundle size |
-| NextAuth v5 | Native GitHub/Google OAuth, JWT sessions, ECS-compatible |
+| NextAuth v5 | Cognito OIDC support with JWT sessions, ECS-compatible |

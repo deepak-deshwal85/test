@@ -100,8 +100,11 @@ locals {
 
   ui_environment = concat([
     { name = "AUTH_URL", value = local.ui_public_base_url },
+    { name = "AUTH_DISABLE_SSO", value = "false" },
     # Browser talks to UI; UI server proxies to API via HTTP ALB DNS (same VPC).
-    { name = "RELAYDESK_API_URL", value = "http://${aws_lb.api.dns_name}" },
+    { name = "RELAYDESK_API_TARGET", value = "aws" },
+    { name = "RELAYDESK_API_URL_AWS", value = "http://${aws_lb.api.dns_name}" },
+    { name = "RELAYDESK_API_URL_LOCAL", value = "http://127.0.0.1:8090" },
     { name = "AUTH_TRUST_HOST", value = "true" },
   ], local.ui_cognito_environment)
 
@@ -109,9 +112,5 @@ locals {
     "AUTH_SECRET",
   ] : [
     "AUTH_SECRET",
-    "AUTH_GITHUB_ID",
-    "AUTH_GITHUB_SECRET",
-    "AUTH_GOOGLE_ID",
-    "AUTH_GOOGLE_SECRET",
   ]
 }

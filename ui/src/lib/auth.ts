@@ -1,11 +1,12 @@
 import NextAuth from "next-auth";
 import Cognito from "next-auth/providers/cognito";
-import GitHub from "next-auth/providers/github";
-import Google from "next-auth/providers/google";
+import Credentials from "next-auth/providers/credentials";
+import { isAuthDisabledForLocal } from "@/lib/runtime-config";
 
 const cognitoIssuer = process.env.COGNITO_ISSUER;
 const cognitoClientId = process.env.COGNITO_CLIENT_ID;
 const cognitoClientSecret = process.env.COGNITO_CLIENT_SECRET;
+const authDisabledForLocal = isAuthDisabledForLocal();
 
 const providers = [];
 
@@ -17,23 +18,22 @@ if (cognitoIssuer && cognitoClientId && cognitoClientSecret) {
       issuer: cognitoIssuer,
     }),
   );
-} else {
-  if (process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET) {
-    providers.push(
-      GitHub({
-        clientId: process.env.AUTH_GITHUB_ID,
-        clientSecret: process.env.AUTH_GITHUB_SECRET,
-      }),
-    );
-  }
-  if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
-    providers.push(
-      Google({
-        clientId: process.env.AUTH_GOOGLE_ID,
-        clientSecret: process.env.AUTH_GOOGLE_SECRET,
-      }),
-    );
-  }
+}
+
+if (authDisabledForLocal) {
+  providers.push(
+    Credentials({
+      name: "LocalDev",
+      credentials: {},
+      async authorize() {
+        return {
+          id: "local-dev-user",
+          name: "Local Dev User",
+          email: "local@example.com",
+        };
+      },
+    }),
+  );
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({

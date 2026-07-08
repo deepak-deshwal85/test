@@ -160,7 +160,7 @@ def main() -> int:
         "--voice-env", type=Path, default=REPO_ROOT / "voice-agent" / ".env"
     )
     parser.add_argument(
-        "--ui-env", type=Path, default=REPO_ROOT / "ui" / ".env.local"
+        "--ui-env", type=Path, default=REPO_ROOT / "ui" / ".env"
     )
     parser.add_argument(
         "--from-local-env",

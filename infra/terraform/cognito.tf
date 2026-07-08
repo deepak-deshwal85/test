@@ -109,7 +109,4 @@ resource "aws_cognito_identity_provider" "google" {
 }
 
 ## NOTE:
-## Recent AWS provider versions for `aws_cognito_identity_provider` do not
-## support `provider_type = "GitHub"`. Keep Cognito-native + Google here.
-## If GitHub SSO is required, use an OIDC intermediary IdP (Auth0/Okta/etc.)
-## and integrate that via provider_type = "OIDC".
+## This stack intentionally uses Cognito-native + Google federation only.
