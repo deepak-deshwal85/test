@@ -378,3 +378,20 @@ terraform output cost_explorer_url
 **Enable billing metrics** (one-time, if the dashboard is empty): Billing → Billing preferences → turn on **Receive Billing Alerts**.
 
 **Note:** New cost allocation tags can take up to **24 hours** before tagged spend appears in Cost Explorer.
+
+### Stop / start resources (save idle cost)
+
+To pause ECS workloads and EC2 hosts overnight or over weekends:
+
+```bash
+# See current desired counts
+python infra/scripts/cost_control.py status --profile relaydesk-admin --region ap-south-1
+
+# Stop ECS + scale ASGs to 0 (saves EC2/compute). Optionally stop RDS too.
+python infra/scripts/cost_control.py stop --profile relaydesk-admin --region ap-south-1 --include-rds
+
+# Restore from infra/scripts/cost-control-state.json
+python infra/scripts/cost_control.py start --profile relaydesk-admin --region ap-south-1 --include-rds
+```
+
+**Still billed while stopped:** NAT Gateway, ALB, public IPv4 addresses, RDS storage (if RDS stopped), SSM, ECR, etc. Full teardown requires `terraform destroy`.

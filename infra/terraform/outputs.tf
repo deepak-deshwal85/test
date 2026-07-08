@@ -166,6 +166,11 @@ output "rds_master_username" {
   value       = var.enable_rds_postgres ? aws_db_instance.postgres[0].username : null
 }
 
+output "rds_instance_identifier" {
+  description = "RDS instance identifier (for stop/start scripts)."
+  value       = var.enable_rds_postgres ? aws_db_instance.postgres[0].id : null
+}
+
 output "billing_dashboard_name" {
   description = "CloudWatch dashboard for month-to-date estimated AWS charges (us-east-1)."
   value       = var.enable_cost_monitoring ? aws_cloudwatch_dashboard.billing[0].dashboard_name : null
