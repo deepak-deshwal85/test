@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """Upload RelayDesk ECS secrets to AWS SSM Parameter Store.
 
-Reads infra/scripts/env.properties (KEY=VALUE) plus api/.env, voice-agent/.env,
-and ui/.env by default, then runs aws ssm put-parameter for each Terraform-managed secret.
+Reads each app's .env by default (api/.env, voice-agent/.env, ui/.env),
+optionally merges infra/scripts/env.properties, then uploads SSM parameters.
+
+Env templates live next to each app:
+  api/.env.example
+  voice-agent/.env.example
+  ui/.env.example
 
 Usage:
   python infra/scripts/sync_ssm_parameters.py --dry-run
-  python infra/scripts/sync_ssm_parameters.py --region ap-south-1
+  python infra/scripts/sync_ssm_parameters.py --region ap-south-1 --profile relaydesk-admin
   python infra/scripts/sync_ssm_parameters.py --write-env-properties
 """
 
@@ -132,7 +137,8 @@ def write_env_properties(path: Path, values: dict[str, str]) -> None:
         set(API_SECRET_KEYS) | set(VOICE_AGENT_SECRET_KEYS) | set(UI_SECRET_KEYS)
     )
     lines = [
-        "# RelayDesk SSM source file — do not commit (see env.properties.example)",
+        "# Optional combined SSM upload file — do not commit.",
+        "# Preferred source: api/.env, voice-agent/.env, ui/.env",
         "# Used by: python infra/scripts/sync_ssm_parameters.py",
         "",
     ]
@@ -195,7 +201,8 @@ def main() -> int:
 
     if not properties:
         print(
-            f"No values found. Create {args.properties} or pass --from-local-env.",
+            "No values found. Copy each app's .env.example to .env and fill secrets, "
+            f"or create {args.properties}.",
             file=sys.stderr,
         )
         return 1
@@ -274,7 +281,7 @@ def main() -> int:
         return 1
     if missing and not args.dry_run:
         print(
-            "\nSome parameters were skipped. Add keys to env.properties and re-run.",
+            "\nSome parameters were skipped. Add keys to each app's .env and re-run.",
             file=sys.stderr,
         )
     return 0

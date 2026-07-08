@@ -116,19 +116,24 @@ terraform output voice_agent_rag_api_base_url
 
 Terraform creates placeholder `SecureString` parameters. Set real values after apply (values are **not** stored in Terraform state after you change them):
 
-```powershell
-# From api/.env + voice-agent/.env
-python infra/scripts/sync_ssm_parameters.py --from-local-env --dry-run
-python infra/scripts/sync_ssm_parameters.py --from-local-env --region ap-south-1
+Templates live in each app (`api/.env.example`, `voice-agent/.env.example`, `ui/.env.example`).
+Fill the corresponding `.env` files, then:
 
-# Or generate infra/scripts/env.properties first, then upload
-python infra/scripts/sync_ssm_parameters.py --write-env-properties --from-local-env
+```powershell
+# From api/.env + voice-agent/.env + ui/.env
+python infra/scripts/sync_ssm_parameters.py --dry-run
+python infra/scripts/sync_ssm_parameters.py --region ap-south-1
+
+# Optional: write combined infra/scripts/env.properties, then upload
+python infra/scripts/sync_ssm_parameters.py --write-env-properties
 python infra/scripts/sync_ssm_parameters.py --region ap-south-1
 ```
 
-**API parameters:** `OPENAI_API_KEY`, `DATABASE_URL`, `RAG_API_KEY`, `QDRANT_API_KEY`, `QDRANT_CLUSTER_ENDPOINT`, `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `LIVEKIT_SIP_OUTBOUND_TRUNK_ID`
+**API parameters:** `OPENAI_API_KEY`, `DATABASE_URL`, `QDRANT_API_KEY`, `QDRANT_CLUSTER_ENDPOINT`, `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `LIVEKIT_SIP_OUTBOUND_TRUNK_ID`
 
-**Voice agent parameters:** `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `XAI_API_KEY`, `DEEPGRAM_API_KEY`, `CARTESIA_API_KEY`, `CALCOM_API_KEY`, `RAG_API_KEY`
+**Voice agent parameters:** `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `XAI_API_KEY`, `DEEPGRAM_API_KEY`, `CARTESIA_API_KEY`, `CALCOM_API_KEY`, `COGNITO_CLIENT_SECRET`
+
+**UI parameters:** `AUTH_SECRET`, `COGNITO_CLIENT_SECRET`
 
 ### 3. Initial container images (optional)
 

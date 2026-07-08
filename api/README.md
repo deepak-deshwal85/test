@@ -43,7 +43,7 @@ DATABASE_URL=postgresql+asyncpg://postgres:1234@localhost:5432/relaydesk
 ```powershell
 docker compose up -d qdrant
 cd api
-# create/edit api/.env
+copy .env.example .env
 uv sync
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```

@@ -18,7 +18,7 @@ Browser requests never contain static API secrets; the server proxy forwards OAu
 
 ### OAuth setup
 
-1. Create `ui/.env` (or `ui/.env.local`) with the variables below.
+1. Copy `ui/.env.example` to `ui/.env` (or `.env.local`) and fill values.
 2. Generate `AUTH_SECRET`: `openssl rand -base64 32`
 3. Set Cognito values:
    - `COGNITO_ISSUER`
@@ -38,7 +38,8 @@ When using this mode, set API `OAUTH_DISABLED=true` (or an API instance that acc
 ```bash
 cd ui
 npm install
-# create/edit .env (or .env.local)
+copy .env.example .env
+# edit .env
 npm run dev
 ```
 

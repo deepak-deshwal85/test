@@ -15,7 +15,7 @@ RelayDesk LiveKit voice agent for phone calls. Handles speech-to-text, LLM reaso
 ```powershell
 cd voice-agent
 uv sync
-# create/edit voice-agent/.env
+copy .env.example .env
 ```
 
 Fill in `.env`:

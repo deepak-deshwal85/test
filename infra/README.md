@@ -52,21 +52,23 @@ terraform apply
 
 After apply, set secret values (Console → Systems Manager → Parameter Store, or script):
 
-```powershell
-# From api/.env + voice-agent/.env (recommended)
-python infra/scripts/sync_ssm_parameters.py --from-local-env --dry-run
-python infra/scripts/sync_ssm_parameters.py --from-local-env --region ap-south-1 --profile relaydesk-admin
+Copy templates first if needed (`api/.env.example`, `voice-agent/.env.example`, `ui/.env.example`),
+fill real values in each app's `.env`, then sync:
 
-# Or build infra/scripts/env.properties first, then upload
-python infra/scripts/sync_ssm_parameters.py --write-env-properties --from-local-env
-python infra/scripts/sync_ssm_parameters.py --region ap-south-1
+```powershell
+# Reads api/.env + voice-agent/.env + ui/.env by default
+python infra/scripts/sync_ssm_parameters.py --dry-run
+python infra/scripts/sync_ssm_parameters.py --region ap-south-1 --profile relaydesk-admin
+
+# Optional: also write a combined infra/scripts/env.properties (gitignored)
+python infra/scripts/sync_ssm_parameters.py --write-env-properties
 ```
 
 PowerShell:
 
 ```powershell
-.\infra\scripts\sync-ssm-parameters.ps1 -FromLocalEnv -DryRun
-.\infra\scripts\sync-ssm-parameters.ps1 -FromLocalEnv
+.\infra\scripts\sync-ssm-parameters.ps1 -DryRun
+.\infra\scripts\sync-ssm-parameters.ps1
 ```
 
 Manual single parameter:
