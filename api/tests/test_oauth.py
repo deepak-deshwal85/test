@@ -99,3 +99,49 @@ def test_valid_access_token_is_accepted(monkeypatch: pytest.MonkeyPatch, rsa_key
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 200
+
+
+def test_m2m_access_token_with_sub_client_id_is_accepted(
+    monkeypatch: pytest.MonkeyPatch, rsa_keys
+) -> None:
+    from cryptography.hazmat.primitives import serialization
+    from fastapi.testclient import TestClient
+    from unittest.mock import MagicMock
+
+    from app.core import oauth as oauth_module
+    from app.core.dependencies import get_search_service
+    from app.main import create_app
+
+    private_key, public_key = rsa_keys
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+
+    class FakeSigningKey:
+        key = public_pem
+
+    class FakeJwkClient:
+        def get_signing_key_from_jwt(self, _token):
+            return FakeSigningKey()
+
+    monkeypatch.setattr(oauth_module, "_jwks_client", lambda _url: FakeJwkClient())
+
+    mock_service = MagicMock()
+    mock_service.search.return_value = ([], "phone_911171366880")
+
+    app = create_app()
+    app.dependency_overrides[get_search_service] = lambda: mock_service
+    token = _encode_token(
+        private_key,
+        sub="m2m-client-id",
+        client_id=None,
+        aud=None,
+    )
+    client = TestClient(app)
+    response = client.post(
+        "/v1/search",
+        json={"phone_number": "911171366880", "query": "hello"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200

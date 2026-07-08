@@ -38,6 +38,20 @@ def _allowed_client_ids(settings: Settings) -> frozenset[str]:
     )
 
 
+def _resolve_client_id(claims: dict[str, object]) -> str | None:
+    for claim_name in ("client_id", "aud", "azp"):
+        claim_value = claims.get(claim_name)
+        if claim_value:
+            return str(claim_value)
+
+    # Some Cognito client-credentials tokens only carry the app client in `sub`.
+    sub = claims.get("sub")
+    token_use = claims.get("token_use")
+    if token_use == "access" and isinstance(sub, str) and sub:
+        return sub
+    return None
+
+
 def validate_access_token(token: str, settings: Settings) -> AuthenticatedPrincipal:
     if settings.oauth_disabled:
         return AuthenticatedPrincipal(
@@ -82,10 +96,7 @@ def validate_access_token(token: str, settings: Settings) -> AuthenticatedPrinci
             detail="Token is not an access token",
         )
 
-    client_id = claims.get("client_id")
-    if client_id is None:
-        client_id = claims.get("aud")
-    client_id_str = str(client_id) if client_id is not None else None
+    client_id_str = _resolve_client_id(claims)
 
     allowed_clients = _allowed_client_ids(settings)
     if allowed_clients and client_id_str not in allowed_clients:
