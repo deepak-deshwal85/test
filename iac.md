@@ -88,10 +88,10 @@ api/Dockerfile                    # FastAPI (uvicorn on :8090)
 
 ### 1. Terraform
 
-```powershell
+```bash
 cd infra/terraform
 
-copy terraform.tfvars.example terraform.tfvars
+cp terraform.tfvars.example terraform.tfvars
 # Edit: github_org, aws_region (default ap-south-1), sizing if needed
 
 # Optional: remote state — see backend.tf.example (S3 + native lockfile)
@@ -103,7 +103,7 @@ terraform apply
 
 Note useful outputs:
 
-```powershell
+```bash
 terraform output github_actions_role_arn
 terraform output ecr_api_repository_url
 terraform output ecr_voice_agent_repository_url
@@ -119,7 +119,7 @@ Terraform creates placeholder `SecureString` parameters. Set real values after a
 Templates live in each app (`api/.env.example`, `voice-agent/.env.example`, `ui/.env.example`).
 Fill the corresponding `.env` files, then:
 
-```powershell
+```bash
 # From api/.env + voice-agent/.env + ui/.env
 python infra/scripts/sync_ssm_parameters.py --dry-run
 python infra/scripts/sync_ssm_parameters.py --region ap-south-1
@@ -139,18 +139,20 @@ python infra/scripts/sync_ssm_parameters.py --region ap-south-1
 
 GitHub Actions can do this on first push to `main`. To push manually:
 
-```powershell
-$PROFILE_NAME = "relaydesk-admin"
-$AWS_REGION   = "ap-south-1"
-$ACCOUNT_ID   = terraform output -raw aws_account_id
-$ECR_API      = terraform output -raw ecr_api_repository_url
-$ECR_VOICE    = terraform output -raw ecr_voice_agent_repository_url
-$IMAGE_TAG    = "v1"
+```bash
+PROFILE_NAME="relaydesk-admin"
+AWS_REGION="ap-south-1"
+IMAGE_TAG="v1"
 
-aws ecr get-login-password --profile $PROFILE_NAME --region $AWS_REGION |
-  docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
-
+cd infra/terraform
+ACCOUNT_ID="$(terraform output -raw aws_account_id)"
+ECR_API="$(terraform output -raw ecr_api_repository_url)"
+ECR_VOICE="$(terraform output -raw ecr_voice_agent_repository_url)"
 cd ../..
+
+aws ecr get-login-password --profile "$PROFILE_NAME" --region "$AWS_REGION" | docker login \
+  --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
 docker build -t relaydesk-api:latest ./api
 docker build -t relaydesk-voice:latest ./voice-agent
 
@@ -164,7 +166,12 @@ docker tag relaydesk-voice:latest "${ECR_VOICE}:latest"
 docker push "${ECR_VOICE}:${IMAGE_TAG}"
 docker push "${ECR_VOICE}:latest"
 
-aws ecs update-service --profile $PROFILE_NAME --region $AWS_REGION --cluster relaydesk-prod --service relaydesk-prod-api --force-new-deployment
+aws ecs update-service \
+  --profile "$PROFILE_NAME" \
+  --region "$AWS_REGION" \
+  --cluster relaydesk-prod \
+  --service relaydesk-prod-api \
+  --force-new-deployment
 ```
 
 ### 4. GitHub repository variables
@@ -272,12 +279,12 @@ terraform output api_alb_dns_name
 
 **Logs** (live tail — set profile/region; use two terminals for both services)
 
-```powershell
-$PROFILE_NAME = "relaydesk-admin"
-$AWS_REGION   = "ap-south-1"
+```bash
+PROFILE_NAME="relaydesk-admin"
+AWS_REGION="ap-south-1"
 
-aws logs tail /ecs/relaydesk-prod/api --since 10m --follow --region $AWS_REGION --profile $PROFILE_NAME
-aws logs tail /ecs/relaydesk-prod/voice-agent --since 10m --follow --region $AWS_REGION --profile $PROFILE_NAME
+aws logs tail /ecs/relaydesk-prod/api --since 10m --follow --region "$AWS_REGION" --profile "$PROFILE_NAME"
+aws logs tail /ecs/relaydesk-prod/voice-agent --since 10m --follow --region "$AWS_REGION" --profile "$PROFILE_NAME"
 ```
 
 **SSM into ECS host (debugging)**

@@ -13,15 +13,15 @@ The voice agent calls the RAG API over HTTP. Each project has its own `pyproject
 
 ### 1. Start Qdrant
 
-```powershell
+```bash
 docker compose up -d qdrant
 ```
 
 ### 2. Start RAG API
 
-```powershell
+```bash
 cd api
-copy .env.example .env
+cp .env.example .env
 uv sync
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
@@ -34,9 +34,9 @@ Open http://127.0.0.1:8090/docs and use **POST** `/v1/collections/{collection}/d
 
 ### 4. Start voice agent
 
-```powershell
+```bash
 cd voice-agent
-copy .env.example .env
+cp .env.example .env
 uv sync
 uv run python src/agent.py download-files
 uv run python src/agent.py console
@@ -68,13 +68,13 @@ relaydesk/
 
 Full guide: **[iac.md](iac.md)** (architecture, Terraform bootstrap, GitHub Actions, sizing, secrets).
 
-Quick path: `cd infra/terraform && copy terraform.tfvars.example terraform.tfvars` → `terraform apply` → set SSM secrets → push to `main` for CI deploy.
+Quick path: `cd infra/terraform && cp terraform.tfvars.example terraform.tfvars` → `terraform apply` → set SSM secrets → push to `main` for CI deploy.
 
 **Live ECS logs:** see [infra/README.md](infra/README.md#live-logs-ecs--cloudwatch).
 
 ## Development
 
-```powershell
+```bash
 cd voice-agent; uv run pytest
 cd api; uv run pytest
 ```

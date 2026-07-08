@@ -38,7 +38,7 @@ When using this mode, set API `OAUTH_DISABLED=true` (or an API instance that acc
 ```bash
 cd ui
 npm install
-copy .env.example .env
+cp .env.example .env
 # edit .env
 npm run dev
 ```
@@ -56,6 +56,50 @@ The UI runs as a Next.js standalone container on ECS.
 
 Set OAuth callback URL to:
 - `https://<public-ui-host>/api/auth/callback/cognito`
+
+### Docker build and push (ECR)
+
+From the **repo root** (not `ui/`):
+
+```bash
+PROFILE_NAME="relaydesk-admin"
+AWS_REGION="ap-south-1"
+IMAGE_TAG="latest"   # or a version / git SHA
+
+cd infra/terraform
+ACCOUNT_ID="$(terraform output -raw aws_account_id)"
+ECR_UI="$(terraform output -raw ecr_ui_repository_url)"
+cd ../..
+
+aws ecr get-login-password --profile "$PROFILE_NAME" --region "$AWS_REGION" \
+  | docker login --username AWS --password-stdin \
+    "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+docker build -t relaydesk-ui:latest ./ui
+docker tag relaydesk-ui:latest "${ECR_UI}:${IMAGE_TAG}"
+docker tag relaydesk-ui:latest "${ECR_UI}:latest"
+docker push "${ECR_UI}:${IMAGE_TAG}"
+docker push "${ECR_UI}:latest"
+```
+
+Then force a new ECS deployment (optional if the service already watches `:latest`):
+
+```bash
+PROFILE_NAME="relaydesk-admin"
+AWS_REGION="ap-south-1"
+
+cd infra/terraform
+CLUSTER="$(terraform output -raw ecs_cluster_name)"
+SERVICE="$(terraform output -raw ecs_service_ui_name)"
+cd ../..
+
+aws ecs update-service \
+  --cluster "$CLUSTER" \
+  --service "$SERVICE" \
+  --force-new-deployment \
+  --profile "$PROFILE_NAME" \
+  --region "$AWS_REGION"
+```
 
 ## Stack rationale
 

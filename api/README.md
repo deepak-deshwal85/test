@@ -24,9 +24,9 @@ postgresql+asyncpg://postgres:1234@localhost:5432/relaydesk
 
 Create database and tables:
 
-```powershell
+```bash
 cd api
-$env:PGPASSWORD='1234'
+export PGPASSWORD='1234'
 psql -U postgres -h localhost -p 5432 -f scripts/init_db.sql
 ```
 
@@ -40,10 +40,10 @@ DATABASE_URL=postgresql+asyncpg://postgres:1234@localhost:5432/relaydesk
 
 ## Quick start
 
-```powershell
+```bash
 docker compose up -d qdrant
 cd api
-copy .env.example .env
+cp .env.example .env
 uv sync
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
@@ -136,6 +136,6 @@ The voice agent must be running (`uv run python src/agent.py dev`) to answer out
 
 ## Tests
 
-```powershell
+```bash
 uv run pytest
 ```

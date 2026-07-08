@@ -12,10 +12,10 @@ RelayDesk LiveKit voice agent for phone calls. Handles speech-to-text, LLM reaso
 
 ## Setup
 
-```powershell
+```bash
 cd voice-agent
 uv sync
-copy .env.example .env
+cp .env.example .env
 ```
 
 Fill in `.env`:
@@ -39,20 +39,20 @@ CLIENT_PHONE_OVERRIDE=+911171366880
 
 Start [api](../api/) first, then:
 
-```powershell
+```bash
 uv run python src/agent.py download-files
 uv run python src/agent.py console
 ```
 
 For telephony / LiveKit Cloud:
 
-```powershell
+```bash
 uv run python src/agent.py dev
 ```
 
 Deploy to LiveKit Cloud:
 
-```powershell
+```bash
 lk agent create
 ```
 
@@ -104,6 +104,6 @@ voice-agent/
 
 ## Tests
 
-```powershell
+```bash
 uv run pytest
 ```

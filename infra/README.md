@@ -38,11 +38,11 @@ Qdrant Cloud / RDS — external managed services (not in this Terraform)
 
 ## Bootstrap (one time)
 
-```powershell
+```bash
 cd infra/terraform
 
 # Copy and edit variables (no secrets in git)
-copy terraform.tfvars.example terraform.tfvars
+cp terraform.tfvars.example terraform.tfvars
 
 # Remote state (recommended): create S3 bucket (enable versioning), then copy backend.tf.example -> backend.tf
 terraform init
@@ -55,7 +55,7 @@ After apply, set secret values (Console → Systems Manager → Parameter Store,
 Copy templates first if needed (`api/.env.example`, `voice-agent/.env.example`, `ui/.env.example`),
 fill real values in each app's `.env`, then sync:
 
-```powershell
+```bash
 # Reads api/.env + voice-agent/.env + ui/.env by default
 python infra/scripts/sync_ssm_parameters.py --dry-run
 python infra/scripts/sync_ssm_parameters.py --region ap-south-1 --profile relaydesk-admin
@@ -64,11 +64,11 @@ python infra/scripts/sync_ssm_parameters.py --region ap-south-1 --profile relayd
 python infra/scripts/sync_ssm_parameters.py --write-env-properties
 ```
 
-PowerShell:
+PowerShell (not needed; use the Python sync script instead):
 
-```powershell
-.\infra\scripts\sync-ssm-parameters.ps1 -DryRun
-.\infra\scripts\sync-ssm-parameters.ps1
+```bash
+python infra/scripts/sync_ssm_parameters.py --dry-run
+python infra/scripts/sync_ssm_parameters.py --region ap-south-1 --profile relaydesk-admin
 ```
 
 ### Enable Google sign-in (Cognito IdP)
@@ -85,7 +85,7 @@ GOOGLE_CLIENT_SECRET=GOCSPX-xxxxx
 
 3. Sync:
 
-```powershell
+```bash
 python infra/scripts/sync_ssm_parameters.py --region ap-south-1 --profile relaydesk-admin
 ```
 
@@ -100,7 +100,7 @@ https://relaydesk-prod.auth.ap-south-1.amazoncognito.com/oauth2/idpresponse
 
 Manual single parameter:
 
-```powershell
+```bash
 aws ssm put-parameter --name "/relaydesk/prod/api/OPENAI_API_KEY" --value "sk-..." --type SecureString --overwrite
 # Cognito Google IdP:
 aws ssm put-parameter --name "/relaydesk/prod/cognito/GOOGLE_CLIENT_ID" --value "..." --type SecureString --overwrite
@@ -109,18 +109,19 @@ aws ssm put-parameter --name "/relaydesk/prod/cognito/GOOGLE_CLIENT_SECRET" --va
 
 Build and push initial images (or let GitHub Actions do it on first merge to `main`):
 
-```powershell
-$PROFILE_NAME = "relaydesk-admin"
-$AWS_REGION   = "ap-south-1"
-$ACCOUNT_ID   = terraform output -raw aws_account_id
-$ECR_API      = terraform output -raw ecr_api_repository_url
-$ECR_VOICE    = terraform output -raw ecr_voice_agent_repository_url
-$IMAGE_TAG    = "v1" # or git SHA
+```bash
+PROFILE_NAME="relaydesk-admin"
+AWS_REGION="ap-south-1"
+IMAGE_TAG="v1" # or git SHA
 
-aws ecr get-login-password --profile $PROFILE_NAME --region $AWS_REGION |
-  docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
-
+cd infra/terraform
+ACCOUNT_ID="$(terraform output -raw aws_account_id)"
+ECR_API="$(terraform output -raw ecr_api_repository_url)"
+ECR_VOICE="$(terraform output -raw ecr_voice_agent_repository_url)"
 cd ../..
+
+aws ecr get-login-password --profile "$PROFILE_NAME" --region "$AWS_REGION" | docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
 docker build -t relaydesk-api:latest ./api
 docker build -t relaydesk-voice:latest ./voice-agent
 
@@ -155,30 +156,32 @@ Both services stay on the **same ECS cluster** and talk over VPC DNS (`api.relay
 
 Changing an instance type updates the launch template only — run an **ASG instance refresh** per group after apply:
 
-```powershell
+```bash
 # API host
-aws autoscaling start-instance-refresh `
-  --auto-scaling-group-name relaydesk-prod-ecs-api `
-  --region ap-south-1 `
-  --profile relaydesk-admin `
-  --preferences file://c:/Users/Swati/Downloads/telephone-agent/infra/scripts/asg-instance-refresh-prefs.json
+PREFS_FILE="file://$PWD/infra/scripts/asg-instance-refresh-prefs.json"
+
+aws autoscaling start-instance-refresh \
+  --auto-scaling-group-name relaydesk-prod-ecs-api \
+  --region ap-south-1 \
+  --profile relaydesk-admin \
+  --preferences "$PREFS_FILE"
 
 # Voice host
-aws autoscaling start-instance-refresh `
-  --auto-scaling-group-name relaydesk-prod-ecs-voice `
-  --region ap-south-1 `
-  --profile relaydesk-admin `
-  --preferences file://c:/Users/Swati/Downloads/telephone-agent/infra/scripts/asg-instance-refresh-prefs.json
+aws autoscaling start-instance-refresh \
+  --auto-scaling-group-name relaydesk-prod-ecs-voice \
+  --region ap-south-1 \
+  --profile relaydesk-admin \
+  --preferences "$PREFS_FILE"
 ```
 
 If refresh stalls with *instance is protected*, remove scale-in protection on the old node first:
 
-```powershell
-aws autoscaling set-instance-protection `
-  --instance-ids <instance-id> `
-  --auto-scaling-group-name relaydesk-prod-ecs `
-  --no-protected-from-scale-in `
-  --region ap-south-1 `
+```bash
+aws autoscaling set-instance-protection \
+  --instance-ids "<instance-id>" \
+  --auto-scaling-group-name relaydesk-prod-ecs \
+  --no-protected-from-scale-in \
+  --region ap-south-1 \
   --profile relaydesk-admin
 ```
 
@@ -188,18 +191,18 @@ Preferences file for manual refresh: `infra/scripts/asg-instance-refresh-prefs.j
 
 Log groups (from Terraform): `/ecs/relaydesk-prod/api` and `/ecs/relaydesk-prod/voice-agent`.
 
-```powershell
-$PROFILE_NAME = "relaydesk-admin"
-$AWS_REGION   = "ap-south-1"
+```bash
+PROFILE_NAME="relaydesk-admin"
+AWS_REGION="ap-south-1"
 
 # API
-aws logs tail /ecs/relaydesk-prod/api --since 10m --follow --region $AWS_REGION --profile $PROFILE_NAME
+aws logs tail /ecs/relaydesk-prod/api --since 10m --follow --region "$AWS_REGION" --profile "$PROFILE_NAME"
 
 # Voice agent (separate terminal)
-aws logs tail /ecs/relaydesk-prod/voice-agent --since 10m --follow --region $AWS_REGION --profile $PROFILE_NAME
+aws logs tail /ecs/relaydesk-prod/voice-agent --since 10m --follow --region "$AWS_REGION" --profile "$PROFILE_NAME"
 ```
 
-Set `$env:AWS_PROFILE = "relaydesk-admin"` instead of `--profile` if you prefer.
+Set `AWS_PROFILE=relaydesk-admin` instead of `--profile` if you prefer.
 
 ## Region
 
@@ -225,7 +228,7 @@ budget_alert_emails    = ["you@example.com"]  # optional
 
 After `terraform apply`, open the dashboard:
 
-```powershell
+```bash
 terraform output billing_dashboard_url
 terraform output cost_explorer_url
 ```
