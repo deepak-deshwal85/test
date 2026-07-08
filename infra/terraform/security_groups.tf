@@ -8,7 +8,7 @@ resource "aws_security_group" "alb_api" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = var.api_publicly_accessible ? ["0.0.0.0/0"] : [var.vpc_cidr]
+    cidr_blocks = local.alb_public ? ["0.0.0.0/0"] : [var.vpc_cidr]
   }
 
   egress {
@@ -32,6 +32,14 @@ resource "aws_security_group" "ecs_tasks" {
     description     = "API from ALB"
     from_port       = 8090
     to_port         = 8090
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_api.id]
+  }
+
+  ingress {
+    description     = "UI from ALB"
+    from_port       = 3000
+    to_port         = 3000
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_api.id]
   }

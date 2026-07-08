@@ -24,8 +24,22 @@ voice_agent_desired_count = 1
 voice_agent_cpu           = 2048
 voice_agent_memory        = 7680
 
-# Set true only if you need to upload documents from the public internet
-api_publicly_accessible = false
+# RelayDesk web console (Next.js on ECS)
+enable_ui         = true
+enable_cognito    = true
+ui_ecr_image_tag  = "latest"
+ui_desired_count  = 1
+
+# Set true when UI is enabled (browsers must reach the ALB)
+api_publicly_accessible = true
+
+# Cognito OAuth callbacks — add your ALB URL after terraform apply
+# cognito_ui_callback_urls = ["http://localhost:3000/api/auth/callback/cognito", "http://<alb-dns>/api/auth/callback/cognito"]
+# cognito_ui_logout_urls   = ["http://localhost:3000/login", "http://<alb-dns>/login"]
+# cognito_google_client_id = ""
+# cognito_google_client_secret = ""
+# cognito_github_client_id = ""
+# cognito_github_client_secret = ""
 
 # Set false if GitHub OIDC provider already exists in this AWS account
 manage_github_oidc_provider = true

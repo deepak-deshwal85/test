@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from app.core.config import Settings, get_settings
-from app.core.dependencies import get_document_service, verify_api_key
+from app.core.dependencies import get_document_service, verify_access_token
 from app.core.qdrant_errors import is_qdrant_connection_error, qdrant_unavailable_detail
 from app.schemas.documents import (
     DocumentDeleteResponse,
@@ -20,7 +20,7 @@ from app.services.document_service import DocumentService
 router = APIRouter(
     prefix="/v1/collections/{collection}/documents",
     tags=["documents"],
-    dependencies=[Depends(verify_api_key)],
+    dependencies=[Depends(verify_access_token)],
 )
 
 

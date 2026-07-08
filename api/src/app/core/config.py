@@ -53,7 +53,42 @@ class Settings(BaseSettings):
         default=None, alias="QDRANT_CLUSTER_ENDPOINT"
     )
     qdrant_cluster_name: str | None = Field(default=None, alias="QDRANT_CLUSTER_NAME")
-    rag_api_key: str | None = Field(default=None, alias="RAG_API_KEY")
+    cors_origins: str = Field(
+        default="http://localhost:3000,http://127.0.0.1:3000",
+        alias="CORS_ORIGINS",
+    )
+
+    oauth_disabled: bool = Field(default=False, alias="OAUTH_DISABLED")
+    cognito_region: str | None = Field(default=None, alias="COGNITO_REGION")
+    cognito_user_pool_id: str | None = Field(default=None, alias="COGNITO_USER_POOL_ID")
+    cognito_ui_client_id: str | None = Field(
+        default=None, alias="COGNITO_UI_CLIENT_ID"
+    )
+    cognito_m2m_client_id: str | None = Field(
+        default=None, alias="COGNITO_M2M_CLIENT_ID"
+    )
+    cognito_required_scope: str = Field(
+        default="relaydesk-api/access",
+        alias="COGNITO_REQUIRED_SCOPE",
+    )
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def cognito_issuer(self) -> str | None:
+        if not self.cognito_region or not self.cognito_user_pool_id:
+            return None
+        return (
+            f"https://cognito-idp.{self.cognito_region}.amazonaws.com/"
+            f"{self.cognito_user_pool_id}"
+        )
+
+    @property
+    def cognito_jwks_url(self) -> str | None:
+        issuer = self.cognito_issuer
+        return f"{issuer}/.well-known/jwks.json" if issuer else None
 
     @model_validator(mode="after")
     def resolve_qdrant_cloud_url(self) -> Settings:

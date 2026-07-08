@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import logging
-import os
 import time
 
 import httpx
 
 from rag_client.config import RagClientSettings, resolve_rag_api_url
 from rag_client.models import RagSearchHit
+from rag_client.oauth_token import get_cognito_token_provider
 
 logger = logging.getLogger("relaydesk-agent")
 
@@ -28,10 +28,7 @@ class ApiRagRetriever:
         self._settings = settings
         self._http_client = http_client
         self._owns_client = http_client is None
-        api_key = os.getenv("RAG_API_KEY", "").strip()
-        self._auth_headers: dict[str, str] = (
-            {"Authorization": f"Bearer {api_key}"} if api_key else {}
-        )
+        self._token_provider = get_cognito_token_provider()
 
     def _client(self) -> httpx.AsyncClient:
         if self._http_client is None:
@@ -46,9 +43,15 @@ class ApiRagRetriever:
         if self._owns_client and self._http_client is not None:
             await self._http_client.aclose()
             self._http_client = None
+        if self._token_provider is not None:
+            await self._token_provider.aclose()
 
-    def _headers(self) -> dict[str, str]:
-        return {"Content-Type": "application/json", **self._auth_headers}
+    async def _headers(self) -> dict[str, str]:
+        headers = {"Content-Type": "application/json"}
+        if self._token_provider is not None:
+            token = await self._token_provider.get_access_token()
+            headers["Authorization"] = f"Bearer {token}"
+        return headers
 
     async def warmup(self) -> None:
         try:
@@ -66,7 +69,7 @@ class ApiRagRetriever:
         response = await self._client().post(
             "/v1/search",
             json=payload,
-            headers=self._headers(),
+            headers=await self._headers(),
         )
         response.raise_for_status()
         data = response.json()

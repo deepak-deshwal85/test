@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
+from app.core.oauth import AuthenticatedPrincipal, validate_access_token
 from app.db.embedding_provider import EmbeddingProviderFactory
 from app.db.postgres.customer_repository import CustomerRepository
 from app.db.postgres.session import get_db_session
@@ -103,22 +105,23 @@ def reset_rag_clients() -> None:
     _embedding_provider_factory = None
 
 
-def verify_api_key(
-    settings: Annotated[Settings, Depends(get_settings)],
-    authorization: Annotated[str | None, Header()] = None,
-) -> None:
-    if not settings.rag_api_key:
-        return
+_bearer_scheme = HTTPBearer(auto_error=False)
 
-    if not authorization or not authorization.startswith("Bearer "):
+
+def verify_access_token(
+    settings: Annotated[Settings, Depends(get_settings)],
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)
+    ] = None,
+) -> AuthenticatedPrincipal:
+    if settings.oauth_disabled:
+        return validate_access_token("", settings)
+
+    if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing bearer token",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token = authorization.removeprefix("Bearer ").strip()
-    if token != settings.rag_api_key:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key",
-        )
+    return validate_access_token(credentials.credentials, settings)

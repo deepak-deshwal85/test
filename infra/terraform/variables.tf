@@ -83,6 +83,80 @@ variable "api_publicly_accessible" {
   default     = false
 }
 
+variable "enable_ui" {
+  description = "Deploy RelayDesk Next.js UI on the API ECS host behind the shared ALB."
+  type        = bool
+  default     = true
+}
+
+variable "enable_cognito" {
+  description = "Use AWS Cognito OAuth2 (SSO + client credentials) for API authorization."
+  type        = bool
+  default     = true
+}
+
+variable "cognito_ui_callback_urls" {
+  description = "OAuth callback URLs for the UI Cognito app client."
+  type        = list(string)
+  default     = ["http://localhost:3000/api/auth/callback/cognito"]
+}
+
+variable "cognito_ui_logout_urls" {
+  description = "OAuth logout URLs for the UI Cognito app client."
+  type        = list(string)
+  default     = ["http://localhost:3000/login"]
+}
+
+variable "cognito_google_client_id" {
+  description = "Google OAuth client ID for Cognito federation (optional)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "cognito_google_client_secret" {
+  description = "Google OAuth client secret for Cognito federation (optional)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "cognito_github_client_id" {
+  description = "GitHub OAuth client ID for Cognito federation (optional)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "cognito_github_client_secret" {
+  description = "GitHub OAuth client secret for Cognito federation (optional)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "ui_ecr_image_tag" {
+  description = "Docker image tag for the UI ECR image."
+  type        = string
+  default     = "latest"
+}
+
+variable "ui_desired_count" {
+  description = "ECS desired count for the UI service."
+  type        = number
+  default     = 1
+}
+
+variable "ui_cpu" {
+  type    = number
+  default = 256
+}
+
+variable "ui_memory" {
+  type    = number
+  default = 512
+}
+
 variable "github_org" {
   description = "GitHub organization or username for OIDC trust."
   type        = string

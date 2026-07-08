@@ -146,10 +146,11 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
           "ecr:BatchGetImage",
           "ecr:GetDownloadUrlForLayer",
         ]
-        Resource = [
+        Resource = compact([
           aws_ecr_repository.api.arn,
           aws_ecr_repository.voice_agent.arn,
-        ]
+          var.enable_ui ? aws_ecr_repository.ui[0].arn : null,
+        ])
       },
       {
         Effect = "Allow"

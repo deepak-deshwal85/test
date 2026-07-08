@@ -5,8 +5,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
-from app.core.dependencies import get_call_job_service, verify_api_key
+from app.core.dependencies import get_call_job_service, verify_access_token
 from app.schemas.call_jobs import (
+    CallJobListResponse,
     CallJobResponse,
     TriggerCallJobRequest,
     TriggerCallJobResponse,
@@ -16,7 +17,7 @@ from app.services.call_job_service import CallJobService
 router = APIRouter(
     prefix="/v1/call-jobs",
     tags=["call-jobs"],
-    dependencies=[Depends(verify_api_key)],
+    dependencies=[Depends(verify_access_token)],
 )
 
 
@@ -40,6 +41,19 @@ async def trigger_call_job(
             f"Poll GET /v1/call-jobs/{job.id} for status."
         ),
     )
+
+
+@router.get("", response_model=CallJobListResponse)
+async def list_call_jobs(
+    service: Annotated[CallJobService, Depends(get_call_job_service)],
+    client_phone_number: str | None = None,
+    limit: int = 20,
+) -> CallJobListResponse:
+    jobs = await service.list_jobs(
+        client_phone_number=client_phone_number,
+        limit=min(max(limit, 1), 100),
+    )
+    return CallJobListResponse(jobs=jobs, count=len(jobs))
 
 
 @router.get("/{job_id}", response_model=CallJobResponse)

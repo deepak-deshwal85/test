@@ -38,3 +38,8 @@ class TriggerCallJobResponse(BaseModel):
     job_id: UUID
     status: str
     message: str
+
+
+class CallJobListResponse(BaseModel):
+    jobs: list[CallJobResponse]
+    count: int

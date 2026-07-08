@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.core.dependencies import get_customer_service, verify_api_key
+from app.core.dependencies import get_customer_service, verify_access_token
 from app.schemas.customers import (
     CustomerCreateRequest,
     CustomerListResponse,
@@ -16,7 +16,7 @@ from app.services.customer_service import CustomerService
 router = APIRouter(
     prefix="/v1/customers",
     tags=["customers"],
-    dependencies=[Depends(verify_api_key)],
+    dependencies=[Depends(verify_access_token)],
 )
 
 

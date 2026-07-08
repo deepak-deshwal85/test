@@ -26,7 +26,6 @@ DEFAULT_PROPERTIES = SCRIPTS_DIR / "env.properties"
 API_SECRET_KEYS = [
     "OPENAI_API_KEY",
     "DATABASE_URL",
-    "RAG_API_KEY",
     "QDRANT_API_KEY",
     "QDRANT_CLUSTER_ENDPOINT",
     "LIVEKIT_URL",
@@ -43,7 +42,12 @@ VOICE_AGENT_SECRET_KEYS = [
     "DEEPGRAM_API_KEY",
     "CARTESIA_API_KEY",
     "CALCOM_API_KEY",
-    "RAG_API_KEY",
+    "COGNITO_CLIENT_SECRET",
+]
+
+UI_SECRET_KEYS = [
+    "AUTH_SECRET",
+    "COGNITO_CLIENT_SECRET",
 ]
 
 
@@ -125,7 +129,9 @@ def put_parameter(
 
 
 def write_env_properties(path: Path, values: dict[str, str]) -> None:
-    all_keys = sorted(set(API_SECRET_KEYS) | set(VOICE_AGENT_SECRET_KEYS))
+    all_keys = sorted(
+        set(API_SECRET_KEYS) | set(VOICE_AGENT_SECRET_KEYS) | set(UI_SECRET_KEYS)
+    )
     lines = [
         "# RelayDesk SSM source file — do not commit (see env.properties.example)",
         "# Used by: python infra/scripts/sync_ssm_parameters.py",
@@ -154,6 +160,9 @@ def main() -> int:
         "--voice-env", type=Path, default=REPO_ROOT / "voice-agent" / ".env"
     )
     parser.add_argument(
+        "--ui-env", type=Path, default=REPO_ROOT / "ui" / ".env.local"
+    )
+    parser.add_argument(
         "--from-local-env",
         action="store_true",
         help="Merge api/.env and voice-agent/.env into properties lookup",
@@ -179,6 +188,7 @@ def main() -> int:
         properties = merge_sources(
             parse_env_file(args.api_env),
             parse_env_file(args.voice_env),
+            parse_env_file(args.ui_env),
             properties,
         )
 
@@ -195,6 +205,7 @@ def main() -> int:
 
     api_prefix = f"/{args.project}/{args.environment}/api"
     voice_prefix = f"/{args.project}/{args.environment}/voice-agent"
+    ui_prefix = f"/{args.project}/{args.environment}/ui"
 
     missing: list[str] = []
     errors = 0
@@ -239,6 +250,23 @@ def main() -> int:
         except subprocess.CalledProcessError:
             errors += 1
             print(f"failed {voice_prefix}/{key}", file=sys.stderr)
+
+    for key in UI_SECRET_KEYS:
+        value = properties.get(key, "").strip()
+        if not value:
+            missing.append(f"{ui_prefix}/{key}")
+            continue
+        try:
+            put_parameter(
+                name=ssm_name(ui_prefix, key),
+                value=value,
+                region=args.region,
+                profile=args.profile,
+                dry_run=args.dry_run,
+            )
+        except subprocess.CalledProcessError:
+            errors += 1
+            print(f"failed {ui_prefix}/{key}", file=sys.stderr)
 
     if missing:
         print("\nMissing values (not uploaded):", file=sys.stderr)

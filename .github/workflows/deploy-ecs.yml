@@ -6,6 +6,7 @@ on:
     paths:
       - "api/**"
       - "voice-agent/**"
+      - "ui/**"
       - "infra/**"
       - ".github/workflows/deploy-ecs.yml"
   workflow_dispatch:
@@ -21,6 +22,8 @@ env:
   ECS_SERVICE_VOICE: ${{ vars.ECS_SERVICE_VOICE || 'relaydesk-prod-voice-agent' }}
   ECR_API_REPO: ${{ vars.ECR_API_REPO || 'relaydesk-api' }}
   ECR_VOICE_REPO: ${{ vars.ECR_VOICE_REPO || 'relaydesk-voice-agent' }}
+  ECR_UI_REPO: ${{ vars.ECR_UI_REPO || 'relaydesk-ui' }}
+  ECS_SERVICE_UI: ${{ vars.ECS_SERVICE_UI || 'relaydesk-prod-ui' }}
 
 jobs:
   deploy:
@@ -59,6 +62,15 @@ jobs:
           docker push "$ECR_REGISTRY/$ECR_VOICE_REPO:$IMAGE_TAG"
           docker push "$ECR_REGISTRY/$ECR_VOICE_REPO:latest"
 
+      - name: Build and push UI image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t "$ECR_REGISTRY/$ECR_UI_REPO:$IMAGE_TAG" -t "$ECR_REGISTRY/$ECR_UI_REPO:latest" ./ui
+          docker push "$ECR_REGISTRY/$ECR_UI_REPO:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_UI_REPO:latest"
+
       - name: Deploy API to ECS
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
@@ -93,6 +105,24 @@ jobs:
           aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE_VOICE" \
             --task-definition "$NEW_ARN" --force-new-deployment
 
+      - name: Deploy UI to ECS
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          TASK_FAMILY="${ECS_SERVICE_UI}"
+          aws ecs describe-task-definition --task-definition "$TASK_FAMILY" \
+            --query 'taskDefinition' > task-def-ui.json
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' \
+            task-def-ui.json > task-def-ui-clean.json
+          jq --arg img "$ECR_REGISTRY/$ECR_UI_REPO:$IMAGE_TAG" \
+            '.containerDefinitions[0].image = $img' task-def-ui-clean.json > task-def-ui-new.json
+          NEW_ARN=$(aws ecs register-task-definition --cli-input-json file://task-def-ui-new.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE_UI" \
+            --task-definition "$NEW_ARN" --force-new-deployment
+
       - name: Wait for services stable
         run: |
-          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE_API" "$ECS_SERVICE_VOICE"
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE_API" "$ECS_SERVICE_VOICE" "$ECS_SERVICE_UI"

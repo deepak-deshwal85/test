@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.core.dependencies import get_embedding_service, verify_api_key
+from app.core.dependencies import get_embedding_service, verify_access_token
 from app.schemas.embeddings import (
     EmbeddingCacheDeleteResponse,
     EmbeddingCacheStatsResponse,
@@ -17,7 +17,7 @@ from app.services.embedding_service import EmbeddingService
 router = APIRouter(
     prefix="/v1/embeddings",
     tags=["embeddings"],
-    dependencies=[Depends(verify_api_key)],
+    dependencies=[Depends(verify_access_token)],
 )
 
 

@@ -65,6 +65,20 @@ class CallJobService:
             job = await repository.get(job_id)
             return self._to_response(job) if job else None
 
+    async def list_jobs(
+        self,
+        *,
+        client_phone_number: str | None = None,
+        limit: int = 20,
+    ) -> list[CallJobResponse]:
+        async with self._session_factory() as session:
+            repository = CallJobRepository(session)
+            jobs = await repository.list_recent(
+                client_phone_number=client_phone_number,
+                limit=limit,
+            )
+            return [self._to_response(job) for job in jobs]
+
     async def run_job(self, job_id: UUID) -> None:
         logger.info("call job started job_id=%s", job_id)
         results: list[CallAttemptResult] = []

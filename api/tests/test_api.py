@@ -10,12 +10,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from app.main import create_app
 
 
-@pytest.fixture
-def client() -> TestClient:
-    return TestClient(create_app())
-
-
-def test_health(client: TestClient) -> None:
+def test_health() -> None:
+    client = TestClient(create_app())
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
@@ -53,7 +49,8 @@ def test_chunk_text_splits_with_overlap() -> None:
     assert all(len(chunk) <= 100 for chunk in chunks)
 
 
-def test_search_requires_collection_or_phone(client: TestClient) -> None:
+def test_search_requires_collection_or_phone() -> None:
+    client = TestClient(create_app())
     response = client.post("/v1/search", json={"query": "hello"})
     assert response.status_code == 400
 
@@ -97,7 +94,8 @@ def test_search_service_passes_score_threshold_to_qdrant() -> None:
     assert kwargs["score_threshold"] == pytest.approx(0.3)
 
 
-def test_search_invalid_phone(client: TestClient) -> None:
+def test_search_invalid_phone() -> None:
+    client = TestClient(create_app())
     response = client.post(
         "/v1/search",
         json={"phone_number": "abc", "query": "hello"},
@@ -105,7 +103,7 @@ def test_search_invalid_phone(client: TestClient) -> None:
     assert response.status_code == 400
 
 
-def test_create_embeddings(client: TestClient) -> None:
+def test_create_embeddings() -> None:
     from app.core.dependencies import get_embedding_service
     from app.domain.models import EmbeddingBatchResult
     from app.main import create_app

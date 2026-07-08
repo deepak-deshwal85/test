@@ -212,12 +212,18 @@ resource "aws_ecs_task_definition" "voice_agent" {
 
     environment = local.voice_agent_environment
 
-    secrets = [
-      for key in local.voice_agent_secret_keys : {
-        name      = key
-        valueFrom = aws_ssm_parameter.voice_agent[key].arn
-      }
-    ]
+    secrets = concat(
+      [
+        for key in local.voice_agent_secret_keys : {
+          name      = key
+          valueFrom = aws_ssm_parameter.voice_agent[key].arn
+        }
+      ],
+      local.cognito_enabled ? [{
+        name      = "COGNITO_CLIENT_SECRET"
+        valueFrom = aws_ssm_parameter.cognito_voice_client_secret[0].arn
+      }] : []
+    )
 
     logConfiguration = {
       logDriver = "awslogs"

@@ -1,9 +1,9 @@
 resource "aws_lb" "api" {
   name               = "${local.name_prefix}-api"
-  internal           = !var.api_publicly_accessible
+  internal           = !local.alb_public
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb_api.id]
-  subnets            = var.api_publicly_accessible ? aws_subnet.public[*].id : aws_subnet.private[*].id
+  subnets            = local.alb_public ? aws_subnet.public[*].id : aws_subnet.private[*].id
 
   tags = {
     Name = "${local.name_prefix}-api-alb"
@@ -35,6 +35,25 @@ resource "aws_lb_listener" "api" {
 
   default_action {
     type             = "forward"
+    target_group_arn = var.enable_ui ? aws_lb_target_group.ui[0].arn : aws_lb_target_group.api.arn
+  }
+}
+
+resource "aws_lb_listener_rule" "api_paths" {
+  count = var.enable_ui ? 1 : 0
+
+  listener_arn = aws_lb_listener.api.arn
+  priority     = 10
+
+  action {
+    type             = "forward"
     target_group_arn = aws_lb_target_group.api.arn
+  }
+
+  condition {
+    path_pattern {
+      # ALB listener rules allow max 5 path condition values.
+      values = ["/v1*", "/health", "/docs*", "/openapi.json", "/redoc"]
+    }
   }
 }

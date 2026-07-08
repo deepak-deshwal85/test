@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.config import Settings, get_settings
-from app.core.dependencies import get_collection_service, verify_api_key
+from app.core.dependencies import get_collection_service, verify_access_token
 from app.core.qdrant_errors import is_qdrant_connection_error, qdrant_unavailable_detail
 from app.schemas.collections import (
     CollectionDeleteResponse,
@@ -17,7 +17,7 @@ from app.services.collection_service import CollectionService
 router = APIRouter(
     prefix="/v1/collections",
     tags=["collections"],
-    dependencies=[Depends(verify_api_key)],
+    dependencies=[Depends(verify_access_token)],
 )
 
 

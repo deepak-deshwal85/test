@@ -20,7 +20,7 @@ voice_agent_cpu           = 2048   # 2 vCPU on dedicated voice host
 voice_agent_memory        = 7680   # ~7.5 GiB on t3.large
 
 # Set true only if you need to upload documents from the public internet
-api_publicly_accessible = false
+api_publicly_accessible = true
 
 # Set false if GitHub OIDC provider already exists in this AWS account
 manage_github_oidc_provider = true
@@ -39,3 +39,7 @@ rds_master_username = "relaydesk_admin"
 enable_cost_monitoring = true
 monthly_budget_usd     = 75
 budget_alert_emails    = ["deepakdeshwal85@gmail.com"]
+
+enable_cognito = true
+cognito_ui_callback_urls = ["http://localhost:3000/api/auth/callback/cognito"]
+cognito_ui_logout_urls   = ["http://localhost:3000/login"]
