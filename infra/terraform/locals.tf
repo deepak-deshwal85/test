@@ -46,7 +46,14 @@ locals {
     { name = "RAG_API_HOST", value = "0.0.0.0" },
     { name = "RAG_API_PORT", value = "8090" },
     { name = "RAG_BACKEND", value = "qdrant" },
-    { name = "CORS_ORIGINS", value = "http://${aws_lb.api.dns_name},http://localhost:3000" },
+    {
+      name = "CORS_ORIGINS"
+      value = join(",", distinct(compact([
+        local.ui_public_base_url,
+        "http://${aws_lb.api.dns_name}",
+        "http://localhost:3000",
+      ])))
+    },
   ], local.api_oauth_environment)
 
   voice_oauth_environment = local.cognito_enabled ? [
@@ -92,7 +99,8 @@ locals {
   ] : []
 
   ui_environment = concat([
-    { name = "AUTH_URL", value = "http://${aws_lb.api.dns_name}" },
+    { name = "AUTH_URL", value = local.ui_public_base_url },
+    # Browser talks to UI; UI server proxies to API via HTTP ALB DNS (same VPC).
     { name = "RELAYDESK_API_URL", value = "http://${aws_lb.api.dns_name}" },
     { name = "AUTH_TRUST_HOST", value = "true" },
   ], local.ui_cognito_environment)

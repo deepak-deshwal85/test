@@ -95,6 +95,12 @@ variable "enable_cognito" {
   default     = true
 }
 
+variable "enable_https" {
+  description = "Front the public ALB with CloudFront (HTTPS via AWS *.cloudfront.net). No custom domain or Route53 required. Needed for Cognito production callbacks. New AWS accounts often need Support verification before CloudFront create is allowed."
+  type        = bool
+  default     = false
+}
+
 variable "cognito_ui_callback_urls" {
   description = "OAuth callback URLs for the UI Cognito app client."
   type        = list(string)

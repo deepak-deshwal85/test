@@ -28,6 +28,8 @@ resource "aws_lb_target_group" "api" {
   }
 }
 
+# HTTP ALB for CloudFront origin + voice-agent M2M.
+# Browser/Cognito users should use the CloudFront HTTPS URL.
 resource "aws_lb_listener" "api" {
   load_balancer_arn = aws_lb.api.arn
   port              = 80

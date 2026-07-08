@@ -33,9 +33,13 @@ ui_desired_count  = 1
 # Set true when UI is enabled (browsers must reach the ALB)
 api_publicly_accessible = true
 
-# Cognito OAuth callbacks — add your ALB URL after terraform apply
-# cognito_ui_callback_urls = ["http://localhost:3000/api/auth/callback/cognito", "http://<alb-dns>/api/auth/callback/cognito"]
-# cognito_ui_logout_urls   = ["http://localhost:3000/login", "http://<alb-dns>/login"]
+# HTTPS via CloudFront (AWS *.cloudfront.net — no Route53 / custom domain).
+# New accounts may get AccessDenied until AWS Support verifies CloudFront access.
+enable_https = false
+
+# Cognito OAuth callbacks — localhost for local UI; CloudFront HTTPS URL is auto-added
+cognito_ui_callback_urls = ["http://localhost:3000/api/auth/callback/cognito"]
+cognito_ui_logout_urls   = ["http://localhost:3000/login"]
 # cognito_google_client_id = ""
 # cognito_google_client_secret = ""
 # cognito_github_client_id = ""

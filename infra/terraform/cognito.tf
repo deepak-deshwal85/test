@@ -63,8 +63,8 @@ resource "aws_cognito_user_pool_client" "ui" {
     "COGNITO",
     var.cognito_google_client_id != "" ? "Google" : null,
   ])
-  callback_urls = var.cognito_ui_callback_urls
-  logout_urls     = var.cognito_ui_logout_urls
+  callback_urls = local.cognito_callback_urls
+  logout_urls   = local.cognito_logout_urls
 
   explicit_auth_flows = [
     "ALLOW_REFRESH_TOKEN_AUTH",

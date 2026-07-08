@@ -98,5 +98,8 @@ resource "aws_ecs_service" "ui" {
   deployment_minimum_healthy_percent = 100
   deployment_maximum_percent         = 200
 
-  depends_on = [aws_lb_listener.api]
+  depends_on = [
+    aws_lb_listener.api,
+    aws_lb_listener_rule.api_paths,
+  ]
 }

@@ -64,8 +64,18 @@ output "voice_agent_rag_api_base_url" {
 }
 
 output "ui_url" {
-  description = "Public URL for the RelayDesk UI (ALB HTTP)."
-  value       = var.enable_ui ? "http://${aws_lb.api.dns_name}" : null
+  description = "Public UI URL (CloudFront HTTPS when enable_https=true, else ALB HTTP)."
+  value       = var.enable_ui ? local.ui_public_base_url : null
+}
+
+output "cloudfront_domain_name" {
+  description = "CloudFront distribution domain (AWS-generated HTTPS host)."
+  value       = local.enable_cloudfront ? aws_cloudfront_distribution.ui[0].domain_name : null
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID."
+  value       = local.enable_cloudfront ? aws_cloudfront_distribution.ui[0].id : null
 }
 
 output "cognito_issuer" {
@@ -81,8 +91,13 @@ output "cognito_ui_client_id" {
 output "cognito_hosted_ui_url" {
   description = "Cognito hosted UI sign-in URL."
   value = local.cognito_enabled ? (
-    "https://${aws_cognito_user_pool_domain.main[0].domain}.auth.${var.aws_region}.amazoncognito.com/login?client_id=${local.cognito_ui_client_id}&response_type=code&scope=email+openid+profile+relaydesk-api/access&redirect_uri=${var.cognito_ui_callback_urls[0]}"
+    "https://${aws_cognito_user_pool_domain.main[0].domain}.auth.${var.aws_region}.amazoncognito.com/login?client_id=${local.cognito_ui_client_id}&response_type=code&scope=email+openid+profile+relaydesk-api/access&redirect_uri=${urlencode(local.cognito_callback_urls[0])}"
   ) : null
+}
+
+output "cognito_callback_urls" {
+  description = "Effective Cognito callback URLs (includes HTTPS domain when enabled)."
+  value       = local.cognito_enabled ? local.cognito_callback_urls : null
 }
 
 output "ecr_ui_repository_url" {
