@@ -54,9 +54,11 @@ output "ssm_api_parameter_names" {
   value = [for k in local.api_secret_keys : aws_ssm_parameter.api[k].name]
 }
 
-output "ssm_voice_agent_parameter_names" {
-  value = [for k in local.voice_agent_secret_keys : aws_ssm_parameter.voice_agent[k].name]
+output "ssm_cognito_parameter_names" {
+  description = "SSM paths for Cognito IdP secrets (Google client id/secret)."
+  value       = [for k in local.cognito_secret_keys : "${local.ssm_prefix_cognito}/${k}"]
 }
+
 
 output "voice_agent_rag_api_base_url" {
   description = "Injected into voice-agent task as RAG_API_BASE_URL (internal ALB)."

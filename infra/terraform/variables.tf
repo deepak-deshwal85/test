@@ -113,18 +113,16 @@ variable "cognito_ui_logout_urls" {
   default     = ["http://localhost:3000/login"]
 }
 
-variable "cognito_google_client_id" {
-  description = "Google OAuth client ID for Cognito federation (optional)."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "cognito_google_client_secret" {
-  description = "Google OAuth client secret for Cognito federation (optional)."
-  type        = string
-  default     = ""
-  sensitive   = true
+variable "enable_cognito_google" {
+  description = <<-EOT
+    Enable Google as a Cognito identity provider.
+    Credentials are read from SSM (not tfvars):
+      /{project}/{env}/cognito/GOOGLE_CLIENT_ID
+      /{project}/{env}/cognito/GOOGLE_CLIENT_SECRET
+    Create/sync those SecureString parameters before setting this to true.
+  EOT
+  type        = bool
+  default     = false
 }
 
 variable "ui_ecr_image_tag" {

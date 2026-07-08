@@ -19,6 +19,8 @@ api/data/
 # Terraform
 .terraform/
 .terraform.lock.hcl
+infra/terraform/*.tfvars
+!infra/terraform/terraform.tfvars.example
 infra/scripts/env.properties
 
 # Claude Code

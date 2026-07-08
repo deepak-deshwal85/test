@@ -61,7 +61,7 @@ resource "aws_cognito_user_pool_client" "ui" {
   ]
   supported_identity_providers = compact([
     "COGNITO",
-    var.cognito_google_client_id != "" ? "Google" : null,
+    var.enable_cognito_google ? "Google" : null,
   ])
   callback_urls = local.cognito_callback_urls
   logout_urls   = local.cognito_logout_urls
@@ -72,6 +72,9 @@ resource "aws_cognito_user_pool_client" "ui" {
   ]
 
   prevent_user_existence_errors = "ENABLED"
+
+  # Google must exist on the pool before the app client can list it as a provider.
+  depends_on = [aws_cognito_identity_provider.google]
 }
 
 resource "aws_cognito_user_pool_client" "voice_m2m" {
@@ -89,8 +92,27 @@ resource "aws_cognito_user_pool_client" "voice_m2m" {
   supported_identity_providers = ["COGNITO"]
 }
 
+# Google OAuth credentials live in SSM (synced separately). Terraform only reads them.
+data "aws_ssm_parameter" "cognito_google_client_id" {
+  count = local.cognito_enabled && var.enable_cognito_google ? 1 : 0
+
+  name            = "${local.ssm_prefix_cognito}/GOOGLE_CLIENT_ID"
+  with_decryption = true
+
+  depends_on = [aws_ssm_parameter.cognito]
+}
+
+data "aws_ssm_parameter" "cognito_google_client_secret" {
+  count = local.cognito_enabled && var.enable_cognito_google ? 1 : 0
+
+  name            = "${local.ssm_prefix_cognito}/GOOGLE_CLIENT_SECRET"
+  with_decryption = true
+
+  depends_on = [aws_ssm_parameter.cognito]
+}
+
 resource "aws_cognito_identity_provider" "google" {
-  count = var.enable_cognito && var.cognito_google_client_id != "" ? 1 : 0
+  count = local.cognito_enabled && var.enable_cognito_google ? 1 : 0
 
   user_pool_id  = aws_cognito_user_pool.main[0].id
   provider_name = "Google"
@@ -98,8 +120,8 @@ resource "aws_cognito_identity_provider" "google" {
 
   provider_details = {
     authorize_scopes = "email openid profile"
-    client_id        = var.cognito_google_client_id
-    client_secret    = var.cognito_google_client_secret
+    client_id        = data.aws_ssm_parameter.cognito_google_client_id[0].value
+    client_secret    = data.aws_ssm_parameter.cognito_google_client_secret[0].value
   }
 
   attribute_mapping = {
@@ -109,4 +131,6 @@ resource "aws_cognito_identity_provider" "google" {
 }
 
 ## NOTE:
-## This stack intentionally uses Cognito-native + Google federation only.
+## Cognito-native + Google federation.
+## Google client ID/secret are stored in SSM under local.ssm_prefix_cognito
+## (not in terraform.tfvars). Sync values before enable_cognito_google=true.

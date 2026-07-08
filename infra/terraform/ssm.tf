@@ -37,6 +37,20 @@ resource "aws_ssm_parameter" "ui" {
   }
 }
 
+# Cognito Google OAuth credentials — set real values via sync_ssm_parameters.py
+# (or AWS Console) before enable_cognito_google=true. Secrets are not in tfvars.
+resource "aws_ssm_parameter" "cognito" {
+  for_each = local.cognito_enabled ? toset(local.cognito_secret_keys) : toset([])
+
+  name  = "${local.ssm_prefix_cognito}/${each.key}"
+  type  = "SecureString"
+  value = "CHANGEME"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
 resource "aws_ssm_parameter" "cognito_ui_client_secret" {
   count = local.cognito_enabled ? 1 : 0
 

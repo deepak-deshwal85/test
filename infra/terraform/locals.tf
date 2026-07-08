@@ -13,6 +13,12 @@ locals {
   ssm_prefix_api         = "/${var.project_name}/${var.environment}/api"
   ssm_prefix_voice_agent = "/${var.project_name}/${var.environment}/voice-agent"
   ssm_prefix_ui          = "/${var.project_name}/${var.environment}/ui"
+  ssm_prefix_cognito     = "/${var.project_name}/${var.environment}/cognito"
+
+  cognito_secret_keys = [
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+  ]
 
   api_image   = "${aws_ecr_repository.api.repository_url}:${var.api_ecr_image_tag}"
   voice_image = "${aws_ecr_repository.voice_agent.repository_url}:${var.voice_ecr_image_tag}"

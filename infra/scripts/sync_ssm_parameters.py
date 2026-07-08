@@ -54,6 +54,12 @@ UI_SECRET_KEYS = [
     "COGNITO_CLIENT_SECRET",
 ]
 
+# Cognito IdP secrets (used by Terraform data sources when enable_cognito_google=true)
+COGNITO_SECRET_KEYS = [
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+]
+
 
 def parse_env_file(path: Path) -> dict[str, str]:
     if not path.is_file():
@@ -134,11 +140,15 @@ def put_parameter(
 
 def write_env_properties(path: Path, values: dict[str, str]) -> None:
     all_keys = sorted(
-        set(API_SECRET_KEYS) | set(VOICE_AGENT_SECRET_KEYS) | set(UI_SECRET_KEYS)
+        set(API_SECRET_KEYS)
+        | set(VOICE_AGENT_SECRET_KEYS)
+        | set(UI_SECRET_KEYS)
+        | set(COGNITO_SECRET_KEYS)
     )
     lines = [
         "# Optional combined SSM upload file — do not commit.",
         "# Preferred source: api/.env, voice-agent/.env, ui/.env",
+        "# Cognito Google IdP: GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET",
         "# Used by: python infra/scripts/sync_ssm_parameters.py",
         "",
     ]
@@ -210,6 +220,7 @@ def main() -> int:
     api_prefix = f"/{args.project}/{args.environment}/api"
     voice_prefix = f"/{args.project}/{args.environment}/voice-agent"
     ui_prefix = f"/{args.project}/{args.environment}/ui"
+    cognito_prefix = f"/{args.project}/{args.environment}/cognito"
 
     missing: list[str] = []
     errors = 0
@@ -271,6 +282,23 @@ def main() -> int:
         except subprocess.CalledProcessError:
             errors += 1
             print(f"failed {ui_prefix}/{key}", file=sys.stderr)
+
+    for key in COGNITO_SECRET_KEYS:
+        value = properties.get(key, "").strip()
+        if not value:
+            # Optional until enable_cognito_google=true
+            continue
+        try:
+            put_parameter(
+                name=ssm_name(cognito_prefix, key),
+                value=value,
+                region=args.region,
+                profile=args.profile,
+                dry_run=args.dry_run,
+            )
+        except subprocess.CalledProcessError:
+            errors += 1
+            print(f"failed {cognito_prefix}/{key}", file=sys.stderr)
 
     if missing:
         print("\nMissing values (not uploaded):", file=sys.stderr)

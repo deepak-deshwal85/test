@@ -47,3 +47,10 @@ enable_https   = false
 cognito_ui_callback_urls = ["http://localhost:3000/api/auth/callback/cognito"]
 cognito_ui_logout_urls   = ["http://localhost:3000/login"]
 # After enable_https=true succeeds: terraform output ui_url → use that HTTPS CloudFront URL
+
+# Google IdP: put credentials in SSM (not here), then set true.
+#   /relaydesk/prod/cognito/GOOGLE_CLIENT_ID
+#   /relaydesk/prod/cognito/GOOGLE_CLIENT_SECRET
+# Sync via: python infra/scripts/sync_ssm_parameters.py
+# (add GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET to infra/scripts/env.properties)
+enable_cognito_google = true

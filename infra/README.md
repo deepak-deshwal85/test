@@ -71,10 +71,40 @@ PowerShell:
 .\infra\scripts\sync-ssm-parameters.ps1
 ```
 
+### Enable Google sign-in (Cognito IdP)
+
+Do **not** put Google client ID/secret in `terraform.tfvars`. Use SSM:
+
+1. `terraform apply` with `enable_cognito_google = false` (creates empty SSM keys under `/relaydesk/prod/cognito/`).
+2. Put credentials in `infra/scripts/env.properties` (gitignored):
+
+```properties
+GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-xxxxx
+```
+
+3. Sync:
+
+```powershell
+python infra/scripts/sync_ssm_parameters.py --region ap-south-1 --profile relaydesk-admin
+```
+
+4. Set `enable_cognito_google = true` in `terraform.tfvars` and `terraform apply` again.
+   Terraform reads SSM and attaches the Google IdP to Cognito.
+
+Google OAuth redirect URI must be:
+
+```text
+https://relaydesk-prod.auth.ap-south-1.amazoncognito.com/oauth2/idpresponse
+```
+
 Manual single parameter:
 
 ```powershell
 aws ssm put-parameter --name "/relaydesk/prod/api/OPENAI_API_KEY" --value "sk-..." --type SecureString --overwrite
+# Cognito Google IdP:
+aws ssm put-parameter --name "/relaydesk/prod/cognito/GOOGLE_CLIENT_ID" --value "..." --type SecureString --overwrite
+aws ssm put-parameter --name "/relaydesk/prod/cognito/GOOGLE_CLIENT_SECRET" --value "..." --type SecureString --overwrite
 ```
 
 Build and push initial images (or let GitHub Actions do it on first merge to `main`):
