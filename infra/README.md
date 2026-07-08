@@ -98,6 +98,89 @@ Google OAuth redirect URI must be:
 https://relaydesk-prod.auth.ap-south-1.amazoncognito.com/oauth2/idpresponse
 ```
 
+## Custom domain + HTTPS (`relaydesk.uk` via Cloudflare)
+
+CloudFront is **not** used. HTTPS is terminated on the ALB with an **ACM certificate**; DNS stays in **Cloudflare**.
+
+### 1. Terraform
+
+In `terraform.tfvars`:
+
+```hcl
+ui_domain_name = "relaydesk.uk"
+```
+
+Apply (creates ACM cert + may wait on validation):
+
+```bash
+cd infra/terraform
+terraform apply
+```
+
+### 2. ACM validation in Cloudflare
+
+Get the validation CNAME:
+
+```bash
+terraform output acm_dns_validation_records
+```
+
+In **Cloudflare → relaydesk.uk → DNS → Add record**:
+
+| Type | Name | Target | Proxy |
+|------|------|--------|-------|
+| CNAME | `_xxxx.relaydesk.uk` (from output `name`, strip trailing dot) | value from output | **DNS only** (gray cloud) |
+
+Wait 5–15 minutes, then:
+
+```bash
+terraform apply
+```
+
+Terraform finishes certificate validation and creates the ALB HTTPS listener (`443`).
+
+### 3. Point domain to ALB
+
+```bash
+terraform output -raw alb_dns_name
+```
+
+Add in Cloudflare:
+
+| Type | Name | Target | Proxy |
+|------|------|--------|-------|
+| CNAME | `@` (or `relaydesk.uk`) | `relaydesk-prod-api-xxxxx.ap-south-1.elb.amazonaws.com` | DNS only first; then **Full (strict)** SSL |
+
+Cloudflare **SSL/TLS → Overview → Full (strict)** once HTTPS on ALB works.
+
+### 4. Verify Cognito callbacks
+
+```bash
+terraform output cognito_callback_urls
+terraform output cognito_production_sso_ready   # should be true
+```
+
+Should include:
+
+```text
+https://relaydesk.uk/api/auth/callback/cognito
+```
+
+### 5. Redeploy UI
+
+Rebuild/push UI image and force ECS deployment so `AUTH_URL=https://relaydesk.uk` is picked up:
+
+```bash
+# from repo root — see ui/README.md for full ECR commands
+aws ecs update-service --cluster relaydesk-prod --service relaydesk-prod-ui --force-new-deployment
+```
+
+### 6. Test
+
+- Open `https://relaydesk.uk/login`
+- Sign in with Cognito (email/password or Google)
+- API docs: `https://relaydesk.uk/docs`
+
 Manual single parameter:
 
 ```bash

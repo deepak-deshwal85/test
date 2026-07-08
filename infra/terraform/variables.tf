@@ -95,10 +95,15 @@ variable "enable_cognito" {
   default     = true
 }
 
-variable "enable_https" {
-  description = "Front the public ALB with CloudFront (HTTPS via AWS *.cloudfront.net). No custom domain or Route53 required. Needed for Cognito production callbacks. New AWS accounts often need Support verification before CloudFront create is allowed."
-  type        = bool
-  default     = false
+variable "ui_domain_name" {
+  description = <<-EOT
+    Public HTTPS hostname for the UI (e.g. relaydesk.uk). DNS must point to the ALB
+  (CNAME in Cloudflare). ACM certificate is created in the same region as the ALB;
+  add the validation CNAME from terraform output acm_dns_validation_records in Cloudflare,
+  then re-apply. Cognito production callbacks are auto-added for https://<domain>/...
+  EOT
+  type        = string
+  default     = ""
 }
 
 variable "cognito_ui_callback_urls" {

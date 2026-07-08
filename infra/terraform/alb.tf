@@ -28,21 +28,32 @@ resource "aws_lb_target_group" "api" {
   }
 }
 
-# HTTP ALB for CloudFront origin + voice-agent M2M.
-# Browser/Cognito users should use the CloudFront HTTPS URL.
+# HTTP: redirect to HTTPS when ui_domain_name is set; otherwise forward to UI/API.
 resource "aws_lb_listener" "api" {
   load_balancer_arn = aws_lb.api.arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
-    type             = "forward"
-    target_group_arn = var.enable_ui ? aws_lb_target_group.ui[0].arn : aws_lb_target_group.api.arn
+    type = local.ui_https_enabled ? "redirect" : "forward"
+
+    target_group_arn = local.ui_https_enabled ? null : (
+      var.enable_ui ? aws_lb_target_group.ui[0].arn : aws_lb_target_group.api.arn
+    )
+
+    dynamic "redirect" {
+      for_each = local.ui_https_enabled ? [1] : []
+      content {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
   }
 }
 
 resource "aws_lb_listener_rule" "api_paths" {
-  count = var.enable_ui ? 1 : 0
+  count = var.enable_ui && !local.ui_https_enabled ? 1 : 0
 
   listener_arn = aws_lb_listener.api.arn
   priority     = 10

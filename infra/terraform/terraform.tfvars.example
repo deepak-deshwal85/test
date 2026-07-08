@@ -33,11 +33,10 @@ ui_desired_count  = 1
 # Set true when UI is enabled (browsers must reach the ALB)
 api_publicly_accessible = true
 
-# HTTPS via CloudFront (AWS *.cloudfront.net — no Route53 / custom domain).
-# New accounts may get AccessDenied until AWS Support verifies CloudFront access.
-enable_https = false
+# Custom domain HTTPS (Cloudflare DNS + ACM on ALB). Example: relaydesk.uk
+ui_domain_name = "relaydesk.uk"
 
-# Cognito OAuth callbacks — localhost for local UI; CloudFront HTTPS URL is auto-added
+# Cognito OAuth callbacks — localhost for local UI; production HTTPS URL is auto-added
 cognito_ui_callback_urls = ["http://localhost:3000/api/auth/callback/cognito"]
 cognito_ui_logout_urls   = ["http://localhost:3000/login"]
 # Google IdP credentials live in SSM (not tfvars):

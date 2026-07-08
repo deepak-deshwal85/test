@@ -109,7 +109,7 @@ locals {
     { name = "AUTH_DISABLE_SSO", value = "false" },
     # Browser talks to UI; UI server proxies to API via HTTP ALB DNS (same VPC).
     { name = "RELAYDESK_API_TARGET", value = "aws" },
-    { name = "RELAYDESK_API_URL_AWS", value = "http://${aws_lb.api.dns_name}" },
+    { name = "RELAYDESK_API_URL_AWS", value = local.ui_https_enabled ? "https://${var.ui_domain_name}" : "http://${aws_lb.api.dns_name}" },
     { name = "RELAYDESK_API_URL_LOCAL", value = "http://127.0.0.1:8090" },
     { name = "AUTH_TRUST_HOST", value = "true" },
   ], local.ui_cognito_environment)

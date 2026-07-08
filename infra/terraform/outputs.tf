@@ -37,8 +37,15 @@ output "ecr_voice_agent_repository_url" {
   value = aws_ecr_repository.voice_agent.repository_url
 }
 
+output "alb_dns_name" {
+  description = "ALB DNS name — create a CNAME in Cloudflare pointing ui_domain_name here."
+  value       = aws_lb.api.dns_name
+}
+
+# Backward-compatible alias
 output "api_alb_dns_name" {
-  value = aws_lb.api.dns_name
+  value       = aws_lb.api.dns_name
+  description = "Alias for alb_dns_name."
 }
 
 output "api_internal_dns" {
@@ -66,18 +73,44 @@ output "voice_agent_rag_api_base_url" {
 }
 
 output "ui_url" {
-  description = "Public UI URL (CloudFront HTTPS when enable_https=true, else ALB HTTP)."
+  description = "Public UI URL (https://ui_domain_name when set, else ALB HTTP)."
   value       = var.enable_ui ? local.ui_public_base_url : null
 }
 
-output "cloudfront_domain_name" {
-  description = "CloudFront distribution domain (AWS-generated HTTPS host)."
-  value       = local.enable_cloudfront ? aws_cloudfront_distribution.ui[0].domain_name : null
+output "ui_domain_name" {
+  description = "Configured custom domain for the UI (empty if not set)."
+  value       = var.ui_domain_name != "" ? var.ui_domain_name : null
 }
 
-output "cloudfront_distribution_id" {
-  description = "CloudFront distribution ID."
-  value       = local.enable_cloudfront ? aws_cloudfront_distribution.ui[0].id : null
+output "acm_dns_validation_records" {
+  description = "Add these CNAME records in Cloudflare (DNS only / proxy off), then re-run terraform apply."
+  value = local.ui_https_enabled ? [
+    for dvo in aws_acm_certificate.ui[0].domain_validation_options : {
+      name  = dvo.resource_record_name
+      type  = dvo.resource_record_type
+      value = dvo.resource_record_value
+    }
+  ] : []
+}
+
+output "cloudflare_dns_instructions" {
+  description = "Summary of DNS records to create in Cloudflare."
+  value = local.ui_https_enabled ? {
+    app_cname = {
+      type  = "CNAME"
+      name  = var.ui_domain_name
+      value = aws_lb.api.dns_name
+      proxy = "DNS only (gray cloud) recommended until HTTPS works; then Full (strict) SSL"
+    }
+    acm_validation = [
+      for dvo in aws_acm_certificate.ui[0].domain_validation_options : {
+        type  = dvo.resource_record_type
+        name  = dvo.resource_record_name
+        value = dvo.resource_record_value
+        proxy = "DNS only (gray cloud) — required for ACM validation"
+      }
+    ]
+  } : null
 }
 
 output "cognito_issuer" {
@@ -100,6 +133,13 @@ output "cognito_hosted_ui_url" {
 output "cognito_callback_urls" {
   description = "Effective Cognito callback URLs (includes HTTPS domain when enabled)."
   value       = local.cognito_enabled ? local.cognito_callback_urls : null
+}
+
+output "cognito_production_sso_ready" {
+  description = "Whether Cognito callbacks include an HTTPS production URL (required for AWS-hosted SSO)."
+  value = local.cognito_enabled ? (
+    length([for url in local.cognito_callback_urls : url if startswith(url, "https://")]) > 0
+  ) : false
 }
 
 output "ecr_ui_repository_url" {

@@ -41,12 +41,12 @@ monthly_budget_usd     = 75
 budget_alert_emails    = ["deepakdeshwal85@gmail.com"]
 
 enable_cognito = true
-# CloudFront HTTPS: set true AFTER AWS Support verifies the account for CloudFront
-# (error: "Your account must be verified before you can add new CloudFront resources")
-enable_https   = false
+
+# Custom domain (Cloudflare DNS + ACM on ALB). Cognito callbacks auto-added for HTTPS.
+ui_domain_name = "relaydesk.uk"
+
 cognito_ui_callback_urls = ["http://localhost:3000/api/auth/callback/cognito"]
 cognito_ui_logout_urls   = ["http://localhost:3000/login"]
-# After enable_https=true succeeds: terraform output ui_url → use that HTTPS CloudFront URL
 
 # Google IdP: put credentials in SSM (not here), then set true.
 #   /relaydesk/prod/cognito/GOOGLE_CLIENT_ID

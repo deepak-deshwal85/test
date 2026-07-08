@@ -16,6 +16,9 @@ if (cognitoIssuer && cognitoClientId && cognitoClientSecret) {
       clientId: cognitoClientId,
       clientSecret: cognitoClientSecret,
       issuer: cognitoIssuer,
+      // Federated IdPs (Google) return a Cognito-issued nonce that does not match
+      // the value NextAuth sent; native email/password sign-in still works with PKCE.
+      checks: ["pkce", "state"],
     }),
   );
 }

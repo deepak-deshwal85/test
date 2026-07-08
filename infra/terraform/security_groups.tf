@@ -11,6 +11,14 @@ resource "aws_security_group" "alb_api" {
     cidr_blocks = local.alb_public ? ["0.0.0.0/0"] : [var.vpc_cidr]
   }
 
+  ingress {
+    description = "HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = local.alb_public ? ["0.0.0.0/0"] : [var.vpc_cidr]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0

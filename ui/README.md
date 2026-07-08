@@ -51,7 +51,7 @@ Ensure the API is running (`cd api && uv run uvicorn app.main:app --host 127.0.0
 
 The UI runs as a Next.js standalone container on ECS.
 
-- Browser → CloudFront/ALB → UI (`:3000`)
+- Browser → `https://relaydesk.uk` (ALB + ACM) → UI (`:3000`)
 - API routes → ALB `/v1/*`, `/health`, `/docs` → API (`:8090`)
 
 Set OAuth callback URL to:
