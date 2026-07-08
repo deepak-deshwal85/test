@@ -43,7 +43,7 @@ DATABASE_URL=postgresql+asyncpg://postgres:1234@localhost:5432/relaydesk
 ```powershell
 docker compose up -d qdrant
 cd api
-copy .env.example .env
+# create/edit api/.env
 uv sync
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
@@ -126,7 +126,9 @@ The voice agent must be running (`uv run python src/agent.py dev`) to answer out
 | `QDRANT_URL` | Local Qdrant (default `http://127.0.0.1:6333`) |
 | `QDRANT_CLUSTER_ENDPOINT` | Qdrant Cloud HTTPS endpoint (overrides `QDRANT_URL`) |
 | `QDRANT_API_KEY` | Required for Qdrant Cloud |
-| `RAG_API_KEY` | Optional API bearer auth |
+| `COGNITO_REGION` / `COGNITO_USER_POOL_ID` | Cognito issuer setup for JWT validation |
+| `COGNITO_UI_CLIENT_ID` / `COGNITO_M2M_CLIENT_ID` | Allowed OAuth clients (UI + voice M2M) |
+| `COGNITO_REQUIRED_SCOPE` | Required access scope (default `relaydesk-api/access`) |
 | `OUTBOUND_CALL_WEBHOOK_URL` | Legacy optional webhook (use LiveKit vars instead) |
 | `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | Required for real outbound calls |
 | `LIVEKIT_SIP_OUTBOUND_TRUNK_ID` | Outbound SIP trunk ID |

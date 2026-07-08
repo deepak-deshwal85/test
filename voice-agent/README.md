@@ -15,7 +15,7 @@ RelayDesk LiveKit voice agent for phone calls. Handles speech-to-text, LLM reaso
 ```powershell
 cd voice-agent
 uv sync
-copy .env.example .env
+# create/edit voice-agent/.env
 ```
 
 Fill in `.env`:
@@ -80,7 +80,9 @@ lk agent create
 |----------|---------|
 | `RAG_BACKEND` | `qdrant` (RAG API) or `xai` (FileSearch) |
 | `RAG_API_BASE_URL` | RAG API URL when using `qdrant` |
-| `RAG_API_KEY` | Optional bearer token for RAG API |
+| `COGNITO_TOKEN_URL` | Cognito OAuth token endpoint for client-credentials |
+| `COGNITO_CLIENT_ID` / `COGNITO_CLIENT_SECRET` | M2M credentials used to call API |
+| `COGNITO_SCOPE` | Scope requested for API access |
 | `RAG_MAX_RESULTS` | Max search hits (default 5) |
 
 ## Project structure

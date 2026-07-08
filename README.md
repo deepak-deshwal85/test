@@ -21,7 +21,7 @@ docker compose up -d qdrant
 
 ```powershell
 cd api
-copy .env.example .env
+# create/edit api/.env
 uv sync
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
@@ -36,7 +36,7 @@ Open http://127.0.0.1:8090/docs and use **POST** `/v1/collections/{collection}/d
 
 ```powershell
 cd voice-agent
-copy .env.example .env
+# create/edit voice-agent/.env
 uv sync
 uv run python src/agent.py download-files
 uv run python src/agent.py console

@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """Upload RelayDesk ECS secrets to AWS SSM Parameter Store.
 
-Reads infra/scripts/env.properties (KEY=VALUE) and optional api/.env + voice-agent/.env
-fallbacks, then runs aws ssm put-parameter for each Terraform-managed secret.
+Reads infra/scripts/env.properties (KEY=VALUE) plus api/.env, voice-agent/.env,
+and ui/.env by default, then runs aws ssm put-parameter for each Terraform-managed secret.
 
 Usage:
   python infra/scripts/sync_ssm_parameters.py --dry-run
   python infra/scripts/sync_ssm_parameters.py --region ap-south-1
-  python infra/scripts/sync_ssm_parameters.py --from-local-env
   python infra/scripts/sync_ssm_parameters.py --write-env-properties
 """
 
@@ -165,7 +164,7 @@ def main() -> int:
     parser.add_argument(
         "--from-local-env",
         action="store_true",
-        help="Merge api/.env and voice-agent/.env into properties lookup",
+        help="Deprecated: local .env files are merged by default.",
     )
     parser.add_argument(
         "--write-env-properties",
@@ -183,14 +182,12 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    properties = parse_env_file(args.properties)
-    if args.from_local_env or args.write_env_properties:
-        properties = merge_sources(
-            parse_env_file(args.api_env),
-            parse_env_file(args.voice_env),
-            parse_env_file(args.ui_env),
-            properties,
-        )
+    properties = merge_sources(
+        parse_env_file(args.properties),
+        parse_env_file(args.api_env),
+        parse_env_file(args.voice_env),
+        parse_env_file(args.ui_env),
+    )
 
     if args.write_env_properties:
         write_env_properties(args.properties, properties)
