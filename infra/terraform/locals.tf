@@ -102,6 +102,7 @@ locals {
   ui_cognito_environment = local.cognito_enabled ? [
     { name = "COGNITO_ISSUER", value = local.cognito_issuer },
     { name = "COGNITO_CLIENT_ID", value = local.cognito_ui_client_id },
+    { name = "COGNITO_SCOPE", value = "relaydesk-api/access" },
   ] : []
 
   ui_environment = concat([

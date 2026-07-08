@@ -6,6 +6,7 @@ import { isAuthDisabledForLocal } from "@/lib/runtime-config";
 const cognitoIssuer = process.env.COGNITO_ISSUER;
 const cognitoClientId = process.env.COGNITO_CLIENT_ID;
 const cognitoClientSecret = process.env.COGNITO_CLIENT_SECRET;
+const cognitoApiScope = process.env.COGNITO_SCOPE ?? "relaydesk-api/access";
 const authDisabledForLocal = isAuthDisabledForLocal();
 
 const providers = [];
@@ -16,6 +17,11 @@ if (cognitoIssuer && cognitoClientId && cognitoClientSecret) {
       clientId: cognitoClientId,
       clientSecret: cognitoClientSecret,
       issuer: cognitoIssuer,
+      authorization: {
+        params: {
+          scope: `openid email profile ${cognitoApiScope}`,
+        },
+      },
       // Federated IdPs (Google) return a Cognito-issued nonce that does not match
       // the value NextAuth sent; native email/password sign-in still works with PKCE.
       checks: ["pkce", "state"],
