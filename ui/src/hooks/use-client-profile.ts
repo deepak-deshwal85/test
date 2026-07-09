@@ -13,7 +13,6 @@ export function useClientProfile() {
   const email = session?.user?.email?.toLowerCase() ?? "";
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (isAuthDisabledForLocal() || canManageData) {
@@ -21,17 +20,12 @@ export function useClientProfile() {
       setLoading(false);
       return;
     }
-    if (!email) {
-      setProfile(null);
-      setLoading(false);
-      return;
-    }
     setLoading(true);
-    setError(null);
     try {
-      const data = await apiFetch<ClientProfile>(
-        `v1/clients/profile?client_email_id=${encodeURIComponent(email)}`,
-      );
+      const path = email
+        ? `v1/clients/profile?client_email_id=${encodeURIComponent(email)}`
+        : "v1/clients/me";
+      const data = await apiFetch<ClientProfile>(path);
       setProfile(data);
     } catch {
       setProfile(null);
@@ -45,18 +39,20 @@ export function useClientProfile() {
     void refresh();
   }, [refresh, status]);
 
+  const clientEmailId = canManageData ? null : (profile?.client_email_id ?? email || null);
+
   return {
-    email,
+    email: clientEmailId ?? email,
     profile,
     loading,
-    error,
     refresh,
-    needsOnboarding: !canManageData && !loading && !!email && !profile,
-    clientEmailId: canManageData ? null : email || null,
+    needsOnboarding: !canManageData && !loading && !profile,
+    clientEmailId,
     clientPhoneNumber: profile?.client_phone_number ?? null,
     collectionName: profile?.client_phone_number
       ? `phone_${profile.client_phone_number.replace(/\D/g, "")}`
       : null,
+    ready: canManageData || loading || !!clientEmailId,
   };
 }
 

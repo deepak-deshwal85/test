@@ -33,6 +33,14 @@ class ClientRepository:
         ).scalar_one_or_none()
         return self._to_domain(row) if row else None
 
+    async def get_by_cognito_sub(self, cognito_sub: str) -> Client | None:
+        row = (
+            await self._session.execute(
+                select(ClientRow).where(ClientRow.cognito_sub == cognito_sub)
+            )
+        ).scalar_one_or_none()
+        return self._to_domain(row) if row else None
+
     async def upsert_profile(
         self,
         *,

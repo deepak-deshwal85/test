@@ -31,3 +31,17 @@ export function cognitoGroupsFromIdToken(idToken: string): string[] {
 export function relayDeskRoleFromIdToken(idToken: string): RelayDeskRole {
   return resolveRole(cognitoGroupsFromIdToken(idToken));
 }
+
+export function emailFromIdToken(idToken: string): string | null {
+  const payload = decodeJwtPayload(idToken);
+  const email = payload.email;
+  return typeof email === "string" && email.includes("@")
+    ? email.toLowerCase()
+    : null;
+}
+
+export function nameFromIdToken(idToken: string): string | null {
+  const payload = decodeJwtPayload(idToken);
+  const name = payload.name;
+  return typeof name === "string" && name.trim() ? name.trim() : null;
+}

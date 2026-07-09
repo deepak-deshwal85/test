@@ -1,7 +1,11 @@
 import NextAuth from "next-auth";
 import Cognito from "next-auth/providers/cognito";
 import Credentials from "next-auth/providers/credentials";
-import { relayDeskRoleFromIdToken } from "@/lib/cognito";
+import {
+  emailFromIdToken,
+  nameFromIdToken,
+  relayDeskRoleFromIdToken,
+} from "@/lib/cognito";
 import { isAuthDisabledForLocal } from "@/lib/runtime-config";
 import type { RelayDeskRole } from "@/lib/roles";
 
@@ -62,13 +66,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       if (account?.id_token) {
         token.role = relayDeskRoleFromIdToken(account.id_token);
+        const idEmail = emailFromIdToken(account.id_token);
+        const idName = nameFromIdToken(account.id_token);
+        if (idEmail) token.email = idEmail;
+        if (idName) token.name = idName;
       } else if (user?.role) {
         token.role = user.role;
       }
-      if (user?.email) {
-        token.email = user.email;
+      if (user?.email && !token.email) {
+        token.email = user.email.toLowerCase();
       }
-      if (user?.name) {
+      if (user?.name && !token.name) {
         token.name = user.name;
       }
       return token;

@@ -22,6 +22,17 @@ class ClientService:
         client = await self._repository.get_by_email(client_email_id)
         return self._to_response(client) if client else None
 
+    async def get_profile_for_principal(
+        self,
+        *,
+        cognito_sub: str,
+        client_email_id: str | None = None,
+    ) -> ClientProfileResponse | None:
+        client = await self._repository.get_by_cognito_sub(cognito_sub)
+        if client is None and client_email_id:
+            client = await self._repository.get_by_email(client_email_id)
+        return self._to_response(client) if client else None
+
     async def upsert_profile(
         self,
         body: ClientProfileUpsertRequest,

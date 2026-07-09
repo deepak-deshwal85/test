@@ -13,6 +13,7 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
+import { useClientProfile } from "@/hooks/use-client-profile";
 import { usePermissions } from "@/hooks/use-permissions";
 import type { CallJob, CallJobListResponse } from "@/lib/types";
 import { formatDate, statusColor } from "@/lib/utils";
@@ -20,6 +21,7 @@ import { PhoneCall, RefreshCw } from "lucide-react";
 
 export default function CallJobsPage() {
   const { canManageData } = usePermissions();
+  const { clientEmailId, ready } = useClientProfile();
   const [clientPhone, setClientPhone] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [jobs, setJobs] = useState<CallJob[]>([]);
@@ -28,13 +30,22 @@ export default function CallJobsPage() {
   const [triggering, setTriggering] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const scopedEmail = canManageData ? clientEmail : (clientEmailId ?? "");
+
+  useEffect(() => {
+    if (!canManageData && clientEmailId) {
+      setClientEmail(clientEmailId);
+    }
+  }, [canManageData, clientEmailId]);
+
   async function loadJobs(phone?: string) {
+    if (!canManageData && !scopedEmail) return;
     setLoading(true);
     setError(null);
     try {
       const query = phone
-        ? `v1/call-jobs?client_phone_number=${encodeURIComponent(phone)}&client_email_id=${encodeURIComponent(clientEmail)}&limit=20`
-        : `v1/call-jobs?client_email_id=${encodeURIComponent(clientEmail)}&limit=20`;
+        ? `v1/call-jobs?client_phone_number=${encodeURIComponent(phone)}&client_email_id=${encodeURIComponent(scopedEmail)}&limit=20`
+        : `v1/call-jobs?client_email_id=${encodeURIComponent(scopedEmail)}&limit=20`;
       const data = await apiFetch<CallJobListResponse>(query);
       setJobs(data.jobs);
     } catch (e) {
@@ -45,19 +56,20 @@ export default function CallJobsPage() {
   }
 
   useEffect(() => {
+    if (!ready) return;
     void loadJobs();
     const timer = setInterval(() => {
       void loadJobs(clientPhone || undefined);
     }, 5000);
     return () => clearInterval(timer);
-  }, [clientPhone]);
+  }, [clientPhone, ready, scopedEmail]);
 
   async function triggerJob() {
     if (!clientPhone.trim()) {
       setError("Enter a client phone number to trigger calls.");
       return;
     }
-    if (!clientEmail.trim()) {
+    if (!scopedEmail.trim()) {
       setError("Enter a client email id.");
       return;
     }
@@ -69,11 +81,11 @@ export default function CallJobsPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           client_phone_number: clientPhone.trim(),
-          client_email_id: clientEmail.trim().toLowerCase(),
+          client_email_id: scopedEmail.trim().toLowerCase(),
         }),
       });
       const job = await apiFetch<CallJob>(
-        `v1/call-jobs/${result.job_id}?client_email_id=${encodeURIComponent(clientEmail)}`,
+        `v1/call-jobs/${result.job_id}?client_email_id=${encodeURIComponent(scopedEmail)}`,
       );
       setSelected(job);
       await loadJobs(clientPhone.trim());
@@ -87,7 +99,7 @@ export default function CallJobsPage() {
   async function viewJob(jobId: string) {
     try {
       const job = await apiFetch<CallJob>(
-        `v1/call-jobs/${jobId}?client_email_id=${encodeURIComponent(clientEmail)}`,
+        `v1/call-jobs/${jobId}?client_email_id=${encodeURIComponent(scopedEmail)}`,
       );
       setSelected(job);
     } catch (e) {

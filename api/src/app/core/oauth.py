@@ -159,11 +159,16 @@ def validate_access_token(token: str, settings: Settings) -> AuthenticatedPrinci
     is_m2m = _is_m2m_client(client_id_str, settings)
     role = resolve_role(groups, default_guest=not is_m2m)
 
+    username = str(claims["username"]) if claims.get("username") else None
+    email = str(claims["email"]).lower() if claims.get("email") else None
+    if not email and username and "@" in username:
+        email = username.lower()
+
     return AuthenticatedPrincipal(
         subject=str(claims["sub"]),
         client_id=client_id_str,
-        username=str(claims["username"]) if claims.get("username") else None,
-        email=str(claims["email"]).lower() if claims.get("email") else None,
+        username=username,
+        email=email,
         scopes=scopes,
         token_use=token_use,
         groups=groups,
