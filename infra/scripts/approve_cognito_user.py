@@ -22,7 +22,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import asyncio
 import json
 import os
 import subprocess
@@ -187,7 +186,7 @@ def set_group_membership(
     print(f"Assigned {username!r} to group {group_name!r}")
 
 
-async def upsert_client_business_phone(*, email: str, business_phone: str) -> None:
+def upsert_client_business_phone(*, email: str, business_phone: str) -> None:
     database_url = os.getenv("DATABASE_URL", "").strip()
     if not database_url:
         raise RuntimeError(
@@ -195,30 +194,36 @@ async def upsert_client_business_phone(*, email: str, business_phone: str) -> No
             "Set it in the environment or use infra/scripts/set_database_url_from_rds.py."
         )
 
-    api_src = Path(__file__).resolve().parents[2] / "api" / "src"
-    if str(api_src) not in sys.path:
-        sys.path.insert(0, str(api_src))
+    repo_root = Path(__file__).resolve().parents[2]
+    api_dir = repo_root / "api"
+    helper = api_dir / "scripts" / "set_client_business_phone.py"
+    if not helper.is_file():
+        raise RuntimeError(f"Missing helper script: {helper}")
 
-    from app.core.config import Settings
-    from app.db.postgres.client_repository import ClientRepository
-    from app.db.postgres.session import dispose_engine, get_session_factory, init_engine
-
-    settings = Settings(database_url=database_url)
-    init_engine(settings)
-    session_factory = get_session_factory()
-    try:
-        async with session_factory() as session:
-            repository = ClientRepository(session)
-            client = await repository.set_business_phone(
-                client_email_id=email,
-                client_business_phone_number=business_phone,
-            )
-            print(
-                f"Stored business phone {client.client_business_phone_number!r} "
-                f"for client {client.client_email_id!r}"
-            )
-    finally:
-        await dispose_engine()
+    env = os.environ.copy()
+    env["DATABASE_URL"] = database_url
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "python",
+            str(helper),
+            "--email",
+            email,
+            "--business-phone",
+            business_phone,
+        ],
+        cwd=str(api_dir),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.stdout.strip():
+        print(result.stdout.strip())
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "unknown error").strip()
+        raise RuntimeError(f"Failed to store business phone in database:\n{detail}")
 
 
 def main() -> int:
@@ -305,11 +310,9 @@ def main() -> int:
         and not args.dry_run
         and args.role in ROLES_REQUIRING_BUSINESS_PHONE
     ):
-        asyncio.run(
-            upsert_client_business_phone(
-                email=email,
-                business_phone=args.business_phone.strip(),
-            )
+        upsert_client_business_phone(
+            email=email,
+            business_phone=args.business_phone.strip(),
         )
         print(f"Tell {email} to sign out and sign in again to refresh access.")
     elif not args.revoke and not args.dry_run:

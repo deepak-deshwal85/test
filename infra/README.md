@@ -189,7 +189,7 @@ python infra/scripts/sync_ssm_parameters.py --write-env-properties
 If API logs show connection to `127.0.0.1:5432`, sync overwrote with local `.env`:
 
 ```bash
-export RDS_DB_PASSWORD='your-rds-master-password'
+export RDS_DB_PASSWORD='RelayDesk2026!'
 
 python infra/scripts/set_database_url_from_rds.py \
   --profile relaydesk-admin --region ap-south-1 --dry-run
@@ -339,13 +339,15 @@ Voice-agent M2M tokens bypass role checks.
 python infra/scripts/backfill_guest_clients.py \
   --profile relaydesk-admin --region ap-south-1
 
-# Promote a user
+# Promote a user (business phone is stored in PostgreSQL; requires DATABASE_URL)
 python infra/scripts/approve_cognito_user.py \
   --email user@example.com --role approved-clients \
+  --business-phone +911171366880 \
   --profile relaydesk-admin --region ap-south-1
 
 python infra/scripts/approve_cognito_user.py \
-  --email admin@example.com --role relaydesk-admins \
+  --email deepakdeshwal85@gmail.com --role relaydesk-admins \
+  --business-phone +911171366880 \
   --profile relaydesk-admin --region ap-south-1
 
 # Revoke elevated roles
