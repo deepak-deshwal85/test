@@ -1,25 +1,57 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Badge, Card, PageHeader } from "@/components/ui";
-import { serverApiFetch } from "@/lib/api-server";
-import type { CollectionListResponse, CustomerListResponse, HealthResponse } from "@/lib/types";
+import { apiFetch } from "@/lib/api-client";
+import { clientScopeQuery, useClientProfile } from "@/hooks/use-client-profile";
+import { usePermissions } from "@/hooks/use-permissions";
+import type {
+  CollectionListResponse,
+  CustomerListResponse,
+  HealthResponse,
+} from "@/lib/types";
 import { BookOpen, PhoneCall, Users } from "lucide-react";
-import Link from "next/link";
 
-export default async function DashboardPage() {
-  let health: HealthResponse | null = null;
-  let customers: CustomerListResponse | null = null;
-  let collections: CollectionListResponse | null = null;
-  let error: string | null = null;
+export default function DashboardPage() {
+  const { canManageData } = usePermissions();
+  const { clientEmailId, ready } = useClientProfile();
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [customers, setCustomers] = useState<CustomerListResponse | null>(null);
+  const [collections, setCollections] = useState<CollectionListResponse | null>(
+    null,
+  );
+  const [error, setError] = useState<string | null>(null);
 
-  try {
-    [health, customers, collections] = await Promise.all([
-      serverApiFetch<HealthResponse>("health"),
-      serverApiFetch<CustomerListResponse>("v1/customers?limit=5"),
-      serverApiFetch<CollectionListResponse>("v1/collections"),
-    ]);
-  } catch (e) {
-    error = e instanceof Error ? e.message : "Failed to load dashboard";
-  }
+  useEffect(() => {
+    async function load() {
+      setError(null);
+      try {
+        const healthData = await apiFetch<HealthResponse>("health");
+        setHealth(healthData);
+
+        if (!ready) return;
+
+        const scope = clientScopeQuery(clientEmailId);
+        const customerPath = scope
+          ? `v1/customers?limit=5&${scope}`
+          : "v1/customers?limit=5";
+        const collectionPath = scope ? `v1/collections?${scope}` : "v1/collections";
+
+        const [customerData, collectionData] = await Promise.all([
+          apiFetch<CustomerListResponse>(customerPath),
+          apiFetch<CollectionListResponse>(collectionPath),
+        ]);
+        setCustomers(customerData);
+        setCollections(collectionData);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to load dashboard");
+      }
+    }
+
+    void load();
+  }, [canManageData, clientEmailId, ready]);
 
   return (
     <AppShell>

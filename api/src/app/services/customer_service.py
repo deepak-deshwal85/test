@@ -49,7 +49,7 @@ class CustomerService:
     async def list(
         self,
         *,
-        client_email_id: str,
+        client_email_id: str | None,
         client_phone_number: str | None = None,
         skip: int = 0,
         limit: int = 100,

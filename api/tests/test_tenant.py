@@ -128,12 +128,14 @@ async def test_client_profile_upsert_requires_ui_user() -> None:
 
     from fastapi.testclient import TestClient
 
-    from app.core.dependencies import get_client_service
+    from app.core.dependencies import get_client_repository, get_client_service
     from app.main import create_app
     from app.schemas.clients import ClientProfileResponse
 
     now = datetime.now(UTC)
     mock_service = AsyncMock()
+    mock_repository = AsyncMock()
+    mock_repository.get_by_cognito_sub.return_value = None
     mock_service.upsert_profile.return_value = ClientProfileResponse(
         id=1,
         client_phone_number="911171366880",
@@ -144,6 +146,7 @@ async def test_client_profile_upsert_requires_ui_user() -> None:
 
     app = create_app()
     app.dependency_overrides[get_client_service] = lambda: mock_service
+    app.dependency_overrides[get_client_repository] = lambda: mock_repository
     test_client = TestClient(app)
 
     response = test_client.put(

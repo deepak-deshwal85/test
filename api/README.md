@@ -1,141 +1,193 @@
 # RelayDesk API
 
-Layered FastAPI service: RAG (Qdrant), customer CRUD (PostgreSQL), and async outbound call jobs.
+FastAPI service providing **RAG** (Qdrant vector search, document ingest), **customer management** (PostgreSQL), **outbound call jobs** (LiveKit SIP), and **client profiles**. All routes except `/health` require a Cognito JWT unless `OAUTH_DISABLED=true`.
 
-## Architecture
+[← Back to monorepo](../README.md) · **Infrastructure:** [`../infra/README.md`](../infra/README.md)
+
+---
+
+## 1. Description
+
+### What it does
+
+- **RAG:** Upload PDF/text/markdown per phone collection (`phone_<digits>`), embed with OpenAI, search via Qdrant.
+- **Customers:** CRUD for client/consumer records scoped by `client_email_id`.
+- **Call jobs:** Async outbound dialing of all consumers for a client phone number.
+- **Clients:** Profile setup (name, phone, email) after SSO; links Cognito `sub` to tenant.
+- **Auth:** Validates Cognito access tokens; UI users are email-scoped; M2M voice-agent tokens bypass tenant checks.
+
+### Architecture
 
 ```
 src/app/
   routers/     HTTP routes (Swagger at /docs)
   services/    Business logic
-  db/          PostgreSQL + Qdrant + embedding providers
+  db/          PostgreSQL, Qdrant, embedding providers
   schemas/     Pydantic request/response models
   domain/      Internal dataclasses
-  core/        Settings, dependencies
+  core/        Settings, OAuth, RBAC, tenant scoping
 ```
 
-## Database setup (PostgreSQL)
+### Key API groups
 
-Default connection (override in `.env`):
+| Prefix | Purpose |
+|--------|---------|
+| `/health` | Liveness (no auth) |
+| `/v1/collections`, `/v1/search` | RAG — collections, documents, semantic search |
+| `/v1/customers` | Customer CRUD + approve |
+| `/v1/call-jobs` | Trigger and poll outbound campaigns |
+| `/v1/clients` | Client profile (`/me`, `/profile`) |
+| `/v1/embeddings` | Embedding cache (admin) |
 
-```
-postgresql+asyncpg://postgres:1234@localhost:5432/relaydesk
-```
+---
 
-Create database and tables:
+## 2. Run locally
+
+### Prerequisites
+
+- Python 3.13+, [uv](https://docs.astral.sh/uv/)
+- PostgreSQL (local Docker or installed)
+- Qdrant (`docker compose up -d qdrant` from repo root)
+
+### Setup database
 
 ```bash
 cd api
-export PGPASSWORD='1234'
+export PGPASSWORD='your-postgres-password'
 psql -U postgres -h localhost -p 5432 -f scripts/init_db.sql
 ```
 
-If the database already exists, connect and run only the `CREATE TABLE` statements from `scripts/init_db.sql`.
-
-Add to `api/.env`:
-
-```env
-DATABASE_URL=postgresql+asyncpg://postgres:1234@localhost:5432/relaydesk
-```
-
-## Quick start
+### Configure environment
 
 ```bash
-docker compose up -d qdrant
-cd api
 cp .env.example .env
+```
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OPENAI_API_KEY` | Yes (RAG) | OpenAI embeddings |
+| `DATABASE_URL` | Yes | `postgresql+asyncpg://user:pass@host:5432/relaydesk` |
+| `QDRANT_URL` | Local | `http://127.0.0.1:6333` |
+| `QDRANT_CLUSTER_ENDPOINT` | Cloud | HTTPS Qdrant Cloud endpoint (overrides `QDRANT_URL`) |
+| `QDRANT_API_KEY` | Cloud | Qdrant Cloud API key |
+| `OAUTH_DISABLED` | Local dev | `true` — skip JWT validation |
+| `COGNITO_REGION` | Production | e.g. `ap-south-1` |
+| `COGNITO_USER_POOL_ID` | Production | User pool ID |
+| `COGNITO_UI_CLIENT_ID` | Production | UI OAuth client |
+| `COGNITO_M2M_CLIENT_ID` | Production | Voice-agent M2M client |
+| `COGNITO_REQUIRED_SCOPE` | Production | Default `relaydesk-api/access` |
+| `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | Call jobs | Real outbound SIP calls |
+| `LIVEKIT_SIP_OUTBOUND_TRUNK_ID` | Call jobs | Outbound trunk ID |
+| `LIVEKIT_AGENT_NAME` | Call jobs | Agent dispatch name |
+| `CORS_ORIGINS` | Optional | e.g. `http://localhost:3000` |
+
+### Start server
+
+```bash
 uv sync
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
 
-Swagger: http://127.0.0.1:8090/docs
+- Swagger: http://127.0.0.1:8090/docs
+- Health: http://127.0.0.1:8090/health
 
-## Customer APIs
+### Upload a test document
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/v1/customers` | Create customer |
-| GET | `/v1/customers` | List customers (`?client_phone_number=`) |
-| GET | `/v1/customers/{id}` | Get customer |
-| PUT | `/v1/customers/{id}` | Update customer |
-| DELETE | `/v1/customers/{id}` | Delete customer |
+Use Swagger **POST** `/v1/collections/{collection}/documents` with collection `phone_911171366880` for phone `911171366880`, or:
 
-**Customer fields:** `client_phone_number`, `client_name`, `consumer_phone_number`
-
-Example create:
-
-```json
-{
-  "client_phone_number": "911171366880",
-  "client_name": "Acme Corp",
-  "consumer_phone_number": "9876543210"
-}
+```bash
+uv run python scripts/upload_document.py \
+  --file ./data/sample.pdf \
+  --collection phone_911171366880 \
+  --base-url http://127.0.0.1:8090
 ```
 
-## Call job APIs
+---
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/v1/call-jobs/trigger` | Async trigger — calls all consumers for a client |
-| GET | `/v1/call-jobs/{job_id}` | Poll job status |
+## 3. Docker build, push to ECR, update ECS
 
-**Trigger request:**
+Run from **repo root** in one shell session (Git Bash). **Wait for `docker build` to finish successfully** before pushing.
 
-```json
-{
-  "client_phone_number": "911171366880"
-}
+```bash
+export PROFILE_NAME="relaydesk-admin"
+export AWS_REGION="ap-south-1"
+export IMAGE_TAG="latest"    # match api_ecr_image_tag in terraform.tfvars
+
+cd infra/terraform
+export ACCOUNT_ID="$(terraform output -raw aws_account_id)"
+export ECR_API="$(terraform output -raw ecr_api_repository_url)"
+export CLUSTER="$(terraform output -raw ecs_cluster_name)"
+export SERVICE="$(terraform output -raw ecs_service_api_name)"
+cd ../..
+
+aws ecr get-login-password --profile "$PROFILE_NAME" --region "$AWS_REGION" \
+  | docker login --username AWS --password-stdin \
+    "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+docker build -t relaydesk-api:latest ./api
+docker tag relaydesk-api:latest "${ECR_API}:${IMAGE_TAG}"
+docker tag relaydesk-api:latest "${ECR_API}:latest"
+docker push "${ECR_API}:${IMAGE_TAG}"
+docker push "${ECR_API}:latest"
+
+aws ecs update-service \
+  --cluster "$CLUSTER" \
+  --service "$SERVICE" \
+  --force-new-deployment \
+  --profile "$PROFILE_NAME" \
+  --region "$AWS_REGION"
 ```
 
-Returns `202 Accepted` with `job_id`. The job loads all customers for that `client_phone_number` and dials each `consumer_phone_number`.
+After deploy, tail logs:
 
-**Console logs** show each step (`call job loaded customers`, `call attempt`, etc.). **GET** `/v1/call-jobs/{job_id}` returns a `results` array with per-customer call details.
-
-### Real calls (LiveKit SIP)
-
-Add to `api/.env` (same LiveKit project as voice-agent):
-
-```env
-LIVEKIT_URL=wss://your-project.livekit.cloud
-LIVEKIT_API_KEY=...
-LIVEKIT_API_SECRET=...
-LIVEKIT_SIP_OUTBOUND_TRUNK_ID=ST_xxxx   # outbound trunk from LiveKit Cloud / lk CLI
-LIVEKIT_AGENT_NAME=relaydesk
+```bash
+aws logs tail /ecs/relaydesk-prod/api --since 10m --follow \
+  --region "$AWS_REGION" --profile "$PROFILE_NAME"
 ```
 
-Without these, calls are **simulated only** (job completes but no phone rings).
+**Secrets:** API reads from SSM Parameter Store (`/relaydesk/prod/api/*`). Sync with [`../infra/scripts/sync_ssm_parameters.py`](../infra/scripts/sync_ssm_parameters.py). See [`../infra/README.md`](../infra/README.md).
 
-The voice agent must be running (`uv run python src/agent.py dev`) to answer outbound rooms.
+---
 
-## RAG APIs
+## 4. Scripts
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check |
-| POST | `/v1/embeddings` | Create embeddings |
-| POST | `/v1/collections/{collection}/documents` | Upload document |
-| POST | `/v1/search` | Semantic search |
-| ... | | See Swagger for full list |
+All scripts run from the `api/` directory unless noted.
 
-## Environment
+| Script | Purpose | Usage |
+|--------|---------|--------|
+| `scripts/init_db.sql` | Create `relaydesk` database and tables | `psql -U postgres -f scripts/init_db.sql` |
+| `scripts/seed_db.sql` | Optional seed data | Run against `relaydesk` DB after init |
+| `scripts/migrate_call_job_results.sql` | Add `results_json` to `call_jobs` | For existing DBs upgrading schema |
+| `scripts/upload_document.py` | Upload file to a collection via HTTP | `uv run python scripts/upload_document.py --file doc.pdf --collection phone_911171366880` |
+| `scripts/reset_qdrant_collections.py` | Delete all Qdrant collections (destructive) | `uv run python scripts/reset_qdrant_collections.py --yes` |
+| `scripts/bench_search.py` | Benchmark search latency | `uv run python scripts/bench_search.py --query "hello"` |
 
-| Variable | Purpose |
-|----------|---------|
-| `OPENAI_API_KEY` | Embeddings |
-| `DATABASE_URL` | PostgreSQL async connection |
-| `QDRANT_URL` | Local Qdrant (default `http://127.0.0.1:6333`) |
-| `QDRANT_CLUSTER_ENDPOINT` | Qdrant Cloud HTTPS endpoint (overrides `QDRANT_URL`) |
-| `QDRANT_API_KEY` | Required for Qdrant Cloud |
-| `COGNITO_REGION` / `COGNITO_USER_POOL_ID` | Cognito issuer setup for JWT validation |
-| `COGNITO_UI_CLIENT_ID` / `COGNITO_M2M_CLIENT_ID` | Allowed OAuth clients (UI + voice M2M) |
-| `COGNITO_REQUIRED_SCOPE` | Required access scope (default `relaydesk-api/access`) |
-| `OUTBOUND_CALL_WEBHOOK_URL` | Legacy optional webhook (use LiveKit vars instead) |
-| `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | Required for real outbound calls |
-| `LIVEKIT_SIP_OUTBOUND_TRUNK_ID` | Outbound SIP trunk ID |
-| `LIVEKIT_AGENT_NAME` | Agent to dispatch (default `relaydesk`) |
+### `upload_document.py`
+
+```bash
+uv run python scripts/upload_document.py \
+  --file path/to/file.pdf \
+  --collection phone_911171366880 \
+  --base-url http://127.0.0.1:8090
+```
+
+Optional: set `RAG_API_KEY` in `.env` if the API requires a bearer token.
+
+### `reset_qdrant_collections.py`
+
+Removes every collection in the configured Qdrant instance. Use only in dev.
+
+```bash
+uv run python scripts/reset_qdrant_collections.py --dry-run
+uv run python scripts/reset_qdrant_collections.py --yes
+```
+
+---
 
 ## Tests
 
 ```bash
 uv run pytest
+uv run ruff check src tests
+uv run ruff format src tests
 ```

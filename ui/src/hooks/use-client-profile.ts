@@ -39,7 +39,9 @@ export function useClientProfile() {
     void refresh();
   }, [refresh, status]);
 
-  const clientEmailId = canManageData ? null : (profile?.client_email_id ?? email || null);
+  const clientEmailId = canManageData
+    ? null
+    : (profile?.client_email_id ?? email) || null;
 
   return {
     email: clientEmailId ?? email,

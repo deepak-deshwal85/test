@@ -66,14 +66,16 @@ class CustomerRepository:
     async def list(
         self,
         *,
-        client_email_id: str,
+        client_email_id: str | None,
         client_phone_number: str | None = None,
         skip: int = 0,
         limit: int = 100,
     ) -> list[Customer]:
-        query = select(CustomerRow).where(
-            CustomerRow.client_email_id == normalize_email(client_email_id)
-        )
+        query = select(CustomerRow)
+        if client_email_id:
+            query = query.where(
+                CustomerRow.client_email_id == normalize_email(client_email_id)
+            )
         query = query.order_by(CustomerRow.id)
         if client_phone_number:
             query = query.where(

@@ -11,7 +11,7 @@ from app.core.dependencies import (
 )
 from app.core.oauth import AuthenticatedPrincipal
 from app.core.rbac import Permission
-from app.core.tenant import ensure_client_email_scope
+from app.core.tenant import ensure_client_email_scope, is_scope_unrestricted
 from app.schemas.customers import (
     CustomerCreateRequest,
     CustomerListResponse,
@@ -43,12 +43,21 @@ async def create_customer(
 async def list_customers(
     service: Annotated[CustomerService, Depends(get_customer_service)],
     principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
-    client_email_id: Annotated[str, Query(min_length=3)],
+    client_email_id: Annotated[str | None, Query(min_length=3)] = None,
     client_phone_number: Annotated[str | None, Query()] = None,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> CustomerListResponse:
-    scoped_email = ensure_client_email_scope(principal, client_email_id)
+    if not client_email_id and not is_scope_unrestricted(principal):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="client_email_id is required",
+        )
+    scoped_email = (
+        ensure_client_email_scope(principal, client_email_id)
+        if client_email_id
+        else None
+    )
     customers = await service.list(
         client_email_id=scoped_email,
         client_phone_number=client_phone_number,

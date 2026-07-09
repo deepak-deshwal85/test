@@ -1,15 +1,43 @@
-# RelayDesk Monorepo
+# RelayDesk
 
-This repository contains two independent Python projects:
+RelayDesk is a voice-AI operations platform: a **LiveKit voice agent** handles phone calls, a **RAG REST API** stores and searches knowledge bases, and a **Next.js console** lets operators manage customers, documents, and outbound campaigns.
 
-| Folder | Purpose |
-|--------|---------|
-| [`voice-agent/`](voice-agent/) | LiveKit voice agent (STT, LLM, TTS, Cal.com scheduling) |
-| [`api/`](api/) | RAG REST API (Qdrant, embeddings, document ingest, search) |
+> **Shell:** Command examples use **bash** (macOS, Linux, or **Git Bash** on Windows).
 
-The voice agent calls the RAG API over HTTP. Each project has its own `pyproject.toml`, dependencies, tests, and README.
+## Components at a glance
 
-## Quick start (local)
+| Component | Path | One-line summary |
+|-----------|------|------------------|
+| **API** | [`api/`](api/) | FastAPI service — RAG (Qdrant), PostgreSQL customers/call jobs, Cognito JWT auth |
+| **UI** | [`ui/`](ui/) | Next.js operations console — SSO login, knowledge upload, search, call jobs |
+| **Voice agent** | [`voice-agent/`](voice-agent/) | LiveKit agent — STT/LLM/TTS, Cal.com scheduling, RAG search on every turn |
+| **Infrastructure** | [`infra/`](infra/) | Terraform — VPC, ECS on EC2, ALB, Cognito, RDS, ECR, SSM secrets |
+
+## How it fits together
+
+```
+Browser ──► UI (Next.js :3000) ──► API (:8090) ──► Qdrant + PostgreSQL
+                                         ▲
+Voice agent (LiveKit) ──M2M OAuth────────┘
+     │
+     └──► LiveKit Cloud, Deepgram, Cartesia, xAI, Cal.com
+```
+
+- **UI users** sign in with Cognito SSO, complete a profile (name + phone), and access data scoped by `client_email_id`.
+- **Voice agent** uses Cognito **machine-to-machine** tokens to call RAG APIs without email scoping.
+- **Admins** (`relaydesk-admins`) see all tenants; **guests** and **approved clients** are scoped to their email.
+
+## Documentation map
+
+| Topic | Read |
+|-------|------|
+| API — local run, env vars, RAG/customer APIs, scripts | [`api/README.md`](api/README.md) |
+| UI — Cognito/NextAuth, local dev, Docker/ECR deploy | [`ui/README.md`](ui/README.md) |
+| Voice agent — LiveKit, phone configs, RAG client | [`voice-agent/README.md`](voice-agent/README.md) |
+| AWS — Terraform bootstrap, SSM, ECS, Cognito roles, ops scripts | [`infra/README.md`](infra/README.md) |
+| LiveKit agent development | [`AGENTS.md`](AGENTS.md) |
+
+## Quick start (full stack, local)
 
 ### 1. Start Qdrant
 
@@ -17,20 +45,27 @@ The voice agent calls the RAG API over HTTP. Each project has its own `pyproject
 docker compose up -d qdrant
 ```
 
-### 2. Start RAG API
+### 2. Start API
 
 ```bash
 cd api
-cp .env.example .env
+cp .env.example .env   # edit keys
 uv sync
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
 
-API docs: http://127.0.0.1:8090/docs
+Swagger: http://127.0.0.1:8090/docs
 
-### 3. Upload documents (via Swagger)
+### 3. Start UI
 
-Open http://127.0.0.1:8090/docs and use **POST** `/v1/collections/{collection}/documents` to upload a PDF or text file. For phone `911171366880`, use collection `phone_911171366880`.
+```bash
+cd ui
+cp .env.example .env   # set AUTH_DISABLE_SSO=true for local-only
+npm install
+npm run dev
+```
+
+Open http://localhost:3000
 
 ### 4. Start voice agent
 
@@ -44,39 +79,79 @@ uv run python src/agent.py console
 
 Set `RAG_API_BASE_URL=http://127.0.0.1:8090` in `voice-agent/.env`.
 
-## Project layout
+## Repository layout
 
 ```
-relaydesk/
-├── voice-agent/          # LiveKit voice agent
-│   ├── src/
-│   ├── config/           # Per-phone client configs
-│   ├── tests/
-│   └── README.md
-├── api/                  # Layered RAG REST API + Qdrant
-│   ├── src/app/
-│   ├── data/
-│   ├── tests/
-│   └── README.md
-├── docker-compose.yml    # Qdrant (+ optional api)
-└── README.md
+telephone-agent/
+├── api/              # FastAPI RAG + customer + call-job API
+├── ui/               # Next.js operations console
+├── voice-agent/      # LiveKit voice agent
+├── infra/            # Terraform + operational scripts
+├── docker-compose.yml
+├── README.md         # This file
+└── AGENTS.md         # LiveKit agent dev guide
 ```
 
-## AWS deployment (ECS on EC2)
+## AWS deployment (summary)
 
-**Recommendation:** run **two separate containers** (voice agent + RAG API) on one ECS cluster backed by EC2.
+Production runs on **ECS on EC2** in `ap-south-1` (configurable):
 
-Full guide: **[iac.md](iac.md)** (architecture, Terraform bootstrap, GitHub Actions, sizing, secrets).
+| ECS service | Image | Port |
+|-------------|-------|------|
+| `relaydesk-prod-api` | `api/Dockerfile` | 8090 |
+| `relaydesk-prod-ui` | `ui/Dockerfile` | 3000 |
+| `relaydesk-prod-voice-agent` | `voice-agent/Dockerfile` | — |
 
-Quick path: `cd infra/terraform && cp terraform.tfvars.example terraform.tfvars` → `terraform apply` → set SSM secrets → push to `main` for CI deploy.
+**Full bootstrap, secrets, domain, and troubleshooting:** [`infra/README.md`](infra/README.md)
 
-**Live ECS logs:** see [infra/README.md](infra/README.md#live-logs-ecs--cloudwatch).
-
-## Development
+**Typical manual image push** (from repo root):
 
 ```bash
-cd voice-agent && uv run pytest
-cd api && uv run pytest
+export PROFILE_NAME="relaydesk-admin"
+export AWS_REGION="ap-south-1"
+export IMAGE_TAG="latest"
+
+cd infra/terraform
+export ACCOUNT_ID="$(terraform output -raw aws_account_id)"
+export ECR_API="$(terraform output -raw ecr_api_repository_url)"
+export ECR_UI="$(terraform output -raw ecr_ui_repository_url)"
+export ECR_VOICE="$(terraform output -raw ecr_voice_agent_repository_url)"
+cd ../..
+
+aws ecr get-login-password --profile "$PROFILE_NAME" --region "$AWS_REGION" \
+  | docker login --username AWS --password-stdin \
+    "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+# Build must succeed before push (verify npm run build / docker build output)
+docker build -t "${ECR_API}:${IMAGE_TAG}" ./api && docker push "${ECR_API}:${IMAGE_TAG}"
+docker build -t "${ECR_UI}:${IMAGE_TAG}" ./ui   && docker push "${ECR_UI}:${IMAGE_TAG}"
+docker build -t "${ECR_VOICE}:${IMAGE_TAG}" ./voice-agent && docker push "${ECR_VOICE}:${IMAGE_TAG}"
 ```
 
-See [AGENTS.md](AGENTS.md) for LiveKit agent development guidelines.
+Force ECS to pull new images:
+
+```bash
+for SVC in relaydesk-prod-api relaydesk-prod-ui relaydesk-prod-voice-agent; do
+  aws ecs update-service --cluster relaydesk-prod --service "$SVC" \
+    --force-new-deployment --profile "$PROFILE_NAME" --region "$AWS_REGION"
+done
+```
+
+Or push to `main` and let **GitHub Actions** deploy (see [`infra/README.md`](infra/README.md)).
+
+## Tests
+
+```bash
+cd api && uv run pytest
+cd voice-agent && uv run pytest
+```
+
+## User roles (Cognito)
+
+| Group | Access |
+|-------|--------|
+| `guest-clients` | Auto-assigned on SSO sign-up — read-only |
+| `approved-clients` | Upload/delete knowledge-base documents |
+| `relaydesk-admins` | Full console and API access |
+
+Promote users: `python infra/scripts/approve_cognito_user.py --email user@example.com --role relaydesk-admins`

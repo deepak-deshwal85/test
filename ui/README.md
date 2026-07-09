@@ -1,80 +1,101 @@
 # RelayDesk UI
 
-Modern operations console for the RelayDesk API. Built with **Next.js 15**, **TypeScript**, and **Tailwind CSS**.
+Next.js 15 operations console for RelayDesk: dashboard, customers, call jobs, knowledge-base upload, semantic search, and collection management. Authenticates users via **AWS Cognito** (NextAuth.js) and proxies API calls with OAuth access tokens.
 
-## Features
+[← Back to monorepo](../README.md) · **Infrastructure:** [`../infra/README.md`](../infra/README.md)
 
-- Dashboard with API health and quick actions
-- Customer CRUD
-- Outbound call job trigger and monitoring
-- Knowledge base document upload per phone collection
-- Semantic search across uploaded documents
-- Collection administration
+---
 
-## Authentication
+## 1. Description
 
-The UI uses **AWS Cognito OIDC** through [NextAuth.js](https://authjs.dev).
-Browser requests never contain static API secrets; the server proxy forwards OAuth access tokens to the API.
+### What it does
 
-### OAuth setup
+- **Dashboard** — API health, customer/collection counts (scoped by tenant).
+- **Login / profile** — Cognito SSO; after first sign-in, users enter **name** and **business phone** on `/login`.
+- **Customers** — List and manage consumers per `client_email_id`.
+- **Call jobs** — Trigger and monitor outbound campaigns (admin).
+- **Knowledge** — Upload documents to phone-scoped Qdrant collections.
+- **Search** — Natural-language search over uploaded knowledge.
+- **Collections** — Browse vector collections.
 
-1. Copy `ui/.env.example` to `ui/.env` (or `.env.local`) and fill values.
-2. Generate `AUTH_SECRET`: `openssl rand -base64 32`
-3. Set Cognito values:
-   - `COGNITO_ISSUER`
-   - `COGNITO_CLIENT_ID`
-   - `COGNITO_CLIENT_SECRET`
-4. Configure API target:
-   - `RELAYDESK_API_TARGET=local|aws|auto`
-   - `RELAYDESK_API_URL_LOCAL`, `RELAYDESK_API_URL_AWS`
+### Role-based UI
 
-### Local mode without SSO
+| Cognito group | UI capability |
+|---------------|-----------------|
+| `guest-clients` | View-only (default after SSO) |
+| `approved-clients` | Upload/delete documents |
+| `relaydesk-admins` | Full access including customer create, call-job trigger |
 
-Set `AUTH_DISABLE_SSO=true` to bypass login locally. This is intended for development only.
-When using this mode, set API `OAUTH_DISABLED=true` (or an API instance that accepts unauthenticated local traffic).
+### Stack
 
-## Local development
+Next.js 15 · TypeScript · Tailwind CSS 4 · NextAuth v5 · Server-side API proxy (`/api/backend/*`)
+
+---
+
+## 2. Run locally
+
+### Prerequisites
+
+- Node.js 22+
+- RelayDesk API running (see [`../api/README.md`](../api/README.md))
+
+### Configure environment
 
 ```bash
 cd ui
-npm install
 cp .env.example .env
-# edit .env
+npm install
+```
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `AUTH_SECRET` | Yes | `openssl rand -base64 32` |
+| `AUTH_URL` | Yes | `http://localhost:3000` (must match browser URL) |
+| `AUTH_DISABLE_SSO` | Local | `true` — skip Cognito, use local dev user |
+| `COGNITO_ISSUER` | SSO | `https://cognito-idp.<region>.amazonaws.com/<pool-id>` |
+| `COGNITO_CLIENT_ID` | SSO | Cognito UI app client ID |
+| `COGNITO_CLIENT_SECRET` | SSO | Cognito UI app client secret |
+| `COGNITO_SCOPE` | SSO | `relaydesk-api/access` |
+| `RELAYDESK_API_TARGET` | Routing | `local` \| `aws` \| `auto` |
+| `RELAYDESK_API_URL_LOCAL` | Local API | `http://127.0.0.1:8090` |
+| `RELAYDESK_API_URL_AWS` | Production API | `https://relaydesk.uk` |
+
+**Local without SSO:** set `AUTH_DISABLE_SSO=true` in UI and `OAUTH_DISABLED=true` in API.
+
+### Start dev server
+
+```bash
 npm run dev
 ```
 
 Open http://localhost:3000
 
-Ensure the API is running (`cd api && uv run uvicorn app.main:app --host 127.0.0.1 --port 8090`).
+### Production build (verify before Docker)
 
-## Production (ECS)
+```bash
+npm run build
+npm start   # optional smoke test on :3000
+```
 
-The UI runs as a Next.js standalone container on ECS.
+---
 
-- Browser → `https://relaydesk.uk` (ALB + ACM) → UI (`:3000`)
-- API routes → ALB `/v1/*`, `/health`, `/docs` → API (`:8090`)
+## 3. Docker build, push to ECR, update ECS
 
-Set OAuth callback URL to:
-- `https://<public-ui-host>/api/auth/callback/cognito`
-
-### Docker build and push (ECR)
-
-From the **repo root** in one shell session (Git Bash). Use `export` so variables survive if you paste commands line by line:
+Run from **repo root**. **`npm run build` must succeed** inside Docker before you push — a failed build leaves the old image on ECR.
 
 ```bash
 export PROFILE_NAME="relaydesk-admin"
 export AWS_REGION="ap-south-1"
-# Must match ui_ecr_image_tag in infra/terraform/terraform.tfvars
-export IMAGE_TAG="latest"
+export IMAGE_TAG="latest"    # match ui_ecr_image_tag in terraform.tfvars
 
 cd infra/terraform
 export ACCOUNT_ID="$(terraform output -raw aws_account_id)"
 export ECR_UI="$(terraform output -raw ecr_ui_repository_url)"
+export CLUSTER="$(terraform output -raw ecs_cluster_name)"
+export SERVICE="$(terraform output -raw ecs_service_ui_name)"
 cd ../..
 
-echo "ACCOUNT_ID=$ACCOUNT_ID"
-echo "ECR_UI=$ECR_UI"
-echo "IMAGE_TAG=$IMAGE_TAG"
+echo "ECR_UI=$ECR_UI IMAGE_TAG=$IMAGE_TAG"
 
 aws ecr get-login-password --profile "$PROFILE_NAME" --region "$AWS_REGION" \
   | docker login --username AWS --password-stdin \
@@ -85,18 +106,6 @@ docker tag relaydesk-ui:latest "${ECR_UI}:${IMAGE_TAG}"
 docker tag relaydesk-ui:latest "${ECR_UI}:latest"
 docker push "${ECR_UI}:${IMAGE_TAG}"
 docker push "${ECR_UI}:latest"
-```
-
-Then force a new ECS deployment (optional if the service already watches `:latest`):
-
-```bash
-export PROFILE_NAME="relaydesk-admin"
-export AWS_REGION="ap-south-1"
-
-cd infra/terraform
-export CLUSTER="$(terraform output -raw ecs_cluster_name)"
-export SERVICE="$(terraform output -raw ecs_service_ui_name)"
-cd ../..
 
 aws ecs update-service \
   --cluster "$CLUSTER" \
@@ -106,11 +115,45 @@ aws ecs update-service \
   --region "$AWS_REGION"
 ```
 
-## Stack rationale
+### Production OAuth
 
-| Choice | Why |
-|--------|-----|
-| Next.js 15 | SSR for auth, API proxy, industry-standard React framework |
-| TypeScript | Type-safe API contracts, matches modern full-stack practice |
-| Tailwind CSS 4 | Responsive mobile-first styling with minimal bundle size |
-| NextAuth v5 | Cognito OIDC support with JWT sessions, ECS-compatible |
+- Callback URL: `https://<your-domain>/api/auth/callback/cognito`
+- Set `AUTH_URL=https://<your-domain>` in SSM (`/relaydesk/prod/ui/AUTH_URL`)
+- Terraform output: `terraform output cognito_callback_urls`
+
+---
+
+## 4. Scripts and npm commands
+
+This project has no `scripts/` folder. Use these **npm** commands from `ui/`:
+
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Development server with hot reload |
+| `npm run build` | Production build (required before Docker image) |
+| `npm start` | Run production build locally |
+| `npm run lint` | ESLint |
+
+### Related infra scripts (SSO / secrets)
+
+| Script | Purpose |
+|--------|---------|
+| [`../infra/scripts/sync_ssm_parameters.py`](../infra/scripts/sync_ssm_parameters.py) | Push `ui/.env` values to SSM |
+| [`../infra/scripts/approve_cognito_user.py`](../infra/scripts/approve_cognito_user.py) | Promote user to `approved-clients` or `relaydesk-admins` |
+| [`../infra/scripts/backfill_guest_clients.py`](../infra/scripts/backfill_guest_clients.py) | Add `guest-clients` group to existing users |
+
+---
+
+## Project layout
+
+```
+ui/
+├── src/
+│   ├── app/              # Pages (login, dashboard, customers, …)
+│   ├── components/       # AppShell, profile form, UI primitives
+│   ├── hooks/            # usePermissions, useClientProfile
+│   └── lib/              # auth, api-client, cognito helpers
+├── Dockerfile            # Multi-stage Next.js standalone
+├── .env.example
+└── README.md
+```

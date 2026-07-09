@@ -28,7 +28,7 @@ function phoneToCollection(phone: string): string {
 
 export default function KnowledgePage() {
   const { canUploadDocuments, canManageData } = usePermissions();
-  const { clientEmailId, clientPhoneNumber, collectionName } = useClientProfile();
+  const { clientEmailId, clientPhoneNumber, collectionName, ready } = useClientProfile();
   const [collections, setCollections] = useState<string[]>([]);
   const [phone, setPhone] = useState("");
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
@@ -46,6 +46,7 @@ export default function KnowledgePage() {
   }, [canManageData, clientPhoneNumber]);
 
   async function loadCollections() {
+    if (!canManageData && !ready) return;
     try {
       const data = await apiFetch<CollectionListResponse>(
         `v1/collections${scopeSuffix}`,
@@ -79,8 +80,9 @@ export default function KnowledgePage() {
   }
 
   useEffect(() => {
+    if (!ready) return;
     void loadCollections();
-  }, [clientEmailId]);
+  }, [clientEmailId, ready]);
 
   const collection =
     !canManageData && collectionName
@@ -90,10 +92,9 @@ export default function KnowledgePage() {
         : "";
 
   useEffect(() => {
-    if (collection) {
-      void loadDocuments(collection);
-    }
-  }, [collection, clientEmailId]);
+    if (!collection || (!canManageData && !ready)) return;
+    void loadDocuments(collection);
+  }, [collection, clientEmailId, ready]);
 
   async function handleUpload() {
     if (!collection || !file) {

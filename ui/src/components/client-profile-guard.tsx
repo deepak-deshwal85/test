@@ -15,7 +15,7 @@ export function ClientProfileGuard({ children }: { children: React.ReactNode }) 
     if (loading) return;
     const skip = SKIP_PATHS.some((path) => pathname.startsWith(path));
     if (!skip && needsOnboarding) {
-      router.replace("/onboarding");
+      router.replace("/login");
     }
   }, [loading, needsOnboarding, pathname, router]);
 

@@ -74,6 +74,7 @@ export interface DocumentListResponse {
   collection: string;
   documents: DocumentSummary[];
   count: number;
+  client_phone_number?: string | null;
 }
 
 export interface SearchHit {

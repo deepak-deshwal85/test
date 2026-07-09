@@ -17,7 +17,7 @@ import { Trash2 } from "lucide-react";
 
 export default function CollectionsPage() {
   const { canManageData } = usePermissions();
-  const { clientEmailId } = useClientProfile();
+  const { clientEmailId, ready } = useClientProfile();
   const [collections, setCollections] = useState<string[]>([]);
   const [details, setDetails] = useState<Record<string, CollectionInfo>>({});
   const [loading, setLoading] = useState(true);
@@ -29,6 +29,7 @@ export default function CollectionsPage() {
   })();
 
   async function load() {
+    if (!canManageData && !ready) return;
     setLoading(true);
     setError(null);
     try {
@@ -53,8 +54,9 @@ export default function CollectionsPage() {
   }
 
   useEffect(() => {
+    if (!ready) return;
     void load();
-  }, [clientEmailId]);
+  }, [clientEmailId, ready]);
 
   async function handleDelete(name: string) {
     if (!confirm(`Delete collection ${name}? This cannot be undone.`)) return;

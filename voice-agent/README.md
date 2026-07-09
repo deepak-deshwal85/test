@@ -1,16 +1,50 @@
-# Voice Agent
+# RelayDesk Voice Agent
 
-RelayDesk LiveKit voice agent for phone calls. Handles speech-to-text, LLM reasoning, text-to-speech, Cal.com meeting scheduling, and document Q&A via the [RAG API](../api/).
+LiveKit voice agent for inbound/outbound phone calls. Runs an STT → LLM → TTS pipeline, books meetings via Cal.com, and searches the RAG API on every user turn for document-grounded answers.
 
-## Features
+[← Back to monorepo](../README.md) · **API:** [`../api/README.md`](../api/README.md) · **Infrastructure:** [`../infra/README.md`](../infra/README.md)
 
-- LiveKit Agents pipeline (Deepgram STT, xAI LLM, Cartesia TTS)
-- Per-phone client configuration (`config/phone_number_<digits>.json`)
-- Cal.com meeting booking tools
-- Automatic document search on every user turn (calls RAG API)
-- xAI FileSearch fallback (`RAG_BACKEND=xai`)
+---
 
-## Setup
+## 1. Description
+
+### What it does
+
+- Connects to **LiveKit Cloud** for real-time audio rooms and SIP telephony.
+- Uses **Deepgram** (STT), **xAI** (LLM), **Cartesia** (TTS).
+- Loads per-phone config from `config/phone_number_<digits>.json`.
+- Calls the **RAG API** (`POST /v1/search`) with Cognito M2M OAuth in production.
+- Optional **Cal.com** tools for meeting scheduling.
+- Fallback: **xAI FileSearch** when `RAG_BACKEND=xai`.
+
+### Project structure
+
+```
+voice-agent/
+├── src/
+│   ├── agent.py              # Entry point
+│   ├── agent_instructions.py
+│   ├── client_config.py      # Per-phone JSON config loader
+│   ├── scheduling_tools.py   # Cal.com integration
+│   └── rag_client/           # HTTP client for RAG API
+├── config/                   # phone_number_<digits>.json
+├── scripts/                  # Cal.com debug utilities
+├── tests/
+├── Dockerfile
+└── livekit.toml              # LiveKit Cloud agent config
+```
+
+---
+
+## 2. Run locally
+
+### Prerequisites
+
+- Python 3.13+, [uv](https://docs.astral.sh/uv/)
+- RelayDesk API running (see [`../api/README.md`](../api/README.md))
+- LiveKit Cloud project credentials
+
+### Configure environment
 
 ```bash
 cd voice-agent
@@ -18,92 +52,130 @@ uv sync
 cp .env.example .env
 ```
 
-Fill in `.env`:
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `LIVEKIT_URL` | Yes | `wss://<project>.livekit.cloud` |
+| `LIVEKIT_API_KEY` | Yes | LiveKit API key |
+| `LIVEKIT_API_SECRET` | Yes | LiveKit API secret |
+| `XAI_API_KEY` | Yes | xAI LLM |
+| `DEEPGRAM_API_KEY` | Yes | Speech-to-text |
+| `CARTESIA_API_KEY` | Yes | Text-to-speech |
+| `CALCOM_API_KEY` | Scheduling | Cal.com API key |
+| `AGENT_NAME` | Yes | Must match LiveKit agent registration |
+| `CLIENT_PHONE_OVERRIDE` | Local | e.g. `+911171366880` — simulates caller phone |
+| `RAG_BACKEND` | RAG | `qdrant` (API) or `xai` (FileSearch) |
+| `RAG_API_BASE_URL` | qdrant | `http://127.0.0.1:8090` locally |
+| `COGNITO_TOKEN_URL` | Production | Cognito OAuth token endpoint |
+| `COGNITO_CLIENT_ID` | Production | M2M client ID |
+| `COGNITO_CLIENT_SECRET` | Production | M2M client secret |
+| `COGNITO_SCOPE` | Production | `relaydesk-api/access` |
 
-```env
-LIVEKIT_URL=wss://...
-LIVEKIT_API_KEY=...
-LIVEKIT_API_SECRET=...
+### Phone configuration
 
-XAI_API_KEY=...
-DEEPGRAM_API_KEY=...
-CARTESIA_API_KEY=...
-CALCOM_API_KEY=...
-
-RAG_BACKEND=qdrant
-RAG_API_BASE_URL=http://127.0.0.1:8090
-CLIENT_PHONE_OVERRIDE=+911171366880
-```
-
-## Run
-
-Start [api](../api/) first, then:
-
-```bash
-uv run python src/agent.py download-files
-uv run python src/agent.py console
-```
-
-For telephony / LiveKit Cloud:
-
-```bash
-uv run python src/agent.py dev
-```
-
-Deploy to LiveKit Cloud:
-
-```bash
-lk agent create
-```
-
-## Configuration
-
-### Phone config (`config/phone_number_<digits>.json`)
+Create `config/phone_number_<digits>.json`:
 
 ```json
 {
   "phone_number": "911171366880",
-  "client_name": "Deepak Kumar",
-  "knowledge_base_topic": "Reliance Industries",
-  "xai_collection_id": "collection_...",
-  "calcom_username": "...",
+  "client_name": "Acme Corp",
+  "knowledge_base_topic": "Your business",
+  "calcom_username": "your-calcom-username",
   "calcom_event_type_slug": "30min",
-  "calcom_event_type_id": 6073963,
+  "calcom_event_type_id": 1234567,
   "rag_backend": "qdrant",
   "rag_api_url": "http://127.0.0.1:8090"
 }
 ```
 
-### RAG client env vars
+### Run
 
-| Variable | Purpose |
-|----------|---------|
-| `RAG_BACKEND` | `qdrant` (RAG API) or `xai` (FileSearch) |
-| `RAG_API_BASE_URL` | RAG API URL when using `qdrant` |
-| `COGNITO_TOKEN_URL` | Cognito OAuth token endpoint for client-credentials |
-| `COGNITO_CLIENT_ID` / `COGNITO_CLIENT_SECRET` | M2M credentials used to call API |
-| `COGNITO_SCOPE` | Scope requested for API access |
-| `RAG_MAX_RESULTS` | Max search hits (default 5) |
+Start the API first, then:
 
-## Project structure
+```bash
+# Download plugin models (first time)
+uv run python src/agent.py download-files
 
+# Local microphone/speaker test
+uv run python src/agent.py console
+
+# Connect to LiveKit Cloud (dev)
+uv run python src/agent.py dev
 ```
-voice-agent/
-├── src/
-│   ├── agent.py              # Entry point
-│   ├── agent_instructions.py
-│   ├── client_config.py
-│   ├── scheduling_tools.py
-│   ├── rag_client/           # HTTP client for RAG API
-│   └── ...
-├── config/
-├── tests/
-├── Dockerfile
-└── livekit.toml
+
+### Deploy to LiveKit Cloud
+
+```bash
+lk agent create    # first time
+lk agent deploy    # updates
 ```
+
+---
+
+## 3. Docker build, push to ECR, update ECS
+
+Run from **repo root**.
+
+```bash
+export PROFILE_NAME="relaydesk-admin"
+export AWS_REGION="ap-south-1"
+export IMAGE_TAG="latest"    # match voice_ecr_image_tag in terraform.tfvars
+
+cd infra/terraform
+export ACCOUNT_ID="$(terraform output -raw aws_account_id)"
+export ECR_VOICE="$(terraform output -raw ecr_voice_agent_repository_url)"
+export CLUSTER="$(terraform output -raw ecs_cluster_name)"
+export SERVICE="$(terraform output -raw ecs_service_voice_agent_name)"
+cd ../..
+
+aws ecr get-login-password --profile "$PROFILE_NAME" --region "$AWS_REGION" \
+  | docker login --username AWS --password-stdin \
+    "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+docker build -t relaydesk-voice:latest ./voice-agent
+docker tag relaydesk-voice:latest "${ECR_VOICE}:${IMAGE_TAG}"
+docker tag relaydesk-voice:latest "${ECR_VOICE}:latest"
+docker push "${ECR_VOICE}:${IMAGE_TAG}"
+docker push "${ECR_VOICE}:latest"
+
+aws ecs update-service \
+  --cluster "$CLUSTER" \
+  --service "$SERVICE" \
+  --force-new-deployment \
+  --profile "$PROFILE_NAME" \
+  --region "$AWS_REGION"
+```
+
+In ECS, `RAG_API_BASE_URL` is set to `http://api.relaydesk.local:8090` (Cloud Map). Secrets come from SSM `/relaydesk/prod/voice-agent/*`.
+
+---
+
+## 4. Scripts
+
+Run from `voice-agent/` unless noted.
+
+| Script | Purpose | Usage |
+|--------|---------|--------|
+| `src/agent.py download-files` | Pre-download LiveKit plugin models | `uv run python src/agent.py download-files` |
+| `src/agent.py console` | Local audio test (no telephony) | `uv run python src/agent.py console` |
+| `src/agent.py dev` | Dev mode against LiveKit Cloud | `uv run python src/agent.py dev` |
+| `src/agent.py start` | Production worker (used in Docker/ECS) | `uv run python src/agent.py start` |
+| `scripts/verify_calcom.py` | Test Cal.com API connectivity | `uv run python scripts/verify_calcom.py` |
+| `scripts/debug_calcom_slots.py` | Debug available Cal.com slots | `uv run python scripts/debug_calcom_slots.py` |
+
+### Infra scripts (voice-agent secrets)
+
+| Script | Purpose |
+|--------|---------|
+| [`../infra/scripts/sync_ssm_parameters.py`](../infra/scripts/sync_ssm_parameters.py) | Sync `voice-agent/.env` → SSM |
+| [`../infra/scripts/sync_cognito_voice_client_secret.py`](../infra/scripts/sync_cognito_voice_client_secret.py) | Fix M2M client secret drift |
+
+---
 
 ## Tests
 
 ```bash
 uv run pytest
+uv run ruff check src tests
 ```
+
+See [`../AGENTS.md`](../AGENTS.md) for LiveKit agent development guidelines.
