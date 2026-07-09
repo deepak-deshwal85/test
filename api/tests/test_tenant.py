@@ -74,15 +74,18 @@ def test_guest_email_scope_match() -> None:
     )
 
 
-def test_resolve_scope_requires_profile_for_ui_client() -> None:
+def test_resolve_scope_without_profile_returns_empty_collection_scope() -> None:
     principal = _principal()
-    with pytest.raises(HTTPException) as exc:
-        resolve_client_scope(
-            principal,
-            client_email_id="client@example.com",
-            client=None,
-        )
-    assert exc.value.status_code == 404
+    scope = resolve_client_scope(
+        principal,
+        client_email_id="client@example.com",
+        client=None,
+    )
+    assert scope.unrestricted is False
+    assert scope.client_email_id == "client@example.com"
+    assert scope.client_phone_number is None
+    assert scope.collection_name is None
+    assert filter_collections(scope, ["phone_91911171366880"]) == []
 
 
 def test_resolve_scope_for_ui_client_with_profile() -> None:

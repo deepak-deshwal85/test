@@ -5,13 +5,15 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.dependencies import (
+    get_client_repository,
     get_customer_service,
     require_permission,
     verify_access_token,
 )
 from app.core.oauth import AuthenticatedPrincipal
 from app.core.rbac import Permission
-from app.core.tenant import ensure_client_email_scope, is_scope_unrestricted
+from app.core.tenant import is_scope_unrestricted, verify_client_email_scope
+from app.db.postgres.client_repository import ClientRepository
 from app.schemas.customers import (
     CustomerCreateRequest,
     CustomerListResponse,
@@ -43,6 +45,7 @@ async def create_customer(
 async def list_customers(
     service: Annotated[CustomerService, Depends(get_customer_service)],
     principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
+    repository: Annotated[ClientRepository, Depends(get_client_repository)],
     client_email_id: Annotated[str | None, Query(min_length=3)] = None,
     client_phone_number: Annotated[str | None, Query()] = None,
     skip: Annotated[int, Query(ge=0)] = 0,
@@ -54,7 +57,7 @@ async def list_customers(
             detail="client_email_id is required",
         )
     scoped_email = (
-        ensure_client_email_scope(principal, client_email_id)
+        await verify_client_email_scope(principal, client_email_id, repository)
         if client_email_id
         else None
     )
@@ -72,9 +75,12 @@ async def get_customer(
     customer_id: int,
     principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
     client_email_id: Annotated[str, Query(min_length=3)],
+    repository: Annotated[ClientRepository, Depends(get_client_repository)],
     service: Annotated[CustomerService, Depends(get_customer_service)],
 ) -> CustomerResponse:
-    scoped_email = ensure_client_email_scope(principal, client_email_id)
+    scoped_email = await verify_client_email_scope(
+        principal, client_email_id, repository
+    )
     customer = await service.get(customer_id, client_email_id=scoped_email)
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")

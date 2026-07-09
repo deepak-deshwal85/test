@@ -12,7 +12,7 @@ import {
   Label,
   PageHeader,
 } from "@/components/ui";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, errorMessageFromUnknown } from "@/lib/api-client";
 import { useClientProfile } from "@/hooks/use-client-profile";
 import { usePermissions } from "@/hooks/use-permissions";
 import type { CallJob, CallJobListResponse } from "@/lib/types";
@@ -49,7 +49,7 @@ export default function CallJobsPage() {
       const data = await apiFetch<CallJobListResponse>(query);
       setJobs(data.jobs);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load jobs");
+      setError(errorMessageFromUnknown(e, "Failed to load jobs"));
     } finally {
       setLoading(false);
     }
@@ -90,7 +90,7 @@ export default function CallJobsPage() {
       setSelected(job);
       await loadJobs(clientPhone.trim());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to trigger job");
+      setError(errorMessageFromUnknown(e, "Failed to trigger job"));
     } finally {
       setTriggering(false);
     }
@@ -103,7 +103,7 @@ export default function CallJobsPage() {
       );
       setSelected(job);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load job");
+      setError(errorMessageFromUnknown(e, "Failed to load job"));
     }
   }
 

@@ -24,6 +24,14 @@ resource "aws_security_group" "rds_postgres" {
     security_groups = [aws_security_group.ecs_tasks.id]
   }
 
+  ingress {
+    description     = "PostgreSQL from ECS hosts (SSM port-forward for local dev)"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs_instances.id]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0

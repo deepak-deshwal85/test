@@ -19,6 +19,7 @@ from app.core.tenant import (
     filter_collections,
     is_scope_unrestricted,
     resolve_client_scope,
+    verify_client_email_scope,
 )
 from app.db.postgres.client_repository import ClientRepository
 from app.schemas.collections import (
@@ -48,6 +49,7 @@ async def _load_scope(
         )
     client = None
     if client_email_id:
+        await verify_client_email_scope(principal, client_email_id, repository)
         client = await repository.get_by_email(client_email_id)
     return resolve_client_scope(
         principal,

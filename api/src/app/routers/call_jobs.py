@@ -7,12 +7,14 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, s
 
 from app.core.dependencies import (
     get_call_job_service,
+    get_client_repository,
     require_permission,
     verify_access_token,
 )
 from app.core.oauth import AuthenticatedPrincipal
 from app.core.rbac import Permission
-from app.core.tenant import ensure_client_email_scope, is_scope_unrestricted
+from app.core.tenant import is_scope_unrestricted, verify_client_email_scope
+from app.db.postgres.client_repository import ClientRepository
 from app.schemas.call_jobs import (
     CallJobListResponse,
     CallJobResponse,
@@ -28,15 +30,16 @@ router = APIRouter(
 )
 
 
-def _scoped_email(
+async def _scoped_email(
     principal: AuthenticatedPrincipal,
     client_email_id: str | None,
+    repository: ClientRepository,
 ) -> str | None:
     if is_scope_unrestricted(principal):
         return client_email_id.strip().lower() if client_email_id else None
     if not client_email_id:
         raise HTTPException(status_code=400, detail="client_email_id is required")
-    return ensure_client_email_scope(principal, client_email_id)
+    return await verify_client_email_scope(principal, client_email_id, repository)
 
 
 @router.post(
@@ -66,11 +69,12 @@ async def trigger_call_job(
 async def list_call_jobs(
     service: Annotated[CallJobService, Depends(get_call_job_service)],
     principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
+    repository: Annotated[ClientRepository, Depends(get_client_repository)],
     client_email_id: Annotated[str | None, Query(min_length=3)] = None,
     client_phone_number: str | None = None,
     limit: int = 20,
 ) -> CallJobListResponse:
-    scoped_email = _scoped_email(principal, client_email_id)
+    scoped_email = await _scoped_email(principal, client_email_id, repository)
     jobs = await service.list_jobs(
         client_email_id=scoped_email,
         client_phone_number=client_phone_number,
@@ -84,9 +88,10 @@ async def get_call_job(
     job_id: UUID,
     service: Annotated[CallJobService, Depends(get_call_job_service)],
     principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
+    repository: Annotated[ClientRepository, Depends(get_client_repository)],
     client_email_id: Annotated[str | None, Query(min_length=3)] = None,
 ) -> CallJobResponse:
-    scoped_email = _scoped_email(principal, client_email_id)
+    scoped_email = await _scoped_email(principal, client_email_id, repository)
     job = await service.get_job(job_id, client_email_id=scoped_email)
     if job is None:
         raise HTTPException(status_code=404, detail="Call job not found")

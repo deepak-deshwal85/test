@@ -15,7 +15,7 @@ from app.core.dependencies import (
 )
 from app.core.oauth import AuthenticatedPrincipal
 from app.core.qdrant_errors import is_qdrant_connection_error, qdrant_unavailable_detail
-from app.core.tenant import is_scope_unrestricted, resolve_client_scope
+from app.core.tenant import is_scope_unrestricted, resolve_client_scope, verify_client_email_scope
 from app.db.postgres.client_repository import ClientRepository
 from app.schemas.search import SearchHitResponse, SearchRequest, SearchResponse
 from app.services.search_service import SearchService
@@ -41,8 +41,10 @@ async def search(
     if is_scope_unrestricted(principal) and not body.client_email_id:
         scope = resolve_client_scope(principal, client_email_id=None, client=None)
     else:
-        if body.client_email_id:
-            client = await repository.get_by_email(body.client_email_id)
+        if not body.client_email_id:
+            raise HTTPException(status_code=400, detail="client_email_id is required")
+        await verify_client_email_scope(principal, body.client_email_id, repository)
+        client = await repository.get_by_email(body.client_email_id)
         scope = resolve_client_scope(
             principal,
             client_email_id=body.client_email_id,

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.dependencies import get_client_repository, get_client_service, verify_access_token
 from app.core.oauth import AuthenticatedPrincipal
-from app.core.tenant import ensure_client_email_scope, is_scope_unrestricted, principal_email
+from app.core.tenant import is_scope_unrestricted, principal_email, verify_client_email_scope
 from app.db.postgres.client_repository import ClientRepository
 from app.schemas.clients import ClientProfileResponse, ClientProfileUpsertRequest
 from app.services.client_service import ClientService
@@ -44,6 +44,7 @@ async def get_my_client_profile(
 async def get_client_profile(
     principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
     service: Annotated[ClientService, Depends(get_client_service)],
+    repository: Annotated[ClientRepository, Depends(get_client_repository)],
     client_email_id: Annotated[str | None, Query(min_length=3)] = None,
 ) -> ClientProfileResponse:
     if principal.is_m2m:
@@ -57,7 +58,9 @@ async def get_client_profile(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="client_email_id is required",
         )
-    scoped_email = ensure_client_email_scope(principal, resolved_email)
+    scoped_email = await verify_client_email_scope(
+        principal, resolved_email, repository
+    )
     profile = await service.get_profile(scoped_email)
     if profile is None:
         raise HTTPException(

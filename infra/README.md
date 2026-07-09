@@ -205,6 +205,47 @@ aws ecs update-service --cluster relaydesk-prod --service relaydesk-prod-api \
   --force-new-deployment --profile relaydesk-admin --region ap-south-1
 ```
 
+### Connect from your laptop (psql / pgAdmin)
+
+RDS is **not public** (`publicly_accessible = false`) and sits in **private subnets**. You cannot connect to the RDS hostname directly from your PC.
+
+Use an **SSM port-forward tunnel** through a running ECS API EC2 host:
+
+1. Install the [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) (Windows: `winget install Amazon.SessionManagerPlugin`, then restart the terminal).
+
+2. Apply the RDS security-group update (allows the ECS host to reach Postgres for the tunnel):
+
+```bash
+cd infra/terraform
+terraform apply -target=aws_security_group.rds_postgres
+```
+
+3. Start the tunnel (leave this terminal open):
+
+```powershell
+# PowerShell
+.\infra\scripts\rds_tunnel.ps1
+```
+
+```bash
+# Git Bash
+./infra/scripts/rds_tunnel.sh
+```
+
+4. Connect **pgAdmin** or **psql** to:
+
+| Field | Value |
+|-------|-------|
+| Host | `localhost` |
+| Port | `15432` |
+| Database | `relaydesk` |
+| Username | `relaydesk_admin` |
+| Password | Your `TF_VAR_rds_master_password` |
+
+```bash
+psql -h localhost -p 15432 -U relaydesk_admin -d relaydesk
+```
+
 ### Google SSO (optional)
 
 1. `terraform apply` with `enable_cognito_google = false`
@@ -408,7 +449,8 @@ Enable billing alerts in AWS Console → Billing preferences if the dashboard is
 
 | Symptom | Fix |
 |---------|-----|
-| API connects to `127.0.0.1:5432` | Run `set_database_url_from_rds.py`, redeploy API |
+| Cannot connect to RDS from laptop | RDS is private — use `infra/scripts/rds_tunnel.ps1`, then connect to `localhost:15432` (see §4) |
+| `SessionManagerPlugin is not found` | `winget install Amazon.SessionManagerPlugin` and restart terminal |
 | Voice agent RAG `401` | Run `sync_cognito_voice_client_secret.py`, redeploy voice-agent |
 | UI shows old code after push | Verify `docker build` succeeded; force ECS deployment |
 | `client_email_id` errors in UI | Redeploy UI + API; sign out/in; complete profile on `/login` |

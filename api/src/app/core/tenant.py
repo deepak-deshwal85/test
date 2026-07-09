@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 from app.core.collections import collection_from_phone
 from app.core.oauth import AuthenticatedPrincipal
 from app.core.rbac import Permission
+from app.db.postgres.client_repository import ClientRepository
 from app.domain.client_models import Client
 
 
@@ -21,6 +22,59 @@ def principal_email(principal: AuthenticatedPrincipal) -> str | None:
     if username and "@" in username:
         return username.lower()
     return None
+
+
+async def verify_client_email_scope(
+    principal: AuthenticatedPrincipal,
+    client_email_id: str,
+    repository: ClientRepository,
+) -> str:
+    normalized = client_email_id.strip().lower()
+    if is_scope_unrestricted(principal):
+        return normalized
+
+    token_email = principal_email(principal)
+    if token_email and token_email != normalized:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Client email scope mismatch",
+        )
+
+    client_by_email = await repository.get_by_email(normalized)
+    client_by_sub = await repository.get_by_cognito_sub(principal.subject)
+
+    if (
+        client_by_email is not None
+        and client_by_email.cognito_sub
+        and client_by_email.cognito_sub != principal.subject
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Client email scope mismatch",
+        )
+
+    if (
+        client_by_sub is not None
+        and client_by_sub.client_email_id != normalized
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Client email scope mismatch",
+        )
+
+    if token_email == normalized:
+        return normalized
+    if client_by_email is not None and client_by_email.cognito_sub == principal.subject:
+        return normalized
+    if client_by_sub is not None and client_by_sub.client_email_id == normalized:
+        return normalized
+    if client_by_email is None and client_by_sub is None:
+        return normalized
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Client email scope mismatch",
+    )
 
 
 def ensure_client_email_scope(
@@ -70,11 +124,13 @@ def resolve_client_scope(
             detail="client_email_id is required",
         )
 
-    normalized = ensure_client_email_scope(principal, client_email_id)
+    normalized = client_email_id.strip().lower()
     if client is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Client profile not found. Complete authorization profile setup.",
+        return ResolvedClientScope(
+            client_email_id=normalized,
+            client_phone_number=None,
+            collection_name=None,
+            unrestricted=False,
         )
 
     collection = collection_from_phone(client.client_phone_number)

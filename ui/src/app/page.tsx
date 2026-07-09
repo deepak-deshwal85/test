@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Badge, Card, PageHeader } from "@/components/ui";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, errorMessageFromUnknown } from "@/lib/api-client";
 import { clientScopeQuery, useClientProfile } from "@/hooks/use-client-profile";
 import { usePermissions } from "@/hooks/use-permissions";
 import type {
@@ -39,14 +39,34 @@ export default function DashboardPage() {
           : "v1/customers?limit=5";
         const collectionPath = scope ? `v1/collections?${scope}` : "v1/collections";
 
-        const [customerData, collectionData] = await Promise.all([
+        const [customerResult, collectionResult] = await Promise.allSettled([
           apiFetch<CustomerListResponse>(customerPath),
           apiFetch<CollectionListResponse>(collectionPath),
         ]);
-        setCustomers(customerData);
-        setCollections(collectionData);
+
+        const errors: string[] = [];
+        if (customerResult.status === "fulfilled") {
+          setCustomers(customerResult.value);
+        } else {
+          errors.push(
+            errorMessageFromUnknown(customerResult.reason, "Failed to load customers"),
+          );
+        }
+        if (collectionResult.status === "fulfilled") {
+          setCollections(collectionResult.value);
+        } else {
+          errors.push(
+            errorMessageFromUnknown(
+              collectionResult.reason,
+              "Failed to load collections",
+            ),
+          );
+        }
+        if (errors.length) {
+          setError(errors.join(" · "));
+        }
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to load dashboard");
+        setError(errorMessageFromUnknown(e, "Failed to load dashboard"));
       }
     }
 
