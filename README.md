@@ -23,7 +23,7 @@ Voice agent (LiveKit) ──M2M OAuth────────┘
      └──► LiveKit Cloud, Deepgram, Cartesia, xAI, Cal.com
 ```
 
-- **UI users** sign in with Cognito SSO, complete a profile (name + phone), and access data scoped by `client_email_id`.
+- **UI users** sign in with Cognito SSO and access data scoped by `client_email_id`.
 - **Voice agent** uses Cognito **machine-to-machine** tokens to call RAG APIs without email scoping.
 - **Admins** (`relaydesk-admins`) see all tenants; **guests** and **approved clients** are scoped to their email.
 

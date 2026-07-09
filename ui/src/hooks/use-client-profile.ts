@@ -14,11 +14,6 @@ export function useClientProfile() {
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const applyProfile = useCallback((data: ClientProfile) => {
-    setProfile(data);
-    setLoading(false);
-  }, []);
-
   const refresh = useCallback(async () => {
     if (isAuthDisabledForLocal() || canManageData) {
       setProfile(null);
@@ -53,8 +48,6 @@ export function useClientProfile() {
     profile,
     loading,
     refresh,
-    applyProfile,
-    needsOnboarding: !canManageData && !loading && !profile,
     clientEmailId,
     clientPhoneNumber: profile?.client_phone_number ?? null,
     collectionName: profile?.client_phone_number

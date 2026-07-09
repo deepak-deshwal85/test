@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { SessionProvider } from "next-auth/react";
-import { ClientProfileGuard } from "@/components/client-profile-guard";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,9 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <SessionProvider>
-          <ClientProfileGuard>{children}</ClientProfileGuard>
-        </SessionProvider>
+        <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
   );

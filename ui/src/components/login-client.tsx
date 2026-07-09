@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useClientProfile } from "@/hooks/use-client-profile";
 import { isAuthDisabledForLocal } from "@/lib/runtime-config";
 
 export function LoginClient({
@@ -17,19 +15,14 @@ export function LoginClient({
 }) {
   const router = useRouter();
   const { status } = useSession();
-  const { needsOnboarding, loading: profileLoading } = useClientProfile();
   const skipSsoInLocal = isAuthDisabledForLocal();
 
-  if (status === "loading" || (status === "authenticated" && profileLoading)) {
+  if (status === "loading") {
     return <p className="mt-8 text-sm text-slate-500">Loading…</p>;
   }
 
   if (status === "authenticated") {
-    if (needsOnboarding) {
-      router.replace("/signup");
-    } else {
-      router.replace(callbackUrl);
-    }
+    router.replace(callbackUrl);
     return null;
   }
 
@@ -72,16 +65,6 @@ export function LoginClient({
           </div>
         )}
       </div>
-
-      <p className="mt-6 text-center text-sm text-slate-600">
-        New here?{" "}
-        <Link
-          href="/signup"
-          className="font-medium text-brand-600 hover:underline"
-        >
-          Create an account
-        </Link>
-      </p>
     </>
   );
 }

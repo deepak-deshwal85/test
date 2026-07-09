@@ -11,7 +11,7 @@ Next.js 15 operations console for RelayDesk: dashboard, customers, call jobs, kn
 ### What it does
 
 - **Dashboard** — API health, customer/collection counts (scoped by tenant).
-- **Login / profile** — Cognito SSO; after first sign-in, users enter **name** and **business phone** on `/login`.
+- **Login** — Cognito SSO via `/login`.
 - **Customers** — List and manage consumers per `client_email_id`.
 - **Call jobs** — Trigger and monitor outbound campaigns (admin).
 - **Knowledge** — Upload documents to phone-scoped Qdrant collections.
