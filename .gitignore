@@ -23,6 +23,7 @@ infra/terraform/*.tfvars
 !infra/terraform/terraform.tfvars.example
 infra/scripts/env.properties
 infra/scripts/cost-control-state.json
+infra/terraform/lambda/**/package.zip
 
 # Claude Code
 .claude/settings.local.json

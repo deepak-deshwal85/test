@@ -20,6 +20,10 @@ locals {
     "GOOGLE_CLIENT_SECRET",
   ]
 
+  cognito_guest_group_name    = "guest-clients"
+  cognito_approved_group_name = "approved-clients"
+  cognito_admin_group_name    = "relaydesk-admins"
+
   api_image   = "${aws_ecr_repository.api.repository_url}:${var.api_ecr_image_tag}"
   voice_image = "${aws_ecr_repository.voice_agent.repository_url}:${var.voice_ecr_image_tag}"
   ui_image    = var.enable_ui ? "${aws_ecr_repository.ui[0].repository_url}:${var.ui_ecr_image_tag}" : ""

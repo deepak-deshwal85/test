@@ -188,31 +188,40 @@ aws ecs update-service \
 
 ### User roles (after SSO sign-in)
 
-New SSO sign-ups get **guest** access automatically (view UI and read data only). An administrator only needs to assign higher roles when required:
+New SSO sign-ups are added to **`guest-clients`** automatically (Cognito Post Confirmation Lambda) with read-only access. Promote users when they need more permissions:
 
 | Group | Access |
 |-------|--------|
-| `guest-clients` | Default for new sign-ups — view UI and read data only |
+| `guest-clients` | Auto-assigned on sign-up — view UI and read data only |
 | `approved-clients` | Guest + upload/delete knowledge-base documents |
 | `relaydesk-admins` | Full console and API access |
 
 Voice-agent M2M tokens are exempt from role checks.
 
-1. **Apply Terraform** (creates the three role groups for explicit assignment):
+1. **Apply Terraform** (creates role groups + auto-assign Lambda):
 
 ```bash
 cd infra/terraform
+terraform init -upgrade   # adds hashicorp/archive provider
 terraform apply
 ```
 
-2. **Promote users when needed** (after they have signed in at least once):
+2. **Backfill existing users** (signed up before the Lambda existed):
+
+```bash
+python infra/scripts/backfill_guest_clients.py \
+  --profile relaydesk-admin \
+  --region ap-south-1
+```
+
+3. **Promote users when needed**:
 
 ```bash
 python infra/scripts/approve_cognito_user.py --email user@example.com --role approved-clients
 python infra/scripts/approve_cognito_user.py --email your@email.com --role relaydesk-admins
 ```
 
-3. **Sign out and sign in again** after a role change so the new group appears in the token.
+4. **Sign out and sign in again** after a role change so the new group appears in the token.
 
 To remove elevated roles (user returns to implicit guest view-only access):
 
