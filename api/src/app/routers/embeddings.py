@@ -4,7 +4,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.core.dependencies import get_embedding_service, verify_access_token
+from app.core.dependencies import get_embedding_service, require_permission, verify_access_token
+from app.core.rbac import Permission
 from app.schemas.embeddings import (
     EmbeddingCacheDeleteResponse,
     EmbeddingCacheStatsResponse,
@@ -25,6 +26,7 @@ router = APIRouter(
 def create_embeddings(
     body: EmbedRequest,
     service: Annotated[EmbeddingService, Depends(get_embedding_service)],
+    _principal: Annotated[object, Depends(require_permission(Permission.ADMIN))] = ...,
 ) -> EmbedResponse:
     try:
         result = service.create_embeddings(body.texts)
@@ -66,6 +68,7 @@ def lookup_cached_embedding(
 @router.delete("/cache", response_model=EmbeddingCacheDeleteResponse)
 def clear_embedding_cache(
     service: Annotated[EmbeddingService, Depends(get_embedding_service)],
+    _principal: Annotated[object, Depends(require_permission(Permission.ADMIN))] = ...,
 ) -> EmbeddingCacheDeleteResponse:
     cleared = service.clear_cache()
     return EmbeddingCacheDeleteResponse(deleted=cleared > 0, cleared_count=cleared)
@@ -75,6 +78,7 @@ def clear_embedding_cache(
 def delete_cached_embedding(
     text: Annotated[str, Query(min_length=1)],
     service: Annotated[EmbeddingService, Depends(get_embedding_service)],
+    _principal: Annotated[object, Depends(require_permission(Permission.ADMIN))] = ...,
 ) -> EmbeddingCacheDeleteResponse:
     deleted = service.delete_cached(text)
     return EmbeddingCacheDeleteResponse(deleted=deleted)

@@ -5,7 +5,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.config import Settings, get_settings
-from app.core.dependencies import get_collection_service, verify_access_token
+from app.core.dependencies import get_collection_service, require_permission, verify_access_token
+from app.core.rbac import Permission
 from app.core.qdrant_errors import is_qdrant_connection_error, qdrant_unavailable_detail
 from app.schemas.collections import (
     CollectionDeleteResponse,
@@ -65,6 +66,7 @@ def delete_collection(
     collection: str,
     service: Annotated[CollectionService, Depends(get_collection_service)],
     settings: Annotated[Settings, Depends(get_settings)],
+    _principal: Annotated[object, Depends(require_permission(Permission.ADMIN))] = ...,
 ) -> CollectionDeleteResponse:
     try:
         service.delete_collection(collection)

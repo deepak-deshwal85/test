@@ -7,7 +7,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from app.core.config import Settings, get_settings
-from app.core.dependencies import get_document_service, verify_access_token
+from app.core.dependencies import get_document_service, require_permission, verify_access_token
+from app.core.rbac import Permission
 from app.core.qdrant_errors import is_qdrant_connection_error, qdrant_unavailable_detail
 from app.schemas.documents import (
     DocumentDeleteResponse,
@@ -31,6 +32,9 @@ def upload_document(
     file: UploadFile = File(...),
     service: Annotated[DocumentService, Depends(get_document_service)] = ...,
     settings: Annotated[Settings, Depends(get_settings)] = ...,
+    _principal: Annotated[
+        object, Depends(require_permission(Permission.DOCUMENT_WRITE))
+    ] = ...,
 ) -> DocumentUploadResponse:
     content = file.file.read()
     if not content:
@@ -103,6 +107,9 @@ def delete_document(
     document_id: str,
     service: Annotated[DocumentService, Depends(get_document_service)],
     settings: Annotated[Settings, Depends(get_settings)],
+    _principal: Annotated[
+        object, Depends(require_permission(Permission.DOCUMENT_WRITE))
+    ] = ...,
 ) -> DocumentDeleteResponse:
     try:
         service.delete_document(collection, document_id)

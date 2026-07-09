@@ -24,6 +24,30 @@ resource "aws_cognito_user_pool" "main" {
   tags = local.common_tags
 }
 
+resource "aws_cognito_user_group" "guest_clients" {
+  count = var.enable_cognito ? 1 : 0
+
+  name         = "guest-clients"
+  user_pool_id = aws_cognito_user_pool.main[0].id
+  description  = "Read-only RelayDesk console access"
+}
+
+resource "aws_cognito_user_group" "approved_clients" {
+  count = var.enable_cognito ? 1 : 0
+
+  name         = "approved-clients"
+  user_pool_id = aws_cognito_user_pool.main[0].id
+  description  = "Can upload and delete knowledge-base documents"
+}
+
+resource "aws_cognito_user_group" "relaydesk_admins" {
+  count = var.enable_cognito ? 1 : 0
+
+  name         = "relaydesk-admins"
+  user_pool_id = aws_cognito_user_pool.main[0].id
+  description  = "Full RelayDesk console and API access"
+}
+
 resource "aws_cognito_user_pool_domain" "main" {
   count = var.enable_cognito ? 1 : 0
 

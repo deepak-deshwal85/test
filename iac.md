@@ -2,6 +2,8 @@
 
 This document describes how to deploy the **relaydesk** monorepo on AWS using Terraform and GitHub Actions.
 
+> **Shell:** All command examples use **bash** (macOS, Linux, or **Git Bash** on Windows).
+
 | Project | ECS service | Purpose |
 |---------|-------------|---------|
 | `voice-agent/` | `relaydesk-prod-voice-agent` | LiveKit voice agent (STT, LLM, TTS, RAG client) |
@@ -137,18 +139,26 @@ python infra/scripts/sync_ssm_parameters.py --region ap-south-1
 
 ### 3. Initial container images (optional)
 
-GitHub Actions can do this on first push to `main`. To push manually:
+GitHub Actions can do this on first push to `main`. To push manually, run from the **repo root** in one shell session (Git Bash). Use `export` so variables survive if you paste commands line by line:
 
 ```bash
-PROFILE_NAME="relaydesk-admin"
-AWS_REGION="ap-south-1"
-IMAGE_TAG="v1"
+export PROFILE_NAME="relaydesk-admin"
+export AWS_REGION="ap-south-1"
+# Must match api_ecr_image_tag / voice_ecr_image_tag in infra/terraform/terraform.tfvars
+export IMAGE_TAG="latest"
 
 cd infra/terraform
-ACCOUNT_ID="$(terraform output -raw aws_account_id)"
-ECR_API="$(terraform output -raw ecr_api_repository_url)"
-ECR_VOICE="$(terraform output -raw ecr_voice_agent_repository_url)"
+export ACCOUNT_ID="$(terraform output -raw aws_account_id)"
+export ECR_API="$(terraform output -raw ecr_api_repository_url)"
+export ECR_VOICE="$(terraform output -raw ecr_voice_agent_repository_url)"
 cd ../..
+
+# Sanity check — all values must be non-empty before tag/push
+echo "ACCOUNT_ID=$ACCOUNT_ID"
+echo "ECR_API=$ECR_API"
+echo "ECR_VOICE=$ECR_VOICE"
+echo "IMAGE_TAG=$IMAGE_TAG"
+echo "AWS_REGION=$AWS_REGION"
 
 aws ecr get-login-password --profile "$PROFILE_NAME" --region "$AWS_REGION" | docker login \
   --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -172,7 +182,16 @@ aws ecs update-service \
   --cluster relaydesk-prod \
   --service relaydesk-prod-api \
   --force-new-deployment
+
+aws ecs update-service \
+  --profile "$PROFILE_NAME" \
+  --region "$AWS_REGION" \
+  --cluster relaydesk-prod \
+  --service relaydesk-prod-voice-agent \
+  --force-new-deployment
 ```
+
+If `docker tag` fails with `relaydesk-api:` (empty tag), `IMAGE_TAG` was not exported in your shell — re-run the `export IMAGE_TAG=...` line.
 
 ### 4. GitHub repository variables
 
@@ -280,8 +299,8 @@ terraform output api_alb_dns_name
 **Logs** (live tail — set profile/region; use two terminals for both services)
 
 ```bash
-PROFILE_NAME="relaydesk-admin"
-AWS_REGION="ap-south-1"
+export PROFILE_NAME="relaydesk-admin"
+export AWS_REGION="ap-south-1"
 
 aws logs tail /ecs/relaydesk-prod/api --since 10m --follow --region "$AWS_REGION" --profile "$PROFILE_NAME"
 aws logs tail /ecs/relaydesk-prod/voice-agent --since 10m --follow --region "$AWS_REGION" --profile "$PROFILE_NAME"

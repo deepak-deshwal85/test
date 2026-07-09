@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 from jwt import PyJWKClient
 
 from app.core.config import Settings
+from app.core.rbac import Permission, RelayDeskRole, resolve_role, role_has_permission
 
 logger = logging.getLogger("relaydesk-api")
 
@@ -20,6 +21,16 @@ class AuthenticatedPrincipal:
     username: str | None
     scopes: frozenset[str]
     token_use: str
+    groups: frozenset[str]
+    role: RelayDeskRole | None
+    is_m2m: bool
+
+    def has_permission(self, permission: Permission) -> bool:
+        if self.is_m2m:
+            return True
+        if self.role is None:
+            return False
+        return role_has_permission(self.role, permission)
 
 
 @lru_cache
@@ -35,6 +46,25 @@ def _allowed_client_ids(settings: Settings) -> frozenset[str]:
             settings.cognito_m2m_client_id,
         )
         if client_id
+    )
+
+
+def _cognito_groups(claims: dict[str, object]) -> frozenset[str]:
+    raw = claims.get("cognito:groups")
+    if raw is None:
+        return frozenset()
+    if isinstance(raw, list):
+        return frozenset(str(group) for group in raw)
+    if isinstance(raw, str):
+        return frozenset(part for part in raw.split() if part)
+    return frozenset()
+
+
+def _is_m2m_client(client_id: str | None, settings: Settings) -> bool:
+    return bool(
+        settings.cognito_m2m_client_id
+        and client_id
+        and client_id == settings.cognito_m2m_client_id
     )
 
 
@@ -60,6 +90,9 @@ def validate_access_token(token: str, settings: Settings) -> AuthenticatedPrinci
             username="dev",
             scopes=frozenset({"relaydesk-api/access"}),
             token_use="access",
+            groups=frozenset(),
+            role=RelayDeskRole.ADMIN,
+            is_m2m=False,
         )
 
     if not settings.cognito_issuer or not settings.cognito_jwks_url:
@@ -120,10 +153,17 @@ def validate_access_token(token: str, settings: Settings) -> AuthenticatedPrinci
             detail="Missing required scope",
         )
 
+    groups = _cognito_groups(claims)
+    is_m2m = _is_m2m_client(client_id_str, settings)
+    role = resolve_role(groups, default_guest=not is_m2m)
+
     return AuthenticatedPrincipal(
         subject=str(claims["sub"]),
         client_id=client_id_str,
         username=str(claims["username"]) if claims.get("username") else None,
         scopes=scopes,
         token_use=token_use,
+        groups=groups,
+        role=role,
+        is_m2m=is_m2m,
     )

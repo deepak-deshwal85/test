@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
 from app.core.oauth import AuthenticatedPrincipal, validate_access_token
+from app.core.rbac import Permission
 from app.db.embedding_provider import EmbeddingProviderFactory
 from app.db.postgres.customer_repository import CustomerRepository
 from app.db.postgres.session import get_db_session
@@ -125,3 +126,17 @@ def verify_access_token(
         )
 
     return validate_access_token(credentials.credentials, settings)
+
+
+def require_permission(permission: Permission):
+    def _dependency(
+        principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
+    ) -> AuthenticatedPrincipal:
+        if not principal.has_permission(permission):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+        return principal
+
+    return _dependency

@@ -2,6 +2,8 @@
 
 See the full guide: **[iac.md](../iac.md)** (architecture, bootstrap, GitHub Actions, sizing, troubleshooting).
 
+> **Shell:** Command examples use **bash** (macOS, Linux, or **Git Bash** on Windows).
+
 ## Separate containers vs single container
 
 **Use separate containers** (recommended and what this stack deploys):
@@ -62,13 +64,6 @@ python infra/scripts/sync_ssm_parameters.py --region ap-south-1 --profile relayd
 
 # Optional: also write a combined infra/scripts/env.properties (gitignored)
 python infra/scripts/sync_ssm_parameters.py --write-env-properties
-```
-
-PowerShell (not needed; use the Python sync script instead):
-
-```bash
-python infra/scripts/sync_ssm_parameters.py --dry-run
-python infra/scripts/sync_ssm_parameters.py --region ap-south-1 --profile relaydesk-admin
 ```
 
 ### Enable Google sign-in (Cognito IdP)
@@ -172,7 +167,15 @@ Rebuild/push UI image and force ECS deployment so `AUTH_URL=https://relaydesk.uk
 
 ```bash
 # from repo root — see ui/README.md for full ECR commands
-aws ecs update-service --cluster relaydesk-prod --service relaydesk-prod-ui --force-new-deployment
+export PROFILE_NAME="relaydesk-admin"
+export AWS_REGION="ap-south-1"
+
+aws ecs update-service \
+  --cluster relaydesk-prod \
+  --service relaydesk-prod-ui \
+  --force-new-deployment \
+  --profile "$PROFILE_NAME" \
+  --region "$AWS_REGION"
 ```
 
 ### 6. Test
@@ -182,6 +185,42 @@ aws ecs update-service --cluster relaydesk-prod --service relaydesk-prod-ui --fo
 - API docs: `https://relaydesk.uk/docs`
 
 **UI parameters:** `AUTH_SECRET`, `COGNITO_CLIENT_SECRET`
+
+### User roles (after SSO sign-in)
+
+New SSO sign-ups get **guest** access automatically (view UI and read data only). An administrator only needs to assign higher roles when required:
+
+| Group | Access |
+|-------|--------|
+| `guest-clients` | Default for new sign-ups — view UI and read data only |
+| `approved-clients` | Guest + upload/delete knowledge-base documents |
+| `relaydesk-admins` | Full console and API access |
+
+Voice-agent M2M tokens are exempt from role checks.
+
+1. **Apply Terraform** (creates the three role groups for explicit assignment):
+
+```bash
+cd infra/terraform
+terraform apply
+```
+
+2. **Promote users when needed** (after they have signed in at least once):
+
+```bash
+python infra/scripts/approve_cognito_user.py --email user@example.com --role approved-clients
+python infra/scripts/approve_cognito_user.py --email your@email.com --role relaydesk-admins
+```
+
+3. **Sign out and sign in again** after a role change so the new group appears in the token.
+
+To remove elevated roles (user returns to implicit guest view-only access):
+
+```bash
+python infra/scripts/approve_cognito_user.py --email user@example.com --revoke
+```
+
+Pool ID is read from `terraform output cognito_user_pool_id` by default.
 
 ### Fix API database connection (RDS)
 
@@ -247,18 +286,24 @@ aws ssm put-parameter --name "/relaydesk/prod/cognito/GOOGLE_CLIENT_ID" --value 
 aws ssm put-parameter --name "/relaydesk/prod/cognito/GOOGLE_CLIENT_SECRET" --value "..." --type SecureString --overwrite
 ```
 
-Build and push initial images (or let GitHub Actions do it on first merge to `main`):
+Build and push initial images (or let GitHub Actions do it on first merge to `main`). Run from the **repo root** in one shell session (Git Bash). Use `export` so variables survive if you paste commands line by line:
 
 ```bash
-PROFILE_NAME="relaydesk-admin"
-AWS_REGION="ap-south-1"
-IMAGE_TAG="latest" # must match api_ecr_image_tag / voice_ecr_image_tag in terraform.tfvars
+export PROFILE_NAME="relaydesk-admin"
+export AWS_REGION="ap-south-1"
+# Must match api_ecr_image_tag / voice_ecr_image_tag in infra/terraform/terraform.tfvars
+export IMAGE_TAG="latest"
 
 cd infra/terraform
-ACCOUNT_ID="$(terraform output -raw aws_account_id)"
-ECR_API="$(terraform output -raw ecr_api_repository_url)"
-ECR_VOICE="$(terraform output -raw ecr_voice_agent_repository_url)"
+export ACCOUNT_ID="$(terraform output -raw aws_account_id)"
+export ECR_API="$(terraform output -raw ecr_api_repository_url)"
+export ECR_VOICE="$(terraform output -raw ecr_voice_agent_repository_url)"
 cd ../..
+
+echo "ACCOUNT_ID=$ACCOUNT_ID"
+echo "ECR_API=$ECR_API"
+echo "ECR_VOICE=$ECR_VOICE"
+echo "IMAGE_TAG=$IMAGE_TAG"
 
 aws ecr get-login-password --profile "$PROFILE_NAME" --region "$AWS_REGION" | docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
@@ -294,23 +339,25 @@ Both services stay on the **same ECS cluster** and talk over VPC DNS (`api.relay
 
 **Free Tier (API only):** `api_ecs_instance_type = "t3.micro"`, `voice_agent_desired_count = 0` (voice ASG scales to 0).
 
-Changing an instance type updates the launch template only — run an **ASG instance refresh** per group after apply:
+Changing an instance type updates the launch template only — run an **ASG instance refresh** per group after apply (from repo root):
 
 ```bash
-# API host
-PREFS_FILE="file://$PWD/infra/scripts/asg-instance-refresh-prefs.json"
+export PROFILE_NAME="relaydesk-admin"
+export AWS_REGION="ap-south-1"
+export PREFS_FILE="file://$(pwd)/infra/scripts/asg-instance-refresh-prefs.json"
 
+# API host
 aws autoscaling start-instance-refresh \
   --auto-scaling-group-name relaydesk-prod-ecs-api \
-  --region ap-south-1 \
-  --profile relaydesk-admin \
+  --region "$AWS_REGION" \
+  --profile "$PROFILE_NAME" \
   --preferences "$PREFS_FILE"
 
 # Voice host
 aws autoscaling start-instance-refresh \
   --auto-scaling-group-name relaydesk-prod-ecs-voice \
-  --region ap-south-1 \
-  --profile relaydesk-admin \
+  --region "$AWS_REGION" \
+  --profile "$PROFILE_NAME" \
   --preferences "$PREFS_FILE"
 ```
 
@@ -321,8 +368,8 @@ aws autoscaling set-instance-protection \
   --instance-ids "<instance-id>" \
   --auto-scaling-group-name relaydesk-prod-ecs \
   --no-protected-from-scale-in \
-  --region ap-south-1 \
-  --profile relaydesk-admin
+  --region "$AWS_REGION" \
+  --profile "$PROFILE_NAME"
 ```
 
 Preferences file for manual refresh: `infra/scripts/asg-instance-refresh-prefs.json`.
@@ -332,8 +379,8 @@ Preferences file for manual refresh: `infra/scripts/asg-instance-refresh-prefs.j
 Log groups (from Terraform): `/ecs/relaydesk-prod/api` and `/ecs/relaydesk-prod/voice-agent`.
 
 ```bash
-PROFILE_NAME="relaydesk-admin"
-AWS_REGION="ap-south-1"
+export PROFILE_NAME="relaydesk-admin"
+export AWS_REGION="ap-south-1"
 
 # API
 aws logs tail /ecs/relaydesk-prod/api --since 10m --follow --region "$AWS_REGION" --profile "$PROFILE_NAME"
@@ -342,7 +389,7 @@ aws logs tail /ecs/relaydesk-prod/api --since 10m --follow --region "$AWS_REGION
 aws logs tail /ecs/relaydesk-prod/voice-agent --since 10m --follow --region "$AWS_REGION" --profile "$PROFILE_NAME"
 ```
 
-Set `AWS_PROFILE=relaydesk-admin` instead of `--profile` if you prefer.
+Or set `export AWS_PROFILE="$PROFILE_NAME"` and omit `--profile` on `aws` commands.
 
 ## Region
 

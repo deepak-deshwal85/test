@@ -12,6 +12,7 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { apiFetch, apiUpload } from "@/lib/api-client";
+import { usePermissions } from "@/hooks/use-permissions";
 import type {
   CollectionListResponse,
   DocumentListResponse,
@@ -25,6 +26,7 @@ function phoneToCollection(phone: string): string {
 }
 
 export default function KnowledgePage() {
+  const { canUploadDocuments } = usePermissions();
   const [collections, setCollections] = useState<string[]>([]);
   const [phone, setPhone] = useState("");
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
@@ -137,6 +139,8 @@ export default function KnowledgePage() {
             </Button>
 
             <div className="border-t border-slate-100 pt-4">
+              {canUploadDocuments ? (
+                <>
               <Label htmlFor="file">Upload document</Label>
               <Input
                 id="file"
@@ -152,6 +156,12 @@ export default function KnowledgePage() {
                 <Upload className="h-4 w-4" />
                 Upload
               </Button>
+                </>
+              ) : (
+                <p className="text-sm text-slate-600">
+                  Your role can view documents but cannot upload or delete them.
+                </p>
+              )}
             </div>
           </div>
         </Card>
@@ -177,12 +187,14 @@ export default function KnowledgePage() {
                       {doc.chunk_count} chunks · {doc.document_id}
                     </p>
                   </div>
+                  {canUploadDocuments ? (
                   <Button
                     variant="ghost"
                     onClick={() => void handleDelete(doc.document_id)}
                   >
                     <Trash2 className="h-4 w-4 text-red-600" />
                   </Button>
+                  ) : null}
                 </div>
               ))}
             </div>

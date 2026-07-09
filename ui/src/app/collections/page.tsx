@@ -10,10 +10,12 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
+import { usePermissions } from "@/hooks/use-permissions";
 import type { CollectionInfo, CollectionListResponse } from "@/lib/types";
 import { Trash2 } from "lucide-react";
 
 export default function CollectionsPage() {
+  const { canManageData } = usePermissions();
   const [collections, setCollections] = useState<string[]>([]);
   const [details, setDetails] = useState<Record<string, CollectionInfo>>({});
   const [loading, setLoading] = useState(true);
@@ -95,12 +97,14 @@ export default function CollectionsPage() {
                         Vector size {info?.vector_size ?? "—"}
                       </p>
                     </div>
+                    {canManageData ? (
                     <Button
                       variant="ghost"
                       onClick={() => void handleDelete(name)}
                     >
                       <Trash2 className="h-4 w-4 text-red-600" />
                     </Button>
+                    ) : null}
                   </div>
                 </div>
               );

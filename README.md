@@ -75,8 +75,8 @@ Quick path: `cd infra/terraform && cp terraform.tfvars.example terraform.tfvars`
 ## Development
 
 ```bash
-cd voice-agent; uv run pytest
-cd api; uv run pytest
+cd voice-agent && uv run pytest
+cd api && uv run pytest
 ```
 
 See [AGENTS.md](AGENTS.md) for LiveKit agent development guidelines.

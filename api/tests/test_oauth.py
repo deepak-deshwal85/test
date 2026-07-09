@@ -47,6 +47,19 @@ def _encode_token(private_key, **claims) -> str:
     )
 
 
+def _install_fake_jwks(monkeypatch: pytest.MonkeyPatch, public_pem: bytes) -> None:
+    from app.core import oauth as oauth_module
+
+    class FakeSigningKey:
+        key = public_pem
+
+    class FakeJwkClient:
+        def get_signing_key_from_jwt(self, _token):
+            return FakeSigningKey()
+
+    monkeypatch.setattr(oauth_module, "_jwks_client", lambda _url: FakeJwkClient())
+
+
 def test_protected_route_requires_bearer(monkeypatch: pytest.MonkeyPatch) -> None:
     from fastapi.testclient import TestClient
 
@@ -62,36 +75,27 @@ def test_protected_route_requires_bearer(monkeypatch: pytest.MonkeyPatch) -> Non
     assert response.status_code == 401
 
 
-def test_valid_access_token_is_accepted(monkeypatch: pytest.MonkeyPatch, rsa_keys) -> None:
+def test_guest_client_can_read(monkeypatch: pytest.MonkeyPatch, rsa_keys) -> None:
     from cryptography.hazmat.primitives import serialization
     from fastapi.testclient import TestClient
+    from unittest.mock import MagicMock
 
-    from app.core import oauth as oauth_module
     from app.core.dependencies import get_search_service
     from app.main import create_app
-    from unittest.mock import MagicMock
 
     private_key, public_key = rsa_keys
     public_pem = public_key.public_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo,
     )
-
-    class FakeSigningKey:
-        key = public_pem
-
-    class FakeJwkClient:
-        def get_signing_key_from_jwt(self, _token):
-            return FakeSigningKey()
-
-    monkeypatch.setattr(oauth_module, "_jwks_client", lambda _url: FakeJwkClient())
+    _install_fake_jwks(monkeypatch, public_pem)
 
     mock_service = MagicMock()
     mock_service.search.return_value = ([], "phone_911171366880")
 
     app = create_app()
     app.dependency_overrides[get_search_service] = lambda: mock_service
-    token = _encode_token(private_key)
+    token = _encode_token(private_key, **{"cognito:groups": ["guest-clients"]})
     client = TestClient(app)
     response = client.post(
         "/v1/search",
@@ -101,14 +105,13 @@ def test_valid_access_token_is_accepted(monkeypatch: pytest.MonkeyPatch, rsa_key
     assert response.status_code == 200
 
 
-def test_m2m_access_token_with_sub_client_id_is_accepted(
+def test_user_without_role_gets_guest_read_access(
     monkeypatch: pytest.MonkeyPatch, rsa_keys
 ) -> None:
     from cryptography.hazmat.primitives import serialization
     from fastapi.testclient import TestClient
     from unittest.mock import MagicMock
 
-    from app.core import oauth as oauth_module
     from app.core.dependencies import get_search_service
     from app.main import create_app
 
@@ -117,15 +120,134 @@ def test_m2m_access_token_with_sub_client_id_is_accepted(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo,
     )
+    _install_fake_jwks(monkeypatch, public_pem)
 
-    class FakeSigningKey:
-        key = public_pem
+    mock_service = MagicMock()
+    mock_service.search.return_value = ([], "phone_911171366880")
 
-    class FakeJwkClient:
-        def get_signing_key_from_jwt(self, _token):
-            return FakeSigningKey()
+    app = create_app()
+    app.dependency_overrides[get_search_service] = lambda: mock_service
+    token = _encode_token(private_key, client_id="ui-client-id")
+    client = TestClient(app)
+    response = client.post(
+        "/v1/search",
+        json={"phone_number": "911171366880", "query": "hello"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
 
-    monkeypatch.setattr(oauth_module, "_jwks_client", lambda _url: FakeJwkClient())
+
+def test_guest_cannot_upload_documents(monkeypatch: pytest.MonkeyPatch, rsa_keys) -> None:
+    from cryptography.hazmat.primitives import serialization
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+
+    private_key, public_key = rsa_keys
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    _install_fake_jwks(monkeypatch, public_pem)
+
+    token = _encode_token(private_key, **{"cognito:groups": ["guest-clients"]})
+    client = TestClient(create_app())
+    response = client.post(
+        "/v1/collections/phone_911171366880/documents/upload",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("notes.txt", b"hello", "text/plain")},
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Insufficient permissions"
+
+
+def test_approved_client_can_upload_documents(
+    monkeypatch: pytest.MonkeyPatch, rsa_keys
+) -> None:
+    from cryptography.hazmat.primitives import serialization
+    from fastapi.testclient import TestClient
+    from unittest.mock import MagicMock
+
+    from app.core.dependencies import get_document_service
+    from app.domain.models import IngestResult
+    from app.main import create_app
+
+    private_key, public_key = rsa_keys
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    _install_fake_jwks(monkeypatch, public_pem)
+
+    mock_service = MagicMock()
+    mock_service.ingest_upload.return_value = IngestResult(
+        collection="phone_911171366880",
+        document_id="doc-1",
+        source_uri="notes.txt",
+        chunks_indexed=1,
+    )
+
+    app = create_app()
+    app.dependency_overrides[get_document_service] = lambda: mock_service
+    token = _encode_token(private_key, **{"cognito:groups": ["approved-clients"]})
+    client = TestClient(app)
+    response = client.post(
+        "/v1/collections/phone_911171366880/documents/upload",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("notes.txt", b"hello", "text/plain")},
+    )
+    assert response.status_code == 200
+
+
+def test_approved_client_cannot_create_customers(
+    monkeypatch: pytest.MonkeyPatch, rsa_keys
+) -> None:
+    from cryptography.hazmat.primitives import serialization
+    from fastapi.testclient import TestClient
+    from unittest.mock import MagicMock
+
+    from app.core.dependencies import get_customer_service
+    from app.main import create_app
+
+    private_key, public_key = rsa_keys
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    _install_fake_jwks(monkeypatch, public_pem)
+
+    app = create_app()
+    app.dependency_overrides[get_customer_service] = lambda: MagicMock()
+    token = _encode_token(private_key, **{"cognito:groups": ["approved-clients"]})
+    client = TestClient(app)
+    response = client.post(
+        "/v1/customers",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "client_phone_number": "911171366880",
+            "client_name": "Acme",
+            "consumer_phone_number": "9000000000",
+        },
+    )
+    assert response.status_code == 403
+
+
+def test_m2m_access_token_with_sub_client_id_is_accepted(
+    monkeypatch: pytest.MonkeyPatch, rsa_keys
+) -> None:
+    from cryptography.hazmat.primitives import serialization
+    from fastapi.testclient import TestClient
+    from unittest.mock import MagicMock
+
+    from app.core.dependencies import get_search_service
+    from app.main import create_app
+
+    private_key, public_key = rsa_keys
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    _install_fake_jwks(monkeypatch, public_pem)
 
     mock_service = MagicMock()
     mock_service.search.return_value = ([], "phone_911171366880")

@@ -5,7 +5,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
-from app.core.dependencies import get_call_job_service, verify_access_token
+from app.core.dependencies import get_call_job_service, require_permission, verify_access_token
+from app.core.rbac import Permission
 from app.schemas.call_jobs import (
     CallJobListResponse,
     CallJobResponse,
@@ -30,6 +31,7 @@ async def trigger_call_job(
     body: TriggerCallJobRequest,
     background_tasks: BackgroundTasks,
     service: Annotated[CallJobService, Depends(get_call_job_service)],
+    _principal: Annotated[object, Depends(require_permission(Permission.ADMIN))] = ...,
 ) -> TriggerCallJobResponse:
     job = await service.create_job(body.client_phone_number)
     background_tasks.add_task(service.run_job, job.id)

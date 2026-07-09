@@ -12,10 +12,12 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
+import { usePermissions } from "@/hooks/use-permissions";
 import type { Customer, CustomerListResponse } from "@/lib/types";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 export default function CustomersPage() {
+  const { canManageData } = usePermissions();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(true);
@@ -110,6 +112,7 @@ export default function CustomersPage() {
       {error ? <ErrorBanner message={error} /> : null}
 
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+        {canManageData ? (
         <Card>
           <h2 className="font-semibold text-slate-900">
             {editingId ? "Edit customer" : "Add customer"}
@@ -172,6 +175,14 @@ export default function CustomersPage() {
             </div>
           </form>
         </Card>
+        ) : (
+          <Card>
+            <h2 className="font-semibold text-slate-900">Read-only access</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Your role can view customers but cannot create or edit records.
+            </p>
+          </Card>
+        )}
 
         <Card>
           <div className="mb-4 flex flex-col gap-3 sm:flex-row">
@@ -196,7 +207,9 @@ export default function CustomersPage() {
                   <tr>
                     <th className="px-2 py-2">Client</th>
                     <th className="px-2 py-2">Consumer</th>
-                    <th className="px-2 py-2">Actions</th>
+                    {canManageData ? (
+                      <th className="px-2 py-2">Actions</th>
+                    ) : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -211,6 +224,7 @@ export default function CustomersPage() {
                       <td className="px-2 py-3">
                         {customer.consumer_phone_number}
                       </td>
+                      {canManageData ? (
                       <td className="px-2 py-3">
                         <div className="flex gap-2">
                           <Button
@@ -227,6 +241,7 @@ export default function CustomersPage() {
                           </Button>
                         </div>
                       </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>

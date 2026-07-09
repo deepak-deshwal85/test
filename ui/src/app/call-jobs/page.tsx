@@ -13,11 +13,13 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
+import { usePermissions } from "@/hooks/use-permissions";
 import type { CallJob, CallJobListResponse } from "@/lib/types";
 import { formatDate, statusColor } from "@/lib/utils";
 import { PhoneCall, RefreshCw } from "lucide-react";
 
 export default function CallJobsPage() {
+  const { canManageData } = usePermissions();
   const [clientPhone, setClientPhone] = useState("");
   const [jobs, setJobs] = useState<CallJob[]>([]);
   const [selected, setSelected] = useState<CallJob | null>(null);
@@ -91,6 +93,7 @@ export default function CallJobsPage() {
       {error ? <ErrorBanner message={error} /> : null}
 
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+        {canManageData ? (
         <Card>
           <h2 className="font-semibold text-slate-900">Trigger campaign</h2>
           <div className="mt-4 space-y-3">
@@ -121,6 +124,22 @@ export default function CallJobsPage() {
             </Button>
           </div>
         </Card>
+        ) : (
+          <Card>
+            <h2 className="font-semibold text-slate-900">Read-only access</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Your role can monitor call jobs but cannot trigger new campaigns.
+            </p>
+            <Button
+              variant="secondary"
+              className="mt-4 w-full"
+              onClick={() => void loadJobs(clientPhone || undefined)}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh list
+            </Button>
+          </Card>
+        )}
 
         <div className="space-y-4">
           <Card>

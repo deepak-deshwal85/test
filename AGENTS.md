@@ -15,7 +15,7 @@ This repository is a monorepo with two Python projects:
 
 Each project uses the `uv` package manager. Run commands from the relevant folder:
 
-```console
+```bash
 cd voice-agent && uv sync && uv run python src/agent.py console
 cd api && uv sync && uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
@@ -36,7 +36,7 @@ Install or update the CLI:
 
 - **macOS:** `brew install livekit-cli` (update: `brew update && brew upgrade livekit-cli`)
 - **Linux:** `curl -sSL https://get.livekit.io/cli | bash`
-- **Windows:** `winget install LiveKit.LiveKitCLI` (update: `winget upgrade LiveKit.LiveKitCLI`)
+- **Windows (Git Bash):** `curl -sSL https://get.livekit.io/cli | bash` (same as Linux)
 
 Run `lk docs --help` to see all available commands. Key commands: `lk docs overview`, `lk docs search`, `lk docs get-page`, `lk docs code-search`, `lk docs changelog`, `lk docs submit-feedback`. Run `lk docs <command> --help` before using a command for the first time, as the help text includes advice on usage and interpreting results. Prefer browsing (`overview`, `get-page`) over search, and prefer `search` over `code-search`, as docs pages are more up-to-date and provide better context than raw code.
 

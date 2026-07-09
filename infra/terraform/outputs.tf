@@ -142,6 +142,20 @@ output "cognito_production_sso_ready" {
   ) : false
 }
 
+output "cognito_user_pool_id" {
+  description = "Cognito user pool ID (for admin approval scripts)."
+  value       = local.cognito_enabled ? aws_cognito_user_pool.main[0].id : null
+}
+
+output "cognito_role_groups" {
+  description = "RelayDesk Cognito role groups (assign exactly one per user)."
+  value = local.cognito_enabled ? {
+    guest    = aws_cognito_user_group.guest_clients[0].name
+    approved = aws_cognito_user_group.approved_clients[0].name
+    admin    = aws_cognito_user_group.relaydesk_admins[0].name
+  } : null
+}
+
 output "ecr_ui_repository_url" {
   value = var.enable_ui ? aws_ecr_repository.ui[0].repository_url : null
 }
@@ -167,8 +181,8 @@ output "rds_master_username" {
 }
 
 output "rds_instance_identifier" {
-  description = "RDS instance identifier (for stop/start scripts)."
-  value       = var.enable_rds_postgres ? aws_db_instance.postgres[0].id : null
+  description = "RDS DBInstanceIdentifier (for stop/start scripts and AWS CLI)."
+  value       = var.enable_rds_postgres ? aws_db_instance.postgres[0].identifier : null
 }
 
 output "billing_dashboard_name" {

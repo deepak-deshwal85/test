@@ -49,6 +49,14 @@ def _aws_base(profile: str | None, region: str) -> list[str]:
     return cmd
 
 
+def _aws_error_message(result: subprocess.CompletedProcess[str]) -> str:
+    return (result.stderr or result.stdout or "").strip()
+
+
+def _is_db_instance_not_found(message: str) -> bool:
+    return "DBInstanceNotFound" in message
+
+
 def aws_call(
     profile: str | None,
     region: str,
@@ -67,7 +75,7 @@ def aws_call(
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.returncode != 0:
         raise RuntimeError(
-            f"AWS command failed ({service} {operation}): {result.stderr.strip() or result.stdout}"
+            f"AWS command failed ({service} {operation}): {_aws_error_message(result)}"
         )
     if not result.stdout.strip():
         return {}
@@ -118,6 +126,13 @@ def load_infra_targets(terraform_dir: Path) -> InfraTargets:
         asgs["voice"] = str(voice_asg)
 
     rds_id = output_value(outputs, "rds_instance_identifier")
+    if isinstance(rds_id, str) and rds_id.startswith("db-"):
+        print(
+            "warning: terraform output rds_instance_identifier is an AWS resource id "
+            f"({rds_id}), not a DB name. Run `terraform apply` in infra/terraform to "
+            "refresh outputs, then retry.",
+            file=sys.stderr,
+        )
     return InfraTargets(
         cluster=str(cluster),
         ecs_services=services,
@@ -152,19 +167,44 @@ def describe_asg(profile: str | None, region: str, asg_name: str) -> dict[str, A
     return groups[0] if groups else {}
 
 
-def describe_rds(profile: str | None, region: str, instance_id: str) -> dict[str, Any]:
-    data = aws_call(
-        profile,
-        region,
-        "rds",
-        "describe-db-instances",
-        args=["--db-instance-identifier", instance_id],
-    )
+def describe_rds(
+    profile: str | None,
+    region: str,
+    instance_id: str,
+    *,
+    required: bool = True,
+) -> dict[str, Any]:
+    try:
+        data = aws_call(
+            profile,
+            region,
+            "rds",
+            "describe-db-instances",
+            args=["--db-instance-identifier", instance_id],
+        )
+    except RuntimeError as exc:
+        if not _is_db_instance_not_found(str(exc)):
+            raise
+        if required:
+            raise RuntimeError(
+                f"RDS instance {instance_id!r} not found in {region}. "
+                "Run `terraform output -raw rds_instance_identifier` — it must be "
+                "the DB name (e.g. relaydesk-prod-postgres), not a db-... resource id. "
+                "Re-apply Terraform if the output was wrong."
+            ) from exc
+        print(f"warning: rds {instance_id!r} not found, skipping")
+        return {}
     instances = data.get("DBInstances", [])
     return instances[0] if instances else {}
 
 
-def capture_state(targets: InfraTargets, profile: str | None, region: str) -> dict[str, Any]:
+def capture_state(
+    targets: InfraTargets,
+    profile: str | None,
+    region: str,
+    *,
+    include_rds: bool = False,
+) -> dict[str, Any]:
     ecs_state: dict[str, int] = {}
     for name, service in targets.ecs_services.items():
         info = describe_ecs_service(profile, region, targets.cluster, service)
@@ -181,11 +221,17 @@ def capture_state(targets: InfraTargets, profile: str | None, region: str) -> di
 
     rds_state: dict[str, Any] | None = None
     if targets.rds_instance_id:
-        info = describe_rds(profile, region, targets.rds_instance_id)
-        rds_state = {
-            "instance_id": targets.rds_instance_id,
-            "status": info.get("DBInstanceStatus", "unknown"),
-        }
+        info = describe_rds(
+            profile,
+            region,
+            targets.rds_instance_id,
+            required=include_rds,
+        )
+        if info:
+            rds_state = {
+                "instance_id": targets.rds_instance_id,
+                "status": info.get("DBInstanceStatus", "unknown"),
+            }
 
     return {
         "cluster": targets.cluster,
@@ -338,7 +384,9 @@ def wait_rds_available(
 
 
 def cmd_stop(args: argparse.Namespace, targets: InfraTargets) -> int:
-    state = capture_state(targets, args.profile, args.region)
+    state = capture_state(
+        targets, args.profile, args.region, include_rds=args.include_rds
+    )
     if not args.dry_run:
         save_state_file(args.state_file, state, args.region)
 
@@ -373,22 +421,27 @@ def cmd_stop(args: argparse.Namespace, targets: InfraTargets) -> int:
         )
 
     if args.include_rds and targets.rds_instance_id:
-        info = describe_rds(args.profile, args.region, targets.rds_instance_id)
-        status = info.get("DBInstanceStatus", "unknown")
-        if status == "stopped":
-            print(f"rds {targets.rds_instance_id}: already stopped")
-        elif status == "available":
-            print(f"rds {targets.rds_instance_id}: stopping")
-            aws_call(
-                args.profile,
-                args.region,
-                "rds",
-                "stop-db-instance",
-                args=["--db-instance-identifier", targets.rds_instance_id],
-                dry_run=args.dry_run,
-            )
+        info = describe_rds(
+            args.profile, args.region, targets.rds_instance_id, required=True
+        )
+        if not info:
+            print(f"rds {targets.rds_instance_id}: not found, skip stop")
         else:
-            print(f"rds {targets.rds_instance_id}: skip stop (status={status})")
+            status = info.get("DBInstanceStatus", "unknown")
+            if status == "stopped":
+                print(f"rds {targets.rds_instance_id}: already stopped")
+            elif status == "available":
+                print(f"rds {targets.rds_instance_id}: stopping")
+                aws_call(
+                    args.profile,
+                    args.region,
+                    "rds",
+                    "stop-db-instance",
+                    args=["--db-instance-identifier", targets.rds_instance_id],
+                    dry_run=args.dry_run,
+                )
+            else:
+                print(f"rds {targets.rds_instance_id}: skip stop (status={status})")
 
     print("stop complete")
     print("still billed: NAT Gateway, ALB, Elastic IPs, stopped RDS storage, etc.")
@@ -406,22 +459,25 @@ def cmd_start(args: argparse.Namespace, targets: InfraTargets) -> int:
     rds_info = state.get("rds") or {}
     rds_id = (rds_info or {}).get("instance_id") or targets.rds_instance_id
     if args.include_rds and rds_id:
-        info = describe_rds(args.profile, args.region, rds_id)
-        status = info.get("DBInstanceStatus", "unknown")
-        if status == "stopped":
-            print(f"rds {rds_id}: starting")
-            aws_call(
-                args.profile,
-                args.region,
-                "rds",
-                "start-db-instance",
-                args=["--db-instance-identifier", rds_id],
-                dry_run=args.dry_run,
-            )
-            if not args.dry_run:
-                wait_rds_available(args.profile, args.region, rds_id)
+        info = describe_rds(args.profile, args.region, rds_id, required=True)
+        if not info:
+            print(f"rds {rds_id}: not found, skip start")
         else:
-            print(f"rds {rds_id}: skip start (status={status})")
+            status = info.get("DBInstanceStatus", "unknown")
+            if status == "stopped":
+                print(f"rds {rds_id}: starting")
+                aws_call(
+                    args.profile,
+                    args.region,
+                    "rds",
+                    "start-db-instance",
+                    args=["--db-instance-identifier", rds_id],
+                    dry_run=args.dry_run,
+                )
+                if not args.dry_run:
+                    wait_rds_available(args.profile, args.region, rds_id)
+            else:
+                print(f"rds {rds_id}: skip start (status={status})")
 
     for asg_name, caps in (state.get("asgs") or {}).items():
         set_asg_capacity(
@@ -469,10 +525,16 @@ def cmd_status(args: argparse.Namespace, targets: InfraTargets) -> int:
             f"instances={len(info.get('Instances', []))}"
         )
     if targets.rds_instance_id:
-        info = describe_rds(args.profile, args.region, targets.rds_instance_id)
-        print(
-            f"rds ({targets.rds_instance_id}): status={info.get('DBInstanceStatus', 'unknown')}"
+        info = describe_rds(
+            args.profile, args.region, targets.rds_instance_id, required=False
         )
+        if info:
+            print(
+                f"rds ({targets.rds_instance_id}): "
+                f"status={info.get('DBInstanceStatus', 'unknown')}"
+            )
+        else:
+            print(f"rds ({targets.rds_instance_id}): not found")
     if args.state_file.exists():
         state = load_state_file(args.state_file)
         print(f"saved state: {args.state_file} (saved_at={state.get('saved_at')})")

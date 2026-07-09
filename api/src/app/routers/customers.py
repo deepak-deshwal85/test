@@ -4,7 +4,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.core.dependencies import get_customer_service, verify_access_token
+from app.core.dependencies import get_customer_service, require_permission, verify_access_token
+from app.core.rbac import Permission
 from app.schemas.customers import (
     CustomerCreateRequest,
     CustomerListResponse,
@@ -24,6 +25,7 @@ router = APIRouter(
 async def create_customer(
     body: CustomerCreateRequest,
     service: Annotated[CustomerService, Depends(get_customer_service)],
+    _principal: Annotated[object, Depends(require_permission(Permission.ADMIN))] = ...,
 ) -> CustomerResponse:
     try:
         return await service.create(body)
@@ -62,6 +64,7 @@ async def update_customer(
     customer_id: int,
     body: CustomerUpdateRequest,
     service: Annotated[CustomerService, Depends(get_customer_service)],
+    _principal: Annotated[object, Depends(require_permission(Permission.ADMIN))] = ...,
 ) -> CustomerResponse:
     try:
         customer = await service.update(customer_id, body)
@@ -76,6 +79,7 @@ async def update_customer(
 async def delete_customer(
     customer_id: int,
     service: Annotated[CustomerService, Depends(get_customer_service)],
+    _principal: Annotated[object, Depends(require_permission(Permission.ADMIN))] = ...,
 ) -> None:
     deleted = await service.delete(customer_id)
     if not deleted:
