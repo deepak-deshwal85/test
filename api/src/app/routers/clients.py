@@ -4,11 +4,21 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.core.dependencies import get_client_repository, get_client_service, verify_access_token
+from app.core.dependencies import (
+    get_client_repository,
+    get_client_service,
+    require_permission,
+    verify_access_token,
+)
 from app.core.oauth import AuthenticatedPrincipal
+from app.core.rbac import Permission
 from app.core.tenant import is_scope_unrestricted, principal_email, verify_client_email_scope
 from app.db.postgres.client_repository import ClientRepository
-from app.schemas.clients import ClientProfileResponse, ClientProfileUpsertRequest
+from app.schemas.clients import (
+    ClientListResponse,
+    ClientProfileResponse,
+    ClientProfileUpsertRequest,
+)
 from app.services.client_service import ClientService
 
 router = APIRouter(
@@ -38,6 +48,14 @@ async def get_my_client_profile(
         client_email_id=email,
         cognito_sub=principal.subject,
     )
+
+
+@router.get("", response_model=ClientListResponse)
+async def list_clients(
+    service: Annotated[ClientService, Depends(get_client_service)],
+    _principal: Annotated[object, Depends(require_permission(Permission.ADMIN))] = ...,
+) -> ClientListResponse:
+    return await service.list_clients()
 
 
 @router.get("/profile", response_model=ClientProfileResponse)

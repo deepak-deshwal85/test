@@ -17,3 +17,8 @@ class ClientProfileResponse(BaseModel):
 class ClientProfileUpsertRequest(BaseModel):
     client_name: str = Field(min_length=1, max_length=255)
     client_phone_number: str | None = Field(default=None, min_length=5, max_length=32)
+
+
+class ClientListResponse(BaseModel):
+    clients: list[ClientProfileResponse]
+    count: int

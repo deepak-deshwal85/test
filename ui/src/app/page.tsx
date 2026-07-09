@@ -3,11 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { ClientProfileCard } from "@/components/client-profile-card";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { apiFetch, errorMessageFromUnknown } from "@/lib/api-client";
-import { clientScopeQuery, useClientProfile } from "@/hooks/use-client-profile";
-import { usePermissions } from "@/hooks/use-permissions";
+import { clientScopeQuery, useClientScope } from "@/contexts/client-scope-context";
 import type {
   CollectionListResponse,
   CustomerListResponse,
@@ -16,14 +14,7 @@ import type {
 import { BookOpen, PhoneCall, Users } from "lucide-react";
 
 export default function DashboardPage() {
-  const { canManageData } = usePermissions();
-  const {
-    clientEmailId,
-    ready,
-    profile,
-    loading: profileLoading,
-    refresh,
-  } = useClientProfile();
+  const { clientEmailId, ready } = useClientScope();
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [customers, setCustomers] = useState<CustomerListResponse | null>(null);
   const [collections, setCollections] = useState<CollectionListResponse | null>(
@@ -38,17 +29,12 @@ export default function DashboardPage() {
         const healthData = await apiFetch<HealthResponse>("health");
         setHealth(healthData);
 
-        if (!ready) return;
+        if (!ready || !clientEmailId) return;
 
         const scope = clientScopeQuery(clientEmailId);
-        const customerPath = scope
-          ? `v1/customers?limit=5&${scope}`
-          : "v1/customers?limit=5";
-        const collectionPath = scope ? `v1/collections?${scope}` : "v1/collections";
-
         const [customerResult, collectionResult] = await Promise.allSettled([
-          apiFetch<CustomerListResponse>(customerPath),
-          apiFetch<CollectionListResponse>(collectionPath),
+          apiFetch<CustomerListResponse>(`v1/customers?limit=5&${scope}`),
+          apiFetch<CollectionListResponse>(`v1/collections?${scope}`),
         ]);
 
         const errors: string[] = [];
@@ -69,16 +55,14 @@ export default function DashboardPage() {
             ),
           );
         }
-        if (errors.length) {
-          setError(errors.join(" · "));
-        }
+        if (errors.length) setError(errors.join(" · "));
       } catch (e) {
         setError(errorMessageFromUnknown(e, "Failed to load dashboard"));
       }
     }
 
     void load();
-  }, [canManageData, clientEmailId, ready]);
+  }, [clientEmailId, ready]);
 
   return (
     <AppShell>
@@ -90,16 +74,6 @@ export default function DashboardPage() {
       {error ? (
         <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {error}
-        </div>
-      ) : null}
-
-      {!canManageData ? (
-        <div className="mb-6">
-          <ClientProfileCard
-            profile={profile}
-            loading={profileLoading}
-            onUpdated={refresh}
-          />
         </div>
       ) : null}
 
@@ -191,11 +165,11 @@ export default function DashboardPage() {
                 className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm"
               >
                 <div>
-                  <p className="font-medium">{customer.client_name}</p>
-                  <p className="text-slate-500">{customer.consumer_phone_number}</p>
+                  <p className="font-medium">{customer.consumer_phone_number}</p>
+                  <p className="text-slate-500">{customer.consumer_email_id}</p>
                 </div>
                 <span className="text-xs text-slate-400">
-                  {customer.client_business_phone_number}
+                  {customer.is_approved ? "approved" : "pending"}
                 </span>
               </li>
             ))}

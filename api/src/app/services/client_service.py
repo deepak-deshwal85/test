@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from app.db.postgres.client_repository import ClientRepository
-from app.schemas.clients import ClientProfileResponse, ClientProfileUpsertRequest
+from app.schemas.clients import (
+    ClientListResponse,
+    ClientProfileResponse,
+    ClientProfileUpsertRequest,
+)
 
 
 class ClientService:
@@ -72,3 +76,8 @@ class ClientService:
             client_business_phone_number=client_business_phone_number,
         )
         return self._to_response(client)
+
+    async def list_clients(self) -> ClientListResponse:
+        clients = await self._repository.list_all()
+        responses = [self._to_response(client) for client in clients]
+        return ClientListResponse(clients=responses, count=len(responses))

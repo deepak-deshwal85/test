@@ -146,3 +146,11 @@ class ClientRepository:
         await self._session.commit()
         await self._session.refresh(row)
         return self._to_domain(row)
+
+    async def list_all(self) -> list[Client]:
+        rows = (
+            await self._session.execute(
+                select(ClientRow).order_by(ClientRow.client_email_id)
+            )
+        ).scalars().all()
+        return [self._to_domain(row) for row in rows]

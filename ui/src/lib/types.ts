@@ -7,6 +7,11 @@ export interface ClientProfile {
   created_at: string;
 }
 
+export interface ClientListResponse {
+  clients: ClientProfile[];
+  count: number;
+}
+
 export interface Customer {
   id: number;
   client_id: number | null;

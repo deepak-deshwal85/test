@@ -53,7 +53,7 @@ src/app/
 
 ```bash
 cd api
-export PGPASSWORD='your-postgres-password'
+export PGPASSWORD='1234'
 psql -U postgres -h localhost -p 5432 -f scripts/init_db.sql
 ```
 

@@ -10,14 +10,14 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
-import { clientScopeQuery, useClientProfile } from "@/hooks/use-client-profile";
+import { clientScopeQuery, useClientScope } from "@/contexts/client-scope-context";
 import { usePermissions } from "@/hooks/use-permissions";
 import type { CollectionInfo, CollectionListResponse } from "@/lib/types";
 import { Trash2 } from "lucide-react";
 
 export default function CollectionsPage() {
   const { canManageData } = usePermissions();
-  const { clientEmailId, ready } = useClientProfile();
+  const { clientEmailId, ready } = useClientScope();
   const [collections, setCollections] = useState<string[]>([]);
   const [details, setDetails] = useState<Record<string, CollectionInfo>>({});
   const [loading, setLoading] = useState(true);

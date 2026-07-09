@@ -12,26 +12,14 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { apiFetch, apiUpload } from "@/lib/api-client";
-import { clientScopeQuery, useClientProfile } from "@/hooks/use-client-profile";
+import { clientScopeQuery, useClientScope } from "@/contexts/client-scope-context";
 import { usePermissions } from "@/hooks/use-permissions";
-import type {
-  CollectionListResponse,
-  DocumentListResponse,
-  DocumentSummary,
-} from "@/lib/types";
+import type { DocumentListResponse, DocumentSummary } from "@/lib/types";
 import { Trash2, Upload } from "lucide-react";
 
-function phoneToCollection(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  return `phone_${digits}`;
-}
-
 export default function KnowledgePage() {
-  const { canUploadDocuments, canManageData } = usePermissions();
-  const { clientEmailId, clientBusinessPhoneNumber, collectionName, ready } =
-    useClientProfile();
-  const [collections, setCollections] = useState<string[]>([]);
-  const [phone, setPhone] = useState("");
+  const { canUploadDocuments } = usePermissions();
+  const { clientEmailId, collectionName, ready } = useClientScope();
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -39,29 +27,10 @@ export default function KnowledgePage() {
 
   const scope = clientScopeQuery(clientEmailId);
   const scopeSuffix = scope ? `?${scope}` : "";
+  const collection = collectionName ?? "";
 
-  useEffect(() => {
-    if (clientBusinessPhoneNumber && !canManageData) {
-      setPhone(clientBusinessPhoneNumber);
-    }
-  }, [canManageData, clientBusinessPhoneNumber]);
-
-  async function loadCollections() {
-    if (!canManageData && !ready) return;
-    try {
-      const data = await apiFetch<CollectionListResponse>(
-        `v1/collections${scopeSuffix}`,
-      );
-      setCollections(data.collections);
-      if (!canManageData && data.client_business_phone_number) {
-        setPhone(data.client_business_phone_number);
-      }
-    } catch {
-      /* optional */
-    }
-  }
-
-  async function loadDocuments(collection: string) {
+  async function loadDocuments() {
+    if (!collection || !ready) return;
     setLoading(true);
     setError(null);
     try {
@@ -69,9 +38,6 @@ export default function KnowledgePage() {
         `v1/collections/${encodeURIComponent(collection)}/documents${scopeSuffix}`,
       );
       setDocuments(data.documents);
-      if (!canManageData && data.client_business_phone_number) {
-        setPhone(data.client_business_phone_number);
-      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load documents");
       setDocuments([]);
@@ -81,25 +47,12 @@ export default function KnowledgePage() {
   }
 
   useEffect(() => {
-    if (!ready) return;
-    void loadCollections();
-  }, [clientEmailId, ready]);
-
-  const collection =
-    !canManageData && collectionName
-      ? collectionName
-      : phone
-        ? phoneToCollection(phone)
-        : "";
-
-  useEffect(() => {
-    if (!collection || (!canManageData && !ready)) return;
-    void loadDocuments(collection);
+    void loadDocuments();
   }, [collection, clientEmailId, ready]);
 
   async function handleUpload() {
     if (!collection || !file) {
-      setError("Select a phone number and file to upload.");
+      setError("Select a client with a business phone and choose a file.");
       return;
     }
     setError(null);
@@ -109,8 +62,7 @@ export default function KnowledgePage() {
         file,
       );
       setFile(null);
-      await loadDocuments(collection);
-      await loadCollections();
+      await loadDocuments();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
     }
@@ -123,7 +75,7 @@ export default function KnowledgePage() {
         `v1/collections/${encodeURIComponent(collection)}/documents/${encodeURIComponent(documentId)}${scopeSuffix}`,
         { method: "DELETE" },
       );
-      await loadDocuments(collection);
+      await loadDocuments();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
     }
@@ -133,60 +85,36 @@ export default function KnowledgePage() {
     <AppShell>
       <PageHeader
         title="Knowledge Base"
-        description="Upload PDF, Markdown, or text files per client phone collection."
+        description="Upload PDF, Markdown, or text files for the selected client."
       />
 
       {error ? <ErrorBanner message={error} /> : null}
 
-      <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-        <Card>
-          <h2 className="font-semibold text-slate-900">Collection</h2>
-          <div className="mt-4 space-y-3">
-            <div>
-              <Label htmlFor="phone">Client phone number</Label>
-              <Input
-                id="phone"
-                list="collections-list"
-                placeholder="911171366880"
-                value={phone}
-                disabled={!canManageData}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-              <datalist id="collections-list">
-                {collections.map((name) => (
-                  <option key={name} value={name.replace(/^phone_/, "")} />
-                ))}
-              </datalist>
-            </div>
-            {collection ? (
-              <p className="text-xs text-slate-500">
-                Collection: <code>{collection}</code>
-              </p>
-            ) : null}
-            {canManageData ? (
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={() => collection && void loadDocuments(collection)}
-              >
-                Load documents
-              </Button>
-            ) : null}
-
-            <div className="border-t border-slate-100 pt-4">
+      {!clientEmailId || !collection ? (
+        <EmptyState message="Select a client with a business phone in the header." />
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+          <Card>
+            <h2 className="font-semibold text-slate-900">Upload</h2>
+            <p className="mt-2 text-xs text-slate-500">
+              Collection: <code>{collection}</code>
+            </p>
+            <div className="mt-4 space-y-3">
               {canUploadDocuments ? (
                 <>
-                  <Label htmlFor="file">Upload document</Label>
-                  <Input
-                    id="file"
-                    type="file"
-                    accept=".pdf,.txt,.md"
-                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  />
+                  <div>
+                    <Label htmlFor="file">Document</Label>
+                    <Input
+                      id="file"
+                      type="file"
+                      accept=".pdf,.txt,.md"
+                      onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    />
+                  </div>
                   <Button
-                    className="mt-3 w-full"
+                    className="w-full"
                     onClick={() => void handleUpload()}
-                    disabled={!file || !collection}
+                    disabled={!file}
                   >
                     <Upload className="h-4 w-4" />
                     Upload
@@ -198,44 +126,42 @@ export default function KnowledgePage() {
                 </p>
               )}
             </div>
-          </div>
-        </Card>
+          </Card>
 
-        <Card>
-          <h2 className="font-semibold text-slate-900">Documents</h2>
-          {loading ? (
-            <p className="mt-4 text-sm text-slate-500">Loading…</p>
-          ) : !collection ? (
-            <EmptyState message="Enter a phone number to view documents." />
-          ) : documents.length === 0 ? (
-            <EmptyState message="No documents in this collection." />
-          ) : (
-            <div className="mt-4 space-y-2">
-              {documents.map((doc) => (
-                <div
-                  key={doc.document_id}
-                  className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
-                >
-                  <div>
-                    <p className="font-medium">{doc.source_uri}</p>
-                    <p className="text-xs text-slate-500">
-                      {doc.chunk_count} chunks · {doc.document_id}
-                    </p>
+          <Card>
+            <h2 className="font-semibold text-slate-900">Documents</h2>
+            {loading ? (
+              <p className="mt-4 text-sm text-slate-500">Loading…</p>
+            ) : documents.length === 0 ? (
+              <EmptyState message="No documents in this collection." />
+            ) : (
+              <div className="mt-4 space-y-2">
+                {documents.map((doc) => (
+                  <div
+                    key={doc.document_id}
+                    className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
+                  >
+                    <div>
+                      <p className="font-medium">{doc.source_uri}</p>
+                      <p className="text-xs text-slate-500">
+                        {doc.chunk_count} chunks · {doc.document_id}
+                      </p>
+                    </div>
+                    {canUploadDocuments ? (
+                      <Button
+                        variant="ghost"
+                        onClick={() => void handleDelete(doc.document_id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    ) : null}
                   </div>
-                  {canUploadDocuments ? (
-                    <Button
-                      variant="ghost"
-                      onClick={() => void handleDelete(doc.document_id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </Button>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
     </AppShell>
   );
 }
