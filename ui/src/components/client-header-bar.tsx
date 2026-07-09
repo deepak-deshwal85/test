@@ -29,6 +29,7 @@ export function ClientHeaderBar() {
     selectedClient,
     clients,
     loading,
+    error,
     selectClientByEmail,
   } = useClientScope();
 
@@ -43,7 +44,9 @@ export function ClientHeaderBar() {
   if (!selectedClient && clients.length === 0) {
     return (
       <div className="border-b border-slate-200/80 bg-amber-50 px-4 py-3 lg:px-8">
-        <p className="text-sm text-amber-800">No client profile available.</p>
+        <p className="text-sm text-amber-800">
+          {error ?? "No client profile available."}
+        </p>
       </div>
     );
   }
@@ -120,16 +123,12 @@ export function ClientHeaderBar() {
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.15em] text-brand-600">
         Your account
       </p>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <ReadOnlyField label="Client name" value={selectedClient?.client_name} />
         <ReadOnlyField label="Client email" value={selectedClient?.client_email_id} />
         <ReadOnlyField
           label="Client phone"
           value={selectedClient?.client_phone_number}
-        />
-        <ReadOnlyField
-          label="Business phone"
-          value={selectedClient?.client_business_phone_number}
         />
       </div>
     </div>

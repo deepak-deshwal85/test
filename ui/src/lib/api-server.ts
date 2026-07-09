@@ -31,6 +31,11 @@ export async function serverApiFetch<T>(
     headers.set(key, value);
   }
 
+  const sessionEmail = session?.user?.email?.trim();
+  if (sessionEmail) {
+    headers.set("x-relaydesk-user-email", sessionEmail);
+  }
+
   const response = await fetch(`${API_URL}/${path}`, {
     ...init,
     headers,

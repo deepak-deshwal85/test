@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { AdminRouteGuard } from "@/components/admin-route-guard";
 import {
   Button,
   Card,
@@ -50,7 +51,8 @@ export default function SearchPage() {
   }
 
   return (
-    <AppShell>
+    <AdminRouteGuard>
+      <AppShell>
       <PageHeader
         title="Semantic Search"
         description="Query the selected client's knowledge base with natural language."
@@ -121,5 +123,6 @@ export default function SearchPage() {
         </div>
       )}
     </AppShell>
+    </AdminRouteGuard>
   );
 }

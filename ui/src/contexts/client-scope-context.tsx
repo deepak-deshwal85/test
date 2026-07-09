@@ -6,13 +6,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { apiFetch } from "@/lib/api-client";
 import { isAuthDisabledForLocal } from "@/lib/runtime-config";
-import type { ClientListResponse, ClientProfile } from "@/lib/types";
+import type { ClientAdminListResponse, ClientProfile } from "@/lib/types";
 import { usePermissions } from "@/hooks/use-permissions";
 
 type ClientScopeContextValue = {
@@ -20,6 +21,7 @@ type ClientScopeContextValue = {
   clients: ClientProfile[];
   loading: boolean;
   ready: boolean;
+  error: string | null;
   clientEmailId: string | null;
   clientBusinessPhoneNumber: string | null;
   clientPersonalPhoneNumber: string | null;
@@ -47,11 +49,13 @@ const ClientScopeContext = createContext<ClientScopeContextValue | null>(null);
 
 export function ClientScopeProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const { canManageData } = usePermissions();
   const [clients, setClients] = useState<ClientProfile[]>([]);
   const [selectedClient, setSelectedClient] = useState<ClientProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
   const isPublicRoute =
     pathname === "/login" ||
@@ -62,14 +66,23 @@ export function ClientScopeProvider({ children }: { children: React.ReactNode })
     if (isAuthDisabledForLocal() || isPublicRoute || status !== "authenticated") {
       setClients([]);
       setSelectedClient(null);
+      setError(null);
       setLoading(false);
       return;
     }
 
+    if (!isAuthDisabledForLocal() && !session?.accessToken) {
+      setLoading(true);
+      return;
+    }
+
+    const requestId = ++requestIdRef.current;
     setLoading(true);
+    setError(null);
     try {
       if (canManageData) {
-        const data = await apiFetch<ClientListResponse>("v1/clients");
+        const data = await apiFetch<ClientAdminListResponse>("v1/clients");
+        if (requestId !== requestIdRef.current) return;
         setClients(data.clients);
         setSelectedClient((current) => {
           if (!data.clients.length) return null;
@@ -90,16 +103,23 @@ export function ClientScopeProvider({ children }: { children: React.ReactNode })
         });
       } else {
         const profile = await apiFetch<ClientProfile>("v1/clients/me");
+        if (requestId !== requestIdRef.current) return;
         setClients([profile]);
         setSelectedClient(profile);
       }
-    } catch {
+    } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       setClients([]);
       setSelectedClient(null);
+      setError(
+        err instanceof Error ? err.message : "Failed to load client profile",
+      );
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
-  }, [canManageData, isPublicRoute, status]);
+  }, [canManageData, isPublicRoute, session?.accessToken, status]);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -130,6 +150,7 @@ export function ClientScopeProvider({ children }: { children: React.ReactNode })
       clients,
       loading,
       ready: canManageData ? !loading : !loading && !!selectedClient,
+      error,
       clientEmailId,
       clientBusinessPhoneNumber: businessPhone,
       clientPersonalPhoneNumber: selectedClient?.client_phone_number ?? null,
@@ -144,6 +165,7 @@ export function ClientScopeProvider({ children }: { children: React.ReactNode })
       selectedClient,
       clients,
       loading,
+      error,
       canManageData,
       clientEmailId,
       businessPhone,

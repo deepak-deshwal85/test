@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { AdminRouteGuard } from "@/components/admin-route-guard";
 import {
   Button,
   Card,
@@ -71,7 +72,8 @@ export default function CollectionsPage() {
   }
 
   return (
-    <AppShell>
+    <AdminRouteGuard>
+      <AppShell>
       <PageHeader
         title="Collections"
         description="Browse and manage Qdrant vector collections."
@@ -124,5 +126,6 @@ export default function CollectionsPage() {
         )}
       </Card>
     </AppShell>
+    </AdminRouteGuard>
   );
 }

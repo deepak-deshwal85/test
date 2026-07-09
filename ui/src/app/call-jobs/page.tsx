@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { AdminRouteGuard } from "@/components/admin-route-guard";
 import {
   Badge,
   Button,
@@ -93,7 +94,8 @@ export default function CallJobsPage() {
   }
 
   return (
-    <AppShell>
+    <AdminRouteGuard>
+      <AppShell>
       <PageHeader
         title="Call Jobs"
         description="Trigger outbound voice campaigns and monitor progress."
@@ -259,5 +261,6 @@ export default function CallJobsPage() {
         </div>
       )}
     </AppShell>
+    </AdminRouteGuard>
   );
 }

@@ -7,8 +7,18 @@ export interface ClientProfile {
   created_at: string;
 }
 
+export interface ClientAdminProfile extends ClientProfile {
+  is_approved: boolean;
+  cognito_sub: string | null;
+}
+
 export interface ClientListResponse {
   clients: ClientProfile[];
+  count: number;
+}
+
+export interface ClientAdminListResponse {
+  clients: ClientAdminProfile[];
   count: number;
 }
 

@@ -347,3 +347,102 @@ def test_m2m_access_token_with_sub_client_id_is_accepted(
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 200
+
+
+def test_clients_me_uses_session_email_when_token_has_no_email(
+    monkeypatch: pytest.MonkeyPatch, rsa_keys, mock_client_repository
+) -> None:
+    from datetime import UTC, datetime
+    from cryptography.hazmat.primitives import serialization
+    from fastapi.testclient import TestClient
+    from unittest.mock import AsyncMock
+
+    from app.core.dependencies import get_client_service
+    from app.main import create_app
+    from app.schemas.clients import ClientProfileResponse
+
+    private_key, public_key = rsa_keys
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    _install_fake_jwks(monkeypatch, public_pem)
+
+    now = datetime.now(UTC)
+    mock_service = AsyncMock()
+    mock_service.get_profile_for_principal.return_value = None
+    mock_service.ensure_on_sign_in.return_value = ClientProfileResponse(
+        id=1,
+        client_phone_number=None,
+        client_business_phone_number="911171366880",
+        client_name="Approved User",
+        client_email_id="user@example.com",
+        created_at=now,
+    )
+
+    app = create_app()
+    app.dependency_overrides[get_client_service] = lambda: mock_service
+    token = _encode_token(
+        private_key,
+        **{"cognito:groups": ["approved-clients"]},
+    )
+    client = TestClient(app)
+    response = client.get(
+        "/v1/clients/me",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "X-RelayDesk-User-Email": "user@example.com",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["client_email_id"] == "user@example.com"
+    mock_service.ensure_on_sign_in.assert_awaited_once_with(
+        client_email_id="user@example.com",
+        cognito_sub="user-123",
+    )
+
+
+def test_clients_me_returns_profile_by_cognito_sub(
+    monkeypatch: pytest.MonkeyPatch, rsa_keys
+) -> None:
+    from datetime import UTC, datetime
+    from cryptography.hazmat.primitives import serialization
+    from fastapi.testclient import TestClient
+    from unittest.mock import AsyncMock
+
+    from app.core.dependencies import get_client_service
+    from app.main import create_app
+    from app.schemas.clients import ClientProfileResponse
+
+    private_key, public_key = rsa_keys
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    _install_fake_jwks(monkeypatch, public_pem)
+
+    now = datetime.now(UTC)
+    mock_service = AsyncMock()
+    mock_service.get_profile_for_principal.return_value = ClientProfileResponse(
+        id=2,
+        client_phone_number=None,
+        client_business_phone_number="911171366880",
+        client_name="Linked User",
+        client_email_id="linked@example.com",
+        created_at=now,
+    )
+
+    app = create_app()
+    app.dependency_overrides[get_client_service] = lambda: mock_service
+    token = _encode_token(
+        private_key,
+        **{"cognito:groups": ["approved-clients"]},
+    )
+    client = TestClient(app)
+    response = client.get(
+        "/v1/clients/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["client_email_id"] == "linked@example.com"
+    mock_service.ensure_on_sign_in.assert_not_awaited()

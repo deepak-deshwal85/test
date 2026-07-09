@@ -31,6 +31,10 @@ async function proxy(request: NextRequest, path: string[]) {
   if (!skipSsoInLocal && session?.accessToken) {
     headers.set("authorization", `Bearer ${session.accessToken}`);
   }
+  const sessionEmail = session?.user?.email?.trim();
+  if (sessionEmail) {
+    headers.set("x-relaydesk-user-email", sessionEmail);
+  }
 
   const init: RequestInit = {
     method: request.method,

@@ -24,6 +24,21 @@ def principal_email(principal: AuthenticatedPrincipal) -> str | None:
     return None
 
 
+def resolve_user_email(
+    principal: AuthenticatedPrincipal,
+    session_email: str | None = None,
+) -> str | None:
+    """Email from the access token, or from the UI session header when Cognito omits email."""
+    token_email = principal_email(principal)
+    if token_email:
+        return token_email
+    if session_email:
+        normalized = session_email.strip().lower()
+        if "@" in normalized:
+            return normalized
+    return None
+
+
 async def verify_client_email_scope(
     principal: AuthenticatedPrincipal,
     client_email_id: str,

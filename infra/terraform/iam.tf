@@ -50,6 +50,26 @@ resource "aws_iam_role" "ecs_task" {
   })
 }
 
+resource "aws_iam_role_policy" "ecs_task_cognito_admin" {
+  count = local.cognito_enabled ? 1 : 0
+
+  name = "${local.name_prefix}-cognito-admin"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "cognito-idp:ListUsers",
+        "cognito-idp:AdminAddUserToGroup",
+        "cognito-idp:AdminRemoveUserFromGroup",
+      ]
+      Resource = aws_cognito_user_pool.main[0].arn
+    }]
+  })
+}
+
 resource "aws_iam_role" "ecs_instance" {
   name = "${local.name_prefix}-ecs-instance"
 

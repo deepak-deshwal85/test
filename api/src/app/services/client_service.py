@@ -2,15 +2,23 @@ from __future__ import annotations
 
 from app.db.postgres.client_repository import ClientRepository
 from app.schemas.clients import (
+    ClientAdminListResponse,
+    ClientAdminProfileResponse,
     ClientListResponse,
     ClientProfileResponse,
     ClientProfileUpsertRequest,
 )
+from app.services.cognito_admin_service import CognitoAdminError, CognitoAdminService
 
 
 class ClientService:
-    def __init__(self, repository: ClientRepository) -> None:
+    def __init__(
+        self,
+        repository: ClientRepository,
+        cognito_admin: CognitoAdminService | None = None,
+    ) -> None:
         self._repository = repository
+        self._cognito_admin = cognito_admin
 
     @staticmethod
     def _to_response(client) -> ClientProfileResponse:
@@ -21,6 +29,19 @@ class ClientService:
             client_name=client.client_name,
             client_email_id=client.client_email_id,
             created_at=client.created_at,
+        )
+
+    @staticmethod
+    def _to_admin_response(client) -> ClientAdminProfileResponse:
+        return ClientAdminProfileResponse(
+            id=client.id,
+            client_phone_number=client.client_phone_number,
+            client_business_phone_number=client.client_business_phone_number,
+            client_name=client.client_name,
+            client_email_id=client.client_email_id,
+            created_at=client.created_at,
+            is_approved=bool(client.client_business_phone_number),
+            cognito_sub=client.cognito_sub,
         )
 
     async def get_profile(self, client_email_id: str) -> ClientProfileResponse | None:
@@ -81,3 +102,29 @@ class ClientService:
         clients = await self._repository.list_all()
         responses = [self._to_response(client) for client in clients]
         return ClientListResponse(clients=responses, count=len(responses))
+
+    async def list_clients_admin(self) -> ClientAdminListResponse:
+        clients = await self._repository.list_all()
+        responses = [self._to_admin_response(client) for client in clients]
+        return ClientAdminListResponse(clients=responses, count=len(responses))
+
+    async def approve_client(
+        self,
+        *,
+        client_email_id: str,
+        client_business_phone_number: str,
+    ) -> ClientAdminProfileResponse:
+        if self._cognito_admin is not None:
+            try:
+                await self._cognito_admin.promote_to_approved(client_email_id)
+            except CognitoAdminError as exc:
+                raise ValueError(str(exc)) from exc
+
+        try:
+            client = await self._repository.set_business_phone(
+                client_email_id=client_email_id,
+                client_business_phone_number=client_business_phone_number,
+            )
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
+        return self._to_admin_response(client)

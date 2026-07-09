@@ -125,9 +125,44 @@ def test_ensure_collection_access_denies_other_collection() -> None:
     assert exc.value.status_code == 403
 
 
+def test_resolve_user_email_prefers_token_email() -> None:
+    from app.core.tenant import resolve_user_email
+
+    principal = AuthenticatedPrincipal(
+        subject="user-123",
+        client_id="ui-client",
+        username=None,
+        email="token@example.com",
+        scopes=frozenset({"relaydesk-api/access"}),
+        token_use="access",
+        groups=frozenset({"approved-clients"}),
+        role=RelayDeskRole.APPROVED,
+        is_m2m=False,
+    )
+    assert resolve_user_email(principal, "session@example.com") == "token@example.com"
+
+
+def test_resolve_user_email_falls_back_to_session_header() -> None:
+    from app.core.tenant import resolve_user_email
+
+    principal = AuthenticatedPrincipal(
+        subject="user-123",
+        client_id="ui-client",
+        username="uuid-not-email",
+        email=None,
+        scopes=frozenset({"relaydesk-api/access"}),
+        token_use="access",
+        groups=frozenset({"approved-clients"}),
+        role=RelayDeskRole.APPROVED,
+        is_m2m=False,
+    )
+    assert (
+        resolve_user_email(principal, "session@example.com") == "session@example.com"
+    )
+
+
 @pytest.mark.asyncio
 async def test_client_profile_upsert_requires_ui_user() -> None:
-    from datetime import UTC, datetime
     from unittest.mock import AsyncMock
 
     from fastapi.testclient import TestClient
