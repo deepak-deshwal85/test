@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { apiFetch } from "@/lib/api-client";
 import { isAuthDisabledForLocal } from "@/lib/runtime-config";
@@ -45,14 +46,20 @@ function storeEmail(email: string | null) {
 const ClientScopeContext = createContext<ClientScopeContextValue | null>(null);
 
 export function ClientScopeProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const { status } = useSession();
   const { canManageData } = usePermissions();
   const [clients, setClients] = useState<ClientProfile[]>([]);
   const [selectedClient, setSelectedClient] = useState<ClientProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const isPublicRoute =
+    pathname === "/login" ||
+    pathname.startsWith("/api/auth") ||
+    pathname === "/pending-approval";
+
   const refresh = useCallback(async () => {
-    if (isAuthDisabledForLocal()) {
+    if (isAuthDisabledForLocal() || isPublicRoute || status !== "authenticated") {
       setClients([]);
       setSelectedClient(null);
       setLoading(false);
@@ -92,7 +99,7 @@ export function ClientScopeProvider({ children }: { children: React.ReactNode })
     } finally {
       setLoading(false);
     }
-  }, [canManageData]);
+  }, [canManageData, isPublicRoute, status]);
 
   useEffect(() => {
     if (status === "loading") return;

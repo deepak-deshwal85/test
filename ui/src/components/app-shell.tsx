@@ -15,7 +15,6 @@ import {
 import { signOut } from "next-auth/react";
 import { ClientHeaderBar } from "@/components/client-header-bar";
 import { GuestOnboardingGate } from "@/components/guest-onboarding-gate";
-import { ClientScopeProvider } from "@/contexts/client-scope-context";
 import { usePermissions } from "@/hooks/use-permissions";
 import { cn } from "@/lib/utils";
 
@@ -49,8 +48,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <ClientScopeProvider>
-      <div className="min-h-dvh lg:grid lg:grid-cols-[260px_1fr]">
+    <div className="min-h-dvh lg:grid lg:grid-cols-[260px_1fr]">
         <aside className="hidden border-r border-slate-200/80 bg-white/70 p-5 backdrop-blur lg:flex lg:flex-col">
           <div className="mb-8">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">
@@ -132,6 +130,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
       </div>
-    </ClientScopeProvider>
   );
 }
