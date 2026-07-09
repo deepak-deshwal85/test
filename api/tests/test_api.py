@@ -20,12 +20,14 @@ def mock_client_repository() -> AsyncMock:
     repository = AsyncMock()
     repository.get_by_email.return_value = Client(
         id=1,
-        client_phone_number="911171366880",
+        client_phone_number=None,
+        client_business_phone_number="911171366880",
         client_name="Test Client",
         client_email_id="user@example.com",
         cognito_sub="user-123",
         created_at=datetime.now(UTC),
     )
+    repository.get_by_cognito_sub.return_value = None
     return repository
 
 

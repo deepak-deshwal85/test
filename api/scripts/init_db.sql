@@ -12,7 +12,8 @@ CREATE DATABASE relaydesk
 
 CREATE TABLE clients (
     id SERIAL PRIMARY KEY,
-    client_phone_number VARCHAR(32) NOT NULL UNIQUE,
+    client_phone_number VARCHAR(32),
+    client_business_phone_number VARCHAR(32) UNIQUE,
     client_name VARCHAR(255) NOT NULL DEFAULT '',
     client_email_id VARCHAR(255) NOT NULL UNIQUE,
     cognito_sub VARCHAR(255) UNIQUE,
@@ -22,7 +23,7 @@ CREATE TABLE clients (
 CREATE TABLE customers (
     id SERIAL PRIMARY KEY,
     client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL,
-    client_phone_number VARCHAR(32) NOT NULL,
+    client_business_phone_number VARCHAR(32) NOT NULL,
     client_name VARCHAR(255) NOT NULL,
     client_email_id VARCHAR(255) NOT NULL,
     consumer_phone_number VARCHAR(32) NOT NULL,
@@ -36,12 +37,12 @@ CREATE TABLE customers (
     )
 );
 
-CREATE INDEX idx_customers_client_phone ON customers (client_phone_number);
+CREATE INDEX idx_customers_client_business_phone ON customers (client_business_phone_number);
 CREATE INDEX idx_customers_client_email ON customers (client_email_id);
 
 CREATE TABLE call_jobs (
     id UUID PRIMARY KEY,
-    client_phone_number VARCHAR(32) NOT NULL,
+    client_business_phone_number VARCHAR(32) NOT NULL,
     client_email_id VARCHAR(255) NOT NULL,
     status VARCHAR(32) NOT NULL,
     total_customers INTEGER NOT NULL DEFAULT 0,
@@ -52,7 +53,7 @@ CREATE TABLE call_jobs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_call_jobs_client_phone ON call_jobs (client_phone_number);
+CREATE INDEX idx_call_jobs_client_business_phone ON call_jobs (client_business_phone_number);
 CREATE INDEX idx_call_jobs_client_email ON call_jobs (client_email_id);
 CREATE INDEX idx_call_jobs_status ON call_jobs (status);
 

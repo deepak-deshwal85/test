@@ -1,6 +1,7 @@
 export interface ClientProfile {
   id: number;
-  client_phone_number: string;
+  client_phone_number: string | null;
+  client_business_phone_number: string | null;
   client_name: string;
   client_email_id: string;
   created_at: string;
@@ -9,7 +10,7 @@ export interface ClientProfile {
 export interface Customer {
   id: number;
   client_id: number | null;
-  client_phone_number: string;
+  client_business_phone_number: string;
   client_name: string;
   client_email_id: string;
   consumer_phone_number: string;
@@ -33,7 +34,7 @@ export interface CallAttempt {
 
 export interface CallJob {
   id: string;
-  client_phone_number: string;
+  client_business_phone_number: string;
   client_email_id: string;
   status: string;
   total_customers: number;
@@ -54,13 +55,13 @@ export interface CollectionInfo {
   name: string;
   points_count: number;
   vector_size: number;
-  client_phone_number?: string | null;
+  client_business_phone_number?: string | null;
 }
 
 export interface CollectionListResponse {
   collections: string[];
   count: number;
-  client_phone_number?: string | null;
+  client_business_phone_number?: string | null;
   client_email_id?: string | null;
 }
 
@@ -74,7 +75,7 @@ export interface DocumentListResponse {
   collection: string;
   documents: DocumentSummary[];
   count: number;
-  client_phone_number?: string | null;
+  client_business_phone_number?: string | null;
 }
 
 export interface SearchHit {
@@ -87,7 +88,7 @@ export interface SearchResponse {
   hits: SearchHit[];
   count: number;
   collection: string;
-  client_phone_number?: string | null;
+  client_business_phone_number?: string | null;
   client_email_id?: string | null;
 }
 

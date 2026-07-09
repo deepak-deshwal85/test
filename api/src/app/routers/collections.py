@@ -79,7 +79,7 @@ async def list_collections(
     return CollectionListResponse(
         collections=filtered,
         count=len(filtered),
-        client_phone_number=scope.client_phone_number,
+        client_business_phone_number=scope.client_business_phone_number,
         client_email_id=scope.client_email_id,
     )
 
@@ -109,7 +109,7 @@ async def get_collection(
         name=str(info["name"]),
         points_count=int(info["points_count"]),
         vector_size=int(info["vector_size"]),
-        client_phone_number=scope.client_phone_number,
+        client_business_phone_number=scope.client_business_phone_number,
     )
 
 

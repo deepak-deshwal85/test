@@ -33,7 +33,7 @@ def format_sip_phone(value: str) -> str:
 class Customer:
     id: int
     client_id: int | None
-    client_phone_number: str
+    client_business_phone_number: str
     client_name: str
     client_email_id: str
     consumer_phone_number: str
@@ -46,7 +46,7 @@ class Customer:
 @dataclass(frozen=True)
 class CallJob:
     id: UUID
-    client_phone_number: str
+    client_business_phone_number: str
     client_email_id: str
     status: str
     total_customers: int

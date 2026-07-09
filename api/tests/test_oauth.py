@@ -13,12 +13,14 @@ def mock_client_repository():
     repository = AsyncMock()
     repository.get_by_email.return_value = Client(
         id=1,
-        client_phone_number="911171366880",
+        client_phone_number=None,
+        client_business_phone_number="911171366880",
         client_name="Test Client",
         client_email_id="user@example.com",
         cognito_sub="user-123",
         created_at=datetime.now(UTC),
     )
+    repository.get_by_cognito_sub.return_value = None
     return repository
 
 
@@ -252,15 +254,17 @@ def test_approved_client_can_upload_documents(
     assert response.status_code == 200
 
 
-def test_approved_client_cannot_create_customers(
-    monkeypatch: pytest.MonkeyPatch, rsa_keys
+def test_approved_client_can_create_customers(
+    monkeypatch: pytest.MonkeyPatch, rsa_keys, mock_client_repository
 ) -> None:
+    from datetime import UTC, datetime
     from cryptography.hazmat.primitives import serialization
     from fastapi.testclient import TestClient
-    from unittest.mock import MagicMock
+    from unittest.mock import AsyncMock
 
-    from app.core.dependencies import get_customer_service
+    from app.core.dependencies import get_client_repository, get_customer_service
     from app.main import create_app
+    from app.schemas.customers import CustomerResponse
 
     private_key, public_key = rsa_keys
     public_pem = public_key.public_bytes(
@@ -269,20 +273,42 @@ def test_approved_client_cannot_create_customers(
     )
     _install_fake_jwks(monkeypatch, public_pem)
 
+    now = datetime.now(UTC)
+    mock_service = AsyncMock()
+    mock_service.create.return_value = CustomerResponse(
+        id=1,
+        client_id=None,
+        client_business_phone_number="911171366880",
+        client_name="Acme",
+        client_email_id="user@example.com",
+        consumer_phone_number="9000000000",
+        consumer_email_id="consumer@example.com",
+        is_approved=False,
+        created_at=now,
+        updated_at=now,
+    )
+
     app = create_app()
-    app.dependency_overrides[get_customer_service] = lambda: MagicMock()
-    token = _encode_token(private_key, **{"cognito:groups": ["approved-clients"]})
+    app.dependency_overrides[get_customer_service] = lambda: mock_service
+    app.dependency_overrides[get_client_repository] = lambda: mock_client_repository
+    token = _encode_token(
+        private_key,
+        email="user@example.com",
+        **{"cognito:groups": ["approved-clients"]},
+    )
     client = TestClient(app)
     response = client.post(
         "/v1/customers",
         headers={"Authorization": f"Bearer {token}"},
         json={
-            "client_phone_number": "911171366880",
+            "client_business_phone_number": "911171366880",
             "client_name": "Acme",
+            "client_email_id": "user@example.com",
             "consumer_phone_number": "9000000000",
+            "consumer_email_id": "consumer@example.com",
         },
     )
-    assert response.status_code == 403
+    assert response.status_code == 201
 
 
 def test_m2m_access_token_with_sub_client_id_is_accepted(

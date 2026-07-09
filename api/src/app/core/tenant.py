@@ -96,7 +96,7 @@ def ensure_client_email_scope(
 @dataclass(frozen=True)
 class ResolvedClientScope:
     client_email_id: str | None
-    client_phone_number: str | None
+    client_business_phone_number: str | None
     collection_name: str | None
     unrestricted: bool
 
@@ -109,10 +109,13 @@ def resolve_client_scope(
 ) -> ResolvedClientScope:
     if is_scope_unrestricted(principal):
         if client_email_id and client is not None:
-            collection = collection_from_phone(client.client_phone_number)
+            business_phone = client.client_business_phone_number
+            collection = (
+                collection_from_phone(business_phone) if business_phone else None
+            )
             return ResolvedClientScope(
                 client_email_id=client.client_email_id,
-                client_phone_number=client.client_phone_number,
+                client_business_phone_number=business_phone,
                 collection_name=collection,
                 unrestricted=True,
             )
@@ -128,15 +131,16 @@ def resolve_client_scope(
     if client is None:
         return ResolvedClientScope(
             client_email_id=normalized,
-            client_phone_number=None,
+            client_business_phone_number=None,
             collection_name=None,
             unrestricted=False,
         )
 
-    collection = collection_from_phone(client.client_phone_number)
+    business_phone = client.client_business_phone_number
+    collection = collection_from_phone(business_phone) if business_phone else None
     return ResolvedClientScope(
         client_email_id=normalized,
-        client_phone_number=client.client_phone_number,
+        client_business_phone_number=business_phone,
         collection_name=collection,
         unrestricted=False,
     )

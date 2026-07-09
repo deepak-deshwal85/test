@@ -22,17 +22,14 @@ export function useClientProfile() {
     }
     setLoading(true);
     try {
-      const path = email
-        ? `v1/clients/profile?client_email_id=${encodeURIComponent(email)}`
-        : "v1/clients/me";
-      const data = await apiFetch<ClientProfile>(path);
+      const data = await apiFetch<ClientProfile>("v1/clients/me");
       setProfile(data);
     } catch {
       setProfile(null);
     } finally {
       setLoading(false);
     }
-  }, [canManageData, email]);
+  }, [canManageData]);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -43,15 +40,18 @@ export function useClientProfile() {
     ? null
     : (profile?.client_email_id ?? email) || null;
 
+  const businessPhone = profile?.client_business_phone_number ?? null;
+
   return {
     email: clientEmailId ?? email,
     profile,
     loading,
     refresh,
     clientEmailId,
-    clientPhoneNumber: profile?.client_phone_number ?? null,
-    collectionName: profile?.client_phone_number
-      ? `phone_${profile.client_phone_number.replace(/\D/g, "")}`
+    clientBusinessPhoneNumber: businessPhone,
+    clientPersonalPhoneNumber: profile?.client_phone_number ?? null,
+    collectionName: businessPhone
+      ? `phone_${businessPhone.replace(/\D/g, "")}`
       : null,
     ready: canManageData || loading || !!clientEmailId,
   };

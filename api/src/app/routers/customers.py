@@ -12,7 +12,7 @@ from app.core.dependencies import (
 )
 from app.core.oauth import AuthenticatedPrincipal
 from app.core.rbac import Permission
-from app.core.tenant import is_scope_unrestricted, verify_client_email_scope
+from app.core.tenant import is_scope_unrestricted, principal_email, verify_client_email_scope
 from app.db.postgres.client_repository import ClientRepository
 from app.schemas.customers import (
     CustomerCreateRequest,
@@ -29,12 +29,65 @@ router = APIRouter(
 )
 
 
+async def _validate_customer_write_scope(
+    principal: AuthenticatedPrincipal,
+    body_email: str,
+    body_business_phone: str | None,
+    repository: ClientRepository,
+) -> str:
+    scoped_email = await verify_client_email_scope(principal, body_email, repository)
+    if is_scope_unrestricted(principal):
+        return scoped_email
+
+    client = await repository.get_by_email(scoped_email)
+    if client is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Client profile not found",
+        )
+    if not client.client_business_phone_number:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Client business phone number is not configured",
+        )
+    if (
+        body_business_phone
+        and body_business_phone != client.client_business_phone_number
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Client business phone number cannot be changed",
+        )
+    return scoped_email
+
+
 @router.post("", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
 async def create_customer(
     body: CustomerCreateRequest,
     service: Annotated[CustomerService, Depends(get_customer_service)],
-    _principal: Annotated[object, Depends(require_permission(Permission.ADMIN))] = ...,
+    repository: Annotated[ClientRepository, Depends(get_client_repository)],
+    principal: Annotated[
+        AuthenticatedPrincipal,
+        Depends(require_permission(Permission.DOCUMENT_WRITE)),
+    ],
 ) -> CustomerResponse:
+    scoped_email = await _validate_customer_write_scope(
+        principal,
+        body.client_email_id,
+        body.client_business_phone_number,
+        repository,
+    )
+    if not is_scope_unrestricted(principal):
+        client = await repository.get_by_email(scoped_email)
+        if client is None:
+            raise HTTPException(status_code=404, detail="Client profile not found")
+        body = body.model_copy(
+            update={
+                "client_email_id": client.client_email_id,
+                "client_business_phone_number": client.client_business_phone_number,
+                "client_name": client.client_name or body.client_name,
+            }
+        )
     try:
         return await service.create(body)
     except ValueError as exc:
@@ -47,7 +100,7 @@ async def list_customers(
     principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
     repository: Annotated[ClientRepository, Depends(get_client_repository)],
     client_email_id: Annotated[str | None, Query(min_length=3)] = None,
-    client_phone_number: Annotated[str | None, Query()] = None,
+    client_business_phone_number: Annotated[str | None, Query()] = None,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> CustomerListResponse:
@@ -63,7 +116,7 @@ async def list_customers(
     )
     customers = await service.list(
         client_email_id=scoped_email,
-        client_phone_number=client_phone_number,
+        client_business_phone_number=client_business_phone_number,
         skip=skip,
         limit=limit,
     )
@@ -93,12 +146,29 @@ async def update_customer(
     client_email_id: Annotated[str, Query(min_length=3)],
     body: CustomerUpdateRequest,
     service: Annotated[CustomerService, Depends(get_customer_service)],
-    _principal: Annotated[object, Depends(require_permission(Permission.ADMIN))] = ...,
+    repository: Annotated[ClientRepository, Depends(get_client_repository)],
+    principal: Annotated[
+        AuthenticatedPrincipal,
+        Depends(require_permission(Permission.DOCUMENT_WRITE)),
+    ],
 ) -> CustomerResponse:
+    scoped_email = await _validate_customer_write_scope(
+        principal,
+        client_email_id,
+        body.client_business_phone_number,
+        repository,
+    )
+    if not is_scope_unrestricted(principal):
+        body = body.model_copy(
+            update={
+                "client_business_phone_number": None,
+                "client_email_id": None,
+            }
+        )
     try:
         customer = await service.update(
             customer_id,
-            client_email_id=client_email_id,
+            client_email_id=scoped_email,
             body=body,
         )
     except ValueError as exc:
@@ -113,9 +183,16 @@ async def delete_customer(
     customer_id: int,
     client_email_id: Annotated[str, Query(min_length=3)],
     service: Annotated[CustomerService, Depends(get_customer_service)],
-    _principal: Annotated[object, Depends(require_permission(Permission.ADMIN))] = ...,
+    repository: Annotated[ClientRepository, Depends(get_client_repository)],
+    principal: Annotated[
+        AuthenticatedPrincipal,
+        Depends(require_permission(Permission.DOCUMENT_WRITE)),
+    ],
 ) -> None:
-    deleted = await service.delete(customer_id, client_email_id=client_email_id)
+    scoped_email = await verify_client_email_scope(
+        principal, client_email_id, repository
+    )
+    deleted = await service.delete(customer_id, client_email_id=scoped_email)
     if not deleted:
         raise HTTPException(status_code=404, detail="Customer not found")
 

@@ -18,7 +18,7 @@ class CustomerService:
         return CustomerResponse(
             id=customer.id,
             client_id=customer.client_id,
-            client_phone_number=customer.client_phone_number,
+            client_business_phone_number=customer.client_business_phone_number,
             client_name=customer.client_name,
             client_email_id=customer.client_email_id,
             consumer_phone_number=customer.consumer_phone_number,
@@ -30,7 +30,7 @@ class CustomerService:
 
     async def create(self, body: CustomerCreateRequest) -> CustomerResponse:
         customer = await self._repository.create(
-            client_phone_number=body.client_phone_number,
+            client_business_phone_number=body.client_business_phone_number,
             client_name=body.client_name,
             client_email_id=body.client_email_id,
             consumer_phone_number=body.consumer_phone_number,
@@ -50,13 +50,13 @@ class CustomerService:
         self,
         *,
         client_email_id: str | None,
-        client_phone_number: str | None = None,
+        client_business_phone_number: str | None = None,
         skip: int = 0,
         limit: int = 100,
     ) -> list[CustomerResponse]:
         customers = await self._repository.list(
             client_email_id=client_email_id,
-            client_phone_number=client_phone_number,
+            client_business_phone_number=client_business_phone_number,
             skip=skip,
             limit=limit,
         )
@@ -72,7 +72,7 @@ class CustomerService:
         customer = await self._repository.update(
             customer_id,
             client_email_id=client_email_id,
-            client_phone_number=body.client_phone_number,
+            client_business_phone_number=body.client_business_phone_number,
             client_name=body.client_name,
             consumer_email_id=body.consumer_email_id,
             consumer_phone_number=body.consumer_phone_number,

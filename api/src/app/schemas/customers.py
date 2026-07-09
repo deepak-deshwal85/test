@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class CustomerCreateRequest(BaseModel):
-    client_phone_number: str = Field(min_length=1, max_length=32)
+    client_business_phone_number: str = Field(min_length=1, max_length=32)
     client_name: str = Field(min_length=1, max_length=255)
     client_email_id: str = Field(min_length=3, max_length=255)
     consumer_phone_number: str = Field(min_length=1, max_length=32)
@@ -14,7 +14,9 @@ class CustomerCreateRequest(BaseModel):
 
 
 class CustomerUpdateRequest(BaseModel):
-    client_phone_number: str | None = Field(default=None, min_length=1, max_length=32)
+    client_business_phone_number: str | None = Field(
+        default=None, min_length=1, max_length=32
+    )
     client_name: str | None = Field(default=None, min_length=1, max_length=255)
     client_email_id: str | None = Field(default=None, min_length=3, max_length=255)
     consumer_phone_number: str | None = Field(default=None, min_length=1, max_length=32)
@@ -24,7 +26,7 @@ class CustomerUpdateRequest(BaseModel):
 class CustomerResponse(BaseModel):
     id: int
     client_id: int | None
-    client_phone_number: str
+    client_business_phone_number: str
     client_name: str
     client_email_id: str
     consumer_phone_number: str

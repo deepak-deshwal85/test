@@ -52,7 +52,7 @@ class CallJobRepository:
     def _to_domain(self, row: CallJobRow) -> CallJob:
         return CallJob(
             id=row.id,
-            client_phone_number=row.client_phone_number,
+            client_business_phone_number=row.client_business_phone_number,
             client_email_id=row.client_email_id,
             status=row.status,
             total_customers=row.total_customers,
@@ -65,11 +65,13 @@ class CallJobRepository:
         )
 
     async def create(
-        self, *, client_phone_number: str, client_email_id: str
+        self, *, client_business_phone_number: str, client_email_id: str
     ) -> CallJob:
         row = CallJobRow(
             id=uuid4(),
-            client_phone_number=normalize_phone_number(client_phone_number),
+            client_business_phone_number=normalize_phone_number(
+                client_business_phone_number
+            ),
             client_email_id=normalize_email(client_email_id),
             status="pending",
         )
@@ -150,7 +152,7 @@ class CallJobRepository:
         self,
         *,
         client_email_id: str | None = None,
-        client_phone_number: str | None = None,
+        client_business_phone_number: str | None = None,
         limit: int = 20,
     ) -> list[CallJob]:
         query = select(CallJobRow).order_by(CallJobRow.created_at.desc()).limit(limit)
@@ -158,10 +160,10 @@ class CallJobRepository:
             query = query.where(
                 CallJobRow.client_email_id == normalize_email(client_email_id)
             )
-        if client_phone_number:
+        if client_business_phone_number:
             query = query.where(
-                CallJobRow.client_phone_number
-                == normalize_phone_number(client_phone_number)
+                CallJobRow.client_business_phone_number
+                == normalize_phone_number(client_business_phone_number)
             )
         rows = (await self._session.execute(query)).scalars().all()
         return [self._to_domain(row) for row in rows]

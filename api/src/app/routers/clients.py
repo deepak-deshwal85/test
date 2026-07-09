@@ -28,16 +28,16 @@ async def get_my_client_profile(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Client profile is not available for machine clients",
         )
-    profile = await service.get_profile_for_principal(
-        cognito_sub=principal.subject,
-        client_email_id=principal_email(principal),
-    )
-    if profile is None:
+    email = principal_email(principal)
+    if not email:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Client profile not found",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Authenticated user email is required",
         )
-    return profile
+    return await service.ensure_on_sign_in(
+        client_email_id=email,
+        cognito_sub=principal.subject,
+    )
 
 
 @router.get("/profile", response_model=ClientProfileResponse)
@@ -82,23 +82,18 @@ async def upsert_client_profile(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Client profile is not available for machine clients",
         )
+    token_email = principal_email(principal)
+    if not token_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Authenticated user email is required",
+        )
     if not is_scope_unrestricted(principal):
-        normalized = body.client_email_id.strip().lower()
-        token_email = principal_email(principal)
-        if token_email and token_email != normalized:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Client email scope mismatch",
-            )
-        existing = await repository.get_by_cognito_sub(principal.subject)
-        if existing and existing.client_email_id != normalized:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Client email scope mismatch",
-            )
+        await verify_client_email_scope(principal, token_email, repository)
     try:
         return await service.upsert_profile(
             body,
+            client_email_id=token_email,
             cognito_sub=principal.subject,
         )
     except ValueError as exc:

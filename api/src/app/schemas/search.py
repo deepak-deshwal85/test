@@ -21,5 +21,5 @@ class SearchResponse(BaseModel):
     hits: list[SearchHitResponse]
     count: int
     collection: str
-    client_phone_number: str | None = None
+    client_business_phone_number: str | None = None
     client_email_id: str | None = None

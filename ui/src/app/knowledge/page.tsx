@@ -28,7 +28,8 @@ function phoneToCollection(phone: string): string {
 
 export default function KnowledgePage() {
   const { canUploadDocuments, canManageData } = usePermissions();
-  const { clientEmailId, clientPhoneNumber, collectionName, ready } = useClientProfile();
+  const { clientEmailId, clientBusinessPhoneNumber, collectionName, ready } =
+    useClientProfile();
   const [collections, setCollections] = useState<string[]>([]);
   const [phone, setPhone] = useState("");
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
@@ -40,10 +41,10 @@ export default function KnowledgePage() {
   const scopeSuffix = scope ? `?${scope}` : "";
 
   useEffect(() => {
-    if (clientPhoneNumber && !canManageData) {
-      setPhone(clientPhoneNumber);
+    if (clientBusinessPhoneNumber && !canManageData) {
+      setPhone(clientBusinessPhoneNumber);
     }
-  }, [canManageData, clientPhoneNumber]);
+  }, [canManageData, clientBusinessPhoneNumber]);
 
   async function loadCollections() {
     if (!canManageData && !ready) return;
@@ -52,8 +53,8 @@ export default function KnowledgePage() {
         `v1/collections${scopeSuffix}`,
       );
       setCollections(data.collections);
-      if (!canManageData && data.client_phone_number) {
-        setPhone(data.client_phone_number);
+      if (!canManageData && data.client_business_phone_number) {
+        setPhone(data.client_business_phone_number);
       }
     } catch {
       /* optional */
@@ -68,8 +69,8 @@ export default function KnowledgePage() {
         `v1/collections/${encodeURIComponent(collection)}/documents${scopeSuffix}`,
       );
       setDocuments(data.documents);
-      if (!canManageData && data.client_phone_number) {
-        setPhone(data.client_phone_number);
+      if (!canManageData && data.client_business_phone_number) {
+        setPhone(data.client_business_phone_number);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load documents");

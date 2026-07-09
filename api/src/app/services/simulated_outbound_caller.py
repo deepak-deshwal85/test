@@ -15,7 +15,7 @@ class SimulatedOutboundCaller:
         job_id,
     ) -> CallAttemptResult:
         detail = (
-            f"SIMULATED call from client {customer.client_phone_number} "
+            f"SIMULATED call from client {customer.client_business_phone_number} "
             f"({customer.client_name}) to consumer {customer.consumer_phone_number}. "
             "Configure LiveKit SIP env vars for real dialing."
         )

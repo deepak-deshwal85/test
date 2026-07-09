@@ -41,7 +41,8 @@ def _principal(
 def _client() -> Client:
     return Client(
         id=1,
-        client_phone_number="91911171366880",
+        client_phone_number=None,
+        client_business_phone_number="91911171366880",
         client_name="Acme",
         client_email_id="client@example.com",
         cognito_sub="sub-1",
@@ -83,7 +84,7 @@ def test_resolve_scope_without_profile_returns_empty_collection_scope() -> None:
     )
     assert scope.unrestricted is False
     assert scope.client_email_id == "client@example.com"
-    assert scope.client_phone_number is None
+    assert scope.client_business_phone_number is None
     assert scope.collection_name is None
     assert filter_collections(scope, ["phone_91911171366880"]) == []
 
@@ -96,7 +97,7 @@ def test_resolve_scope_for_ui_client_with_profile() -> None:
         client=_client(),
     )
     assert scope.unrestricted is False
-    assert scope.client_phone_number == "91911171366880"
+    assert scope.client_business_phone_number == "91911171366880"
     assert scope.collection_name == "phone_91911171366880"
 
 
@@ -141,7 +142,8 @@ async def test_client_profile_upsert_requires_ui_user() -> None:
     mock_repository.get_by_cognito_sub.return_value = None
     mock_service.upsert_profile.return_value = ClientProfileResponse(
         id=1,
-        client_phone_number="911171366880",
+        client_phone_number="9876543210",
+        client_business_phone_number="911171366880",
         client_name="Jane",
         client_email_id="jane@example.com",
         created_at=now,
@@ -156,8 +158,7 @@ async def test_client_profile_upsert_requires_ui_user() -> None:
         "/v1/clients/profile",
         json={
             "client_name": "Jane",
-            "client_phone_number": "911171366880",
-            "client_email_id": "jane@example.com",
+            "client_phone_number": "9876543210",
         },
     )
     assert response.status_code == 200

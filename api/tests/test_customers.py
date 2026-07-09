@@ -26,14 +26,16 @@ def test_health(client: TestClient) -> None:
 
 
 def test_create_customer(client: TestClient) -> None:
-    from app.core.dependencies import get_customer_service
+    from unittest.mock import AsyncMock
+
+    from app.core.dependencies import get_client_repository, get_customer_service
 
     now = datetime.now(UTC)
     mock_service = AsyncMock()
     mock_service.create.return_value = CustomerResponse(
         id=1,
         client_id=None,
-        client_phone_number="911171366880",
+        client_business_phone_number="911171366880",
         client_name="Acme Corp",
         client_email_id="acme@example.com",
         consumer_phone_number="9876543210",
@@ -42,15 +44,19 @@ def test_create_customer(client: TestClient) -> None:
         created_at=now,
         updated_at=now,
     )
+    mock_repository = AsyncMock()
+    mock_repository.get_by_email.return_value = None
+    mock_repository.get_by_cognito_sub.return_value = None
 
     app = create_app()
     app.dependency_overrides[get_customer_service] = lambda: mock_service
+    app.dependency_overrides[get_client_repository] = lambda: mock_repository
     test_client = TestClient(app)
 
     response = test_client.post(
         "/v1/customers",
         json={
-            "client_phone_number": "911171366880",
+            "client_business_phone_number": "911171366880",
             "client_name": "Acme Corp",
             "client_email_id": "acme@example.com",
             "consumer_phone_number": "9876543210",
@@ -69,7 +75,7 @@ def test_trigger_call_job(client: TestClient) -> None:
     mock_service = AsyncMock()
     mock_service.create_job.return_value = CallJobResponse(
         id=job_id,
-        client_phone_number="911171366880",
+        client_business_phone_number="911171366880",
         client_email_id="acme@example.com",
         status="pending",
         total_customers=0,
@@ -88,7 +94,7 @@ def test_trigger_call_job(client: TestClient) -> None:
     response = test_client.post(
         "/v1/call-jobs/trigger",
         json={
-            "client_phone_number": "911171366880",
+            "client_business_phone_number": "911171366880",
             "client_email_id": "acme@example.com",
         },
     )

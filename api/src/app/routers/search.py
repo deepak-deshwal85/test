@@ -54,14 +54,18 @@ async def search(
     phone_number = body.phone_number
     collection = body.collection
     if not scope.unrestricted:
-        phone_number = scope.client_phone_number
+        phone_number = scope.client_business_phone_number
         collection = scope.collection_name
-    elif scope.client_phone_number:
-        phone_number = scope.client_phone_number
+    elif scope.client_business_phone_number:
+        phone_number = scope.client_business_phone_number
         collection = scope.collection_name
     elif body.client_email_id and client is not None:
-        phone_number = client.client_phone_number
-        collection = collection_from_phone(client.client_phone_number)
+        phone_number = client.client_business_phone_number
+        collection = (
+            collection_from_phone(client.client_business_phone_number)
+            if client.client_business_phone_number
+            else None
+        )
 
     started = time.perf_counter()
     try:
@@ -106,6 +110,6 @@ async def search(
         ],
         count=len(hits),
         collection=resolved_collection,
-        client_phone_number=resolved_phone,
+        client_business_phone_number=resolved_phone,
         client_email_id=scope.client_email_id,
     )

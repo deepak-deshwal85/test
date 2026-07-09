@@ -17,7 +17,7 @@ class CustomerRepository:
         return Customer(
             id=row.id,
             client_id=row.client_id,
-            client_phone_number=row.client_phone_number,
+            client_business_phone_number=row.client_business_phone_number,
             client_name=row.client_name,
             client_email_id=row.client_email_id,
             consumer_phone_number=row.consumer_phone_number,
@@ -30,14 +30,16 @@ class CustomerRepository:
     async def create(
         self,
         *,
-        client_phone_number: str,
+        client_business_phone_number: str,
         client_name: str,
         client_email_id: str,
         consumer_phone_number: str,
         consumer_email_id: str,
     ) -> Customer:
         row = CustomerRow(
-            client_phone_number=normalize_phone_number(client_phone_number),
+            client_business_phone_number=normalize_phone_number(
+                client_business_phone_number
+            ),
             client_name=client_name.strip(),
             client_email_id=normalize_email(client_email_id),
             consumer_phone_number=normalize_phone_number(consumer_phone_number),
@@ -67,7 +69,7 @@ class CustomerRepository:
         self,
         *,
         client_email_id: str | None,
-        client_phone_number: str | None = None,
+        client_business_phone_number: str | None = None,
         skip: int = 0,
         limit: int = 100,
     ) -> list[Customer]:
@@ -77,24 +79,24 @@ class CustomerRepository:
                 CustomerRow.client_email_id == normalize_email(client_email_id)
             )
         query = query.order_by(CustomerRow.id)
-        if client_phone_number:
+        if client_business_phone_number:
             query = query.where(
-                CustomerRow.client_phone_number
-                == normalize_phone_number(client_phone_number)
+                CustomerRow.client_business_phone_number
+                == normalize_phone_number(client_business_phone_number)
             )
         query = query.offset(skip).limit(limit)
         rows = (await self._session.execute(query)).scalars().all()
         return [self._to_domain(row) for row in rows]
 
     async def list_approved_by_client(
-        self, *, client_phone_number: str, client_email_id: str
+        self, *, client_business_phone_number: str, client_email_id: str
     ) -> list[Customer]:
         query = (
             select(CustomerRow)
             .where(CustomerRow.client_email_id == normalize_email(client_email_id))
             .where(
-                CustomerRow.client_phone_number
-                == normalize_phone_number(client_phone_number)
+                CustomerRow.client_business_phone_number
+                == normalize_phone_number(client_business_phone_number)
             )
             .where(CustomerRow.is_approved.is_(True))
             .order_by(CustomerRow.id)
@@ -107,7 +109,7 @@ class CustomerRepository:
         customer_id: int,
         *,
         client_email_id: str,
-        client_phone_number: str | None = None,
+        client_business_phone_number: str | None = None,
         client_name: str | None = None,
         consumer_email_id: str | None = None,
         consumer_phone_number: str | None = None,
@@ -118,8 +120,10 @@ class CustomerRepository:
         if row.client_email_id != normalize_email(client_email_id):
             return None
 
-        if client_phone_number is not None:
-            row.client_phone_number = normalize_phone_number(client_phone_number)
+        if client_business_phone_number is not None:
+            row.client_business_phone_number = normalize_phone_number(
+                client_business_phone_number
+            )
         if client_name is not None:
             row.client_name = client_name.strip()
         if consumer_email_id is not None:
@@ -164,7 +168,8 @@ class CustomerRepository:
         ).scalar_one_or_none()
         if client is None:
             client = ClientRow(
-                client_phone_number=row.client_phone_number,
+                client_phone_number=None,
+                client_business_phone_number=row.client_business_phone_number,
                 client_name=row.client_name,
                 client_email_id=normalized_email,
             )

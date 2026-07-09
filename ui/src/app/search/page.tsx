@@ -19,7 +19,7 @@ import { Search as SearchIcon } from "lucide-react";
 
 export default function SearchPage() {
   const { canManageData } = usePermissions();
-  const { clientEmailId, clientPhoneNumber } = useClientProfile();
+  const { clientEmailId, clientBusinessPhoneNumber } = useClientProfile();
   const [query, setQuery] = useState("");
   const [phone, setPhone] = useState("");
   const [maxResults, setMaxResults] = useState(5);
@@ -27,7 +27,9 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const effectivePhone = canManageData ? phone.trim() : (clientPhoneNumber ?? "");
+  const effectivePhone = canManageData
+    ? phone.trim()
+    : (clientBusinessPhoneNumber ?? "");
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -46,8 +48,8 @@ export default function SearchPage() {
         }),
       });
       setResults(data);
-      if (!canManageData && data.client_phone_number) {
-        setPhone(data.client_phone_number);
+      if (!canManageData && data.client_business_phone_number) {
+        setPhone(data.client_business_phone_number);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Search failed");
@@ -123,8 +125,8 @@ export default function SearchPage() {
             <div className="mt-4 space-y-3">
               <p className="text-xs text-slate-500">
                 Collection: {results.collection}
-                {results.client_phone_number
-                  ? ` · phone ${results.client_phone_number}`
+                {results.client_business_phone_number
+                  ? ` · business phone ${results.client_business_phone_number}`
                   : ""}
               </p>
               {results.hits.map((hit, index) => (

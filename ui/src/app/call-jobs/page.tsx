@@ -21,7 +21,7 @@ import { PhoneCall, RefreshCw } from "lucide-react";
 
 export default function CallJobsPage() {
   const { canManageData } = usePermissions();
-  const { clientEmailId, ready } = useClientProfile();
+  const { clientEmailId, clientBusinessPhoneNumber, ready } = useClientProfile();
   const [clientPhone, setClientPhone] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [jobs, setJobs] = useState<CallJob[]>([]);
@@ -36,7 +36,10 @@ export default function CallJobsPage() {
     if (!canManageData && clientEmailId) {
       setClientEmail(clientEmailId);
     }
-  }, [canManageData, clientEmailId]);
+    if (!canManageData && clientBusinessPhoneNumber) {
+      setClientPhone(clientBusinessPhoneNumber);
+    }
+  }, [canManageData, clientEmailId, clientBusinessPhoneNumber]);
 
   async function loadJobs(phone?: string) {
     if (!canManageData && !scopedEmail) return;
@@ -44,7 +47,7 @@ export default function CallJobsPage() {
     setError(null);
     try {
       const query = phone
-        ? `v1/call-jobs?client_phone_number=${encodeURIComponent(phone)}&client_email_id=${encodeURIComponent(scopedEmail)}&limit=20`
+        ? `v1/call-jobs?client_business_phone_number=${encodeURIComponent(phone)}&client_email_id=${encodeURIComponent(scopedEmail)}&limit=20`
         : `v1/call-jobs?client_email_id=${encodeURIComponent(scopedEmail)}&limit=20`;
       const data = await apiFetch<CallJobListResponse>(query);
       setJobs(data.jobs);
@@ -80,7 +83,7 @@ export default function CallJobsPage() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          client_phone_number: clientPhone.trim(),
+          client_business_phone_number: clientPhone.trim(),
           client_email_id: scopedEmail.trim().toLowerCase(),
         }),
       });
@@ -122,7 +125,7 @@ export default function CallJobsPage() {
           <h2 className="font-semibold text-slate-900">Trigger campaign</h2>
           <div className="mt-4 space-y-3">
             <div>
-              <Label htmlFor="client_phone">Client phone number</Label>
+              <Label htmlFor="client_phone">Client business phone number</Label>
               <Input
                 id="client_phone"
                 placeholder="911171366880"
@@ -163,6 +166,12 @@ export default function CallJobsPage() {
             <p className="mt-2 text-sm text-slate-600">
               Your role can monitor call jobs but cannot trigger new campaigns.
             </p>
+            {clientBusinessPhoneNumber ? (
+              <p className="mt-2 text-sm text-slate-600">
+                Business phone:{" "}
+                <span className="font-medium">{clientBusinessPhoneNumber}</span>
+              </p>
+            ) : null}
             <Button
               variant="secondary"
               className="mt-4 w-full"
@@ -191,7 +200,7 @@ export default function CallJobsPage() {
                     className="flex w-full items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-left hover:bg-white"
                   >
                     <div>
-                      <p className="font-medium">{job.client_phone_number}</p>
+                      <p className="font-medium">{job.client_business_phone_number}</p>
                       <p className="text-xs text-slate-500">
                         {formatDate(job.created_at)}
                       </p>

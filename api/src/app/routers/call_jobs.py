@@ -53,13 +53,13 @@ async def trigger_call_job(
     service: Annotated[CallJobService, Depends(get_call_job_service)],
     _principal: Annotated[object, Depends(require_permission(Permission.ADMIN))] = ...,
 ) -> TriggerCallJobResponse:
-    job = await service.create_job(body.client_phone_number, body.client_email_id)
+    job = await service.create_job(body.client_business_phone_number, body.client_email_id)
     background_tasks.add_task(service.run_job, job.id)
     return TriggerCallJobResponse(
         job_id=job.id,
         status=job.status,
         message=(
-            f"Call job queued for client {job.client_phone_number}. "
+            f"Call job queued for client {job.client_business_phone_number}. "
             f"Poll GET /v1/call-jobs/{job.id} for status."
         ),
     )
@@ -71,13 +71,13 @@ async def list_call_jobs(
     principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
     repository: Annotated[ClientRepository, Depends(get_client_repository)],
     client_email_id: Annotated[str | None, Query(min_length=3)] = None,
-    client_phone_number: str | None = None,
+    client_business_phone_number: str | None = None,
     limit: int = 20,
 ) -> CallJobListResponse:
     scoped_email = await _scoped_email(principal, client_email_id, repository)
     jobs = await service.list_jobs(
         client_email_id=scoped_email,
-        client_phone_number=client_phone_number,
+        client_business_phone_number=client_business_phone_number,
         limit=min(max(limit, 1), 100),
     )
     return CallJobListResponse(jobs=jobs, count=len(jobs))

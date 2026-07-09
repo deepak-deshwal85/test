@@ -12,6 +12,8 @@ import {
   Users,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
+import { GuestOnboardingGate } from "@/components/guest-onboarding-gate";
+import { usePermissions } from "@/hooks/use-permissions";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -25,6 +27,18 @@ const nav = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { isGuest } = usePermissions();
+
+  if (isGuest) {
+    return (
+      <div className="min-h-dvh bg-slate-50">
+        <header className="border-b border-slate-200/80 bg-white/80 px-4 py-3 backdrop-blur">
+          <p className="text-sm font-semibold text-slate-900">RelayDesk</p>
+        </header>
+        <GuestOnboardingGate />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[260px_1fr]">

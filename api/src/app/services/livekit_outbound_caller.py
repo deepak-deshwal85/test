@@ -27,7 +27,7 @@ class LiveKitOutboundCaller:
         metadata = json.dumps(
             {
                 "call_type": "outbound",
-                "client_phone_number": customer.client_phone_number,
+                "client_business_phone_number": customer.client_business_phone_number,
                 "client_name": customer.client_name,
                 "consumer_phone_number": customer.consumer_phone_number,
                 "customer_id": customer.id,
@@ -38,7 +38,7 @@ class LiveKitOutboundCaller:
         logger.info(
             "dialing consumer job_id=%s client=%s (%s) consumer=%s room=%s",
             job_id,
-            customer.client_phone_number,
+            customer.client_business_phone_number,
             customer.client_name,
             consumer_phone,
             room_name,
@@ -76,7 +76,7 @@ class LiveKitOutboundCaller:
 
             detail = (
                 f"LiveKit outbound call initiated from client "
-                f"{customer.client_phone_number} to {consumer_phone} in room {room_name}"
+                f"{customer.client_business_phone_number} to {consumer_phone} in room {room_name}"
             )
             logger.info(detail)
             return CallAttemptResult(

@@ -69,12 +69,91 @@ async def bootstrap_database_schema(engine: AsyncEngine) -> None:
                 """
                 CREATE TABLE IF NOT EXISTS clients (
                     id SERIAL PRIMARY KEY,
-                    client_phone_number VARCHAR(32) NOT NULL UNIQUE,
+                    client_phone_number VARCHAR(32),
+                    client_business_phone_number VARCHAR(32) UNIQUE,
                     client_name VARCHAR(255) NOT NULL DEFAULT '',
                     client_email_id VARCHAR(255) NOT NULL UNIQUE,
                     cognito_sub VARCHAR(255) UNIQUE,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE IF EXISTS clients
+                ADD COLUMN IF NOT EXISTS client_business_phone_number VARCHAR(32) UNIQUE
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                UPDATE clients
+                SET client_business_phone_number = client_phone_number
+                WHERE client_business_phone_number IS NULL
+                  AND client_phone_number IS NOT NULL
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE IF EXISTS clients
+                ALTER COLUMN client_phone_number DROP NOT NULL
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE IF EXISTS customers
+                ADD COLUMN IF NOT EXISTS client_business_phone_number VARCHAR(32)
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                UPDATE customers
+                SET client_business_phone_number = client_phone_number
+                WHERE client_business_phone_number IS NULL
+                  AND client_phone_number IS NOT NULL
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE IF EXISTS call_jobs
+                ADD COLUMN IF NOT EXISTS client_business_phone_number VARCHAR(32)
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                UPDATE call_jobs
+                SET client_business_phone_number = client_phone_number
+                WHERE client_business_phone_number IS NULL
+                  AND client_phone_number IS NOT NULL
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS idx_customers_client_business_phone
+                ON customers (client_business_phone_number)
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS idx_call_jobs_client_business_phone
+                ON call_jobs (client_business_phone_number)
                 """
             )
         )

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { ClientProfileCard } from "@/components/client-profile-card";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { apiFetch, errorMessageFromUnknown } from "@/lib/api-client";
 import { clientScopeQuery, useClientProfile } from "@/hooks/use-client-profile";
@@ -16,7 +17,13 @@ import { BookOpen, PhoneCall, Users } from "lucide-react";
 
 export default function DashboardPage() {
   const { canManageData } = usePermissions();
-  const { clientEmailId, ready } = useClientProfile();
+  const {
+    clientEmailId,
+    ready,
+    profile,
+    loading: profileLoading,
+    refresh,
+  } = useClientProfile();
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [customers, setCustomers] = useState<CustomerListResponse | null>(null);
   const [collections, setCollections] = useState<CollectionListResponse | null>(
@@ -83,6 +90,16 @@ export default function DashboardPage() {
       {error ? (
         <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {error}
+        </div>
+      ) : null}
+
+      {!canManageData ? (
+        <div className="mb-6">
+          <ClientProfileCard
+            profile={profile}
+            loading={profileLoading}
+            onUpdated={refresh}
+          />
         </div>
       ) : null}
 
@@ -178,7 +195,7 @@ export default function DashboardPage() {
                   <p className="text-slate-500">{customer.consumer_phone_number}</p>
                 </div>
                 <span className="text-xs text-slate-400">
-                  {customer.client_phone_number}
+                  {customer.client_business_phone_number}
                 </span>
               </li>
             ))}

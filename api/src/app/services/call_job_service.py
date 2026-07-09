@@ -42,7 +42,7 @@ class CallJobService:
             ]
         return CallJobResponse(
             id=job.id,
-            client_phone_number=job.client_phone_number,
+            client_business_phone_number=job.client_business_phone_number,
             client_email_id=job.client_email_id,
             status=job.status,
             total_customers=job.total_customers,
@@ -55,12 +55,12 @@ class CallJobService:
         )
 
     async def create_job(
-        self, client_phone_number: str, client_email_id: str
+        self, client_business_phone_number: str, client_email_id: str
     ) -> CallJobResponse:
         async with self._session_factory() as session:
             repository = CallJobRepository(session)
             job = await repository.create(
-                client_phone_number=client_phone_number,
+                client_business_phone_number=client_business_phone_number,
                 client_email_id=client_email_id,
             )
             return self._to_response(job)
@@ -83,14 +83,14 @@ class CallJobService:
         self,
         *,
         client_email_id: str | None = None,
-        client_phone_number: str | None = None,
+        client_business_phone_number: str | None = None,
         limit: int = 20,
     ) -> list[CallJobResponse]:
         async with self._session_factory() as session:
             repository = CallJobRepository(session)
             jobs = await repository.list_recent(
                 client_email_id=client_email_id,
-                client_phone_number=client_phone_number,
+                client_business_phone_number=client_business_phone_number,
                 limit=limit,
             )
             return [self._to_response(job) for job in jobs]
@@ -109,13 +109,13 @@ class CallJobService:
                     return
 
                 customers = await customer_repository.list_approved_by_client(
-                    client_phone_number=job.client_phone_number,
+                    client_business_phone_number=job.client_business_phone_number,
                     client_email_id=job.client_email_id,
                 )
                 logger.info(
                     "call job loaded customers job_id=%s client=%s count=%d",
                     job_id,
-                    job.client_phone_number,
+                    job.client_business_phone_number,
                     len(customers),
                 )
                 for customer in customers:

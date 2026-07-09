@@ -7,10 +7,10 @@ from pydantic import BaseModel, Field
 
 
 class TriggerCallJobRequest(BaseModel):
-    client_phone_number: str = Field(
+    client_business_phone_number: str = Field(
         min_length=1,
         max_length=32,
-        description="Client phone number whose consumers should be called",
+        description="Client business phone number whose consumers should be called",
     )
     client_email_id: str = Field(min_length=3, max_length=255)
 
@@ -24,7 +24,7 @@ class CallAttemptResponse(BaseModel):
 
 class CallJobResponse(BaseModel):
     id: UUID
-    client_phone_number: str
+    client_business_phone_number: str
     client_email_id: str
     status: str
     total_customers: int

@@ -110,7 +110,7 @@ async def upload_document(
         document_id=result.document_id,
         source_uri=result.source_uri,
         chunks_indexed=result.chunks_indexed,
-        client_phone_number=scope.client_phone_number,
+        client_business_phone_number=scope.client_business_phone_number,
     )
 
 
@@ -145,7 +145,7 @@ async def list_documents(
         collection=collection,
         documents=summaries,
         count=len(summaries),
-        client_phone_number=scope.client_phone_number,
+        client_business_phone_number=scope.client_business_phone_number,
     )
 
 

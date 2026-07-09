@@ -5,19 +5,24 @@ Users must have signed in at least once (native or Google SSO) so Cognito has
 created their user record. The script removes the user from other RelayDesk
 role groups before adding the requested one.
 
+When approving to approved-clients or relaydesk-admins, --business-phone is
+required and stored on the client's profile in PostgreSQL.
+
 Roles:
   guest-clients      — default for new SSO sign-ups (view-only; no Cognito group required)
   approved-clients   — upload/delete knowledge-base documents
   relaydesk-admins   — full console and API access
 
 Usage:
-  python infra/scripts/approve_cognito_user.py --email you@example.com --role relaydesk-admins
+  python infra/scripts/approve_cognito_user.py --email you@example.com --role relaydesk-admins --business-phone +911171366880
+  python infra/scripts/approve_cognito_user.py --email you@example.com --role approved-clients --business-phone +911171366880
   python infra/scripts/approve_cognito_user.py --email you@example.com --role guest-clients
   python infra/scripts/approve_cognito_user.py --email you@example.com --revoke
 """
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import os
 import subprocess
@@ -29,6 +34,8 @@ RELAYDESK_ROLE_GROUPS = (
     "approved-clients",
     "relaydesk-admins",
 )
+
+ROLES_REQUIRING_BUSINESS_PHONE = frozenset({"approved-clients", "relaydesk-admins"})
 
 
 def aws_cmd(profile: str | None, region: str, *args: str) -> list[str]:
@@ -180,6 +187,40 @@ def set_group_membership(
     print(f"Assigned {username!r} to group {group_name!r}")
 
 
+async def upsert_client_business_phone(*, email: str, business_phone: str) -> None:
+    database_url = os.getenv("DATABASE_URL", "").strip()
+    if not database_url:
+        raise RuntimeError(
+            "DATABASE_URL is required to store the client business phone number. "
+            "Set it in the environment or use infra/scripts/set_database_url_from_rds.py."
+        )
+
+    api_src = Path(__file__).resolve().parents[2] / "api" / "src"
+    if str(api_src) not in sys.path:
+        sys.path.insert(0, str(api_src))
+
+    from app.core.config import Settings
+    from app.db.postgres.client_repository import ClientRepository
+    from app.db.postgres.session import dispose_engine, get_session_factory, init_engine
+
+    settings = Settings(database_url=database_url)
+    init_engine(settings)
+    session_factory = get_session_factory()
+    try:
+        async with session_factory() as session:
+            repository = ClientRepository(session)
+            client = await repository.set_business_phone(
+                client_email_id=email,
+                client_business_phone_number=business_phone,
+            )
+            print(
+                f"Stored business phone {client.client_business_phone_number!r} "
+                f"for client {client.client_email_id!r}"
+            )
+    finally:
+        await dispose_engine()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Assign or revoke a RelayDesk Cognito role for a user by email."
@@ -190,6 +231,10 @@ def main() -> int:
         choices=RELAYDESK_ROLE_GROUPS,
         default="relaydesk-admins",
         help="RelayDesk role group to assign (default: relaydesk-admins)",
+    )
+    parser.add_argument(
+        "--business-phone",
+        help="Client business phone number (required for approved-clients and relaydesk-admins)",
     )
     parser.add_argument("--region", default="ap-south-1")
     parser.add_argument(
@@ -219,6 +264,16 @@ def main() -> int:
         print("invalid --email", file=sys.stderr)
         return 1
 
+    if not args.revoke and args.role in ROLES_REQUIRING_BUSINESS_PHONE:
+        business_phone = (args.business_phone or "").strip()
+        if not business_phone:
+            print(
+                "--business-phone is required when assigning "
+                f"{args.role!r}",
+                file=sys.stderr,
+            )
+            return 1
+
     user_pool_id = args.user_pool_id
     if not user_pool_id:
         user_pool_id = terraform_output(Path(args.terraform_dir).resolve(), "cognito_user_pool_id")
@@ -245,7 +300,19 @@ def main() -> int:
         revoke=args.revoke,
         dry_run=args.dry_run,
     )
-    if not args.revoke and not args.dry_run:
+    if (
+        not args.revoke
+        and not args.dry_run
+        and args.role in ROLES_REQUIRING_BUSINESS_PHONE
+    ):
+        asyncio.run(
+            upsert_client_business_phone(
+                email=email,
+                business_phone=args.business_phone.strip(),
+            )
+        )
+        print(f"Tell {email} to sign out and sign in again to refresh access.")
+    elif not args.revoke and not args.dry_run:
         print(f"Tell {email} to sign out and sign in again to refresh access.")
     return 0
 

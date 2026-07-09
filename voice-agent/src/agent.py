@@ -209,11 +209,13 @@ async def _resolve_session_client(ctx: JobContext) -> ClientConfig:
     if ctx.job.metadata:
         try:
             metadata = json.loads(ctx.job.metadata)
-            raw_phone = metadata.get("client_phone_number")
+            raw_phone = metadata.get("client_business_phone_number") or metadata.get(
+                "client_phone_number"
+            )
             if raw_phone:
                 phone_digits = normalize_phone_override(str(raw_phone))
                 logger.info(
-                    "using client_phone_number from job metadata: %s", phone_digits
+                    "using client business phone from job metadata: %s", phone_digits
                 )
         except json.JSONDecodeError:
             logger.warning("invalid job metadata JSON: %r", ctx.job.metadata)
