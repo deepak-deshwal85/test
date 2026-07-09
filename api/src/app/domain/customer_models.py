@@ -12,6 +12,13 @@ def normalize_phone_number(value: str) -> str:
     return digits
 
 
+def normalize_email(value: str) -> str:
+    email = value.strip().lower()
+    if "@" not in email:
+        raise ValueError(f"Invalid email id: {value!r}")
+    return email
+
+
 def format_sip_phone(value: str) -> str:
     stripped = value.strip()
     if stripped.startswith("+"):
@@ -25,9 +32,13 @@ def format_sip_phone(value: str) -> str:
 @dataclass(frozen=True)
 class Customer:
     id: int
+    client_id: int | None
     client_phone_number: str
     client_name: str
+    client_email_id: str
     consumer_phone_number: str
+    consumer_email_id: str
+    is_approved: bool
     created_at: datetime
     updated_at: datetime
 
@@ -36,6 +47,7 @@ class Customer:
 class CallJob:
     id: UUID
     client_phone_number: str
+    client_email_id: str
     status: str
     total_customers: int
     calls_completed: int

@@ -12,6 +12,7 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { apiFetch, apiUpload } from "@/lib/api-client";
+import { clientScopeQuery, useClientProfile } from "@/hooks/use-client-profile";
 import { usePermissions } from "@/hooks/use-permissions";
 import type {
   CollectionListResponse,
@@ -26,7 +27,8 @@ function phoneToCollection(phone: string): string {
 }
 
 export default function KnowledgePage() {
-  const { canUploadDocuments } = usePermissions();
+  const { canUploadDocuments, canManageData } = usePermissions();
+  const { clientEmailId, clientPhoneNumber, collectionName } = useClientProfile();
   const [collections, setCollections] = useState<string[]>([]);
   const [phone, setPhone] = useState("");
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
@@ -34,10 +36,24 @@ export default function KnowledgePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const scope = clientScopeQuery(clientEmailId);
+  const scopeSuffix = scope ? `?${scope}` : "";
+
+  useEffect(() => {
+    if (clientPhoneNumber && !canManageData) {
+      setPhone(clientPhoneNumber);
+    }
+  }, [canManageData, clientPhoneNumber]);
+
   async function loadCollections() {
     try {
-      const data = await apiFetch<CollectionListResponse>("v1/collections");
+      const data = await apiFetch<CollectionListResponse>(
+        `v1/collections${scopeSuffix}`,
+      );
       setCollections(data.collections);
+      if (!canManageData && data.client_phone_number) {
+        setPhone(data.client_phone_number);
+      }
     } catch {
       /* optional */
     }
@@ -48,9 +64,12 @@ export default function KnowledgePage() {
     setError(null);
     try {
       const data = await apiFetch<DocumentListResponse>(
-        `v1/collections/${encodeURIComponent(collection)}/documents`,
+        `v1/collections/${encodeURIComponent(collection)}/documents${scopeSuffix}`,
       );
       setDocuments(data.documents);
+      if (!canManageData && data.client_phone_number) {
+        setPhone(data.client_phone_number);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load documents");
       setDocuments([]);
@@ -61,9 +80,20 @@ export default function KnowledgePage() {
 
   useEffect(() => {
     void loadCollections();
-  }, []);
+  }, [clientEmailId]);
 
-  const collection = phone ? phoneToCollection(phone) : "";
+  const collection =
+    !canManageData && collectionName
+      ? collectionName
+      : phone
+        ? phoneToCollection(phone)
+        : "";
+
+  useEffect(() => {
+    if (collection) {
+      void loadDocuments(collection);
+    }
+  }, [collection, clientEmailId]);
 
   async function handleUpload() {
     if (!collection || !file) {
@@ -73,7 +103,7 @@ export default function KnowledgePage() {
     setError(null);
     try {
       await apiUpload(
-        `v1/collections/${encodeURIComponent(collection)}/documents/upload`,
+        `v1/collections/${encodeURIComponent(collection)}/documents/upload${scopeSuffix}`,
         file,
       );
       setFile(null);
@@ -88,7 +118,7 @@ export default function KnowledgePage() {
     if (!collection || !confirm("Delete this document?")) return;
     try {
       await apiFetch(
-        `v1/collections/${encodeURIComponent(collection)}/documents/${encodeURIComponent(documentId)}`,
+        `v1/collections/${encodeURIComponent(collection)}/documents/${encodeURIComponent(documentId)}${scopeSuffix}`,
         { method: "DELETE" },
       );
       await loadDocuments(collection);
@@ -117,6 +147,7 @@ export default function KnowledgePage() {
                 list="collections-list"
                 placeholder="911171366880"
                 value={phone}
+                disabled={!canManageData}
                 onChange={(e) => setPhone(e.target.value)}
               />
               <datalist id="collections-list">
@@ -130,32 +161,34 @@ export default function KnowledgePage() {
                 Collection: <code>{collection}</code>
               </p>
             ) : null}
-            <Button
-              variant="secondary"
-              className="w-full"
-              onClick={() => collection && void loadDocuments(collection)}
-            >
-              Load documents
-            </Button>
+            {canManageData ? (
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={() => collection && void loadDocuments(collection)}
+              >
+                Load documents
+              </Button>
+            ) : null}
 
             <div className="border-t border-slate-100 pt-4">
               {canUploadDocuments ? (
                 <>
-              <Label htmlFor="file">Upload document</Label>
-              <Input
-                id="file"
-                type="file"
-                accept=".pdf,.txt,.md"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              />
-              <Button
-                className="mt-3 w-full"
-                onClick={() => void handleUpload()}
-                disabled={!file || !collection}
-              >
-                <Upload className="h-4 w-4" />
-                Upload
-              </Button>
+                  <Label htmlFor="file">Upload document</Label>
+                  <Input
+                    id="file"
+                    type="file"
+                    accept=".pdf,.txt,.md"
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  />
+                  <Button
+                    className="mt-3 w-full"
+                    onClick={() => void handleUpload()}
+                    disabled={!file || !collection}
+                  >
+                    <Upload className="h-4 w-4" />
+                    Upload
+                  </Button>
                 </>
               ) : (
                 <p className="text-sm text-slate-600">
@@ -188,12 +221,12 @@ export default function KnowledgePage() {
                     </p>
                   </div>
                   {canUploadDocuments ? (
-                  <Button
-                    variant="ghost"
-                    onClick={() => void handleDelete(doc.document_id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-red-600" />
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => void handleDelete(doc.document_id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </Button>
                   ) : null}
                 </div>
               ))}

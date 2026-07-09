@@ -17,9 +17,7 @@ class Permission(str, Enum):
 
 ROLE_PERMISSIONS: dict[RelayDeskRole, frozenset[Permission]] = {
     RelayDeskRole.GUEST: frozenset({Permission.READ}),
-    RelayDeskRole.APPROVED: frozenset(
-        {Permission.READ, Permission.DOCUMENT_WRITE}
-    ),
+    RelayDeskRole.APPROVED: frozenset({Permission.READ, Permission.DOCUMENT_WRITE}),
     RelayDeskRole.ADMIN: frozenset(
         {Permission.READ, Permission.DOCUMENT_WRITE, Permission.ADMIN}
     ),

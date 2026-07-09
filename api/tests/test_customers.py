@@ -32,9 +32,13 @@ def test_create_customer(client: TestClient) -> None:
     mock_service = AsyncMock()
     mock_service.create.return_value = CustomerResponse(
         id=1,
+        client_id=None,
         client_phone_number="911171366880",
         client_name="Acme Corp",
+        client_email_id="acme@example.com",
         consumer_phone_number="9876543210",
+        consumer_email_id="consumer@example.com",
+        is_approved=False,
         created_at=now,
         updated_at=now,
     )
@@ -48,7 +52,9 @@ def test_create_customer(client: TestClient) -> None:
         json={
             "client_phone_number": "911171366880",
             "client_name": "Acme Corp",
+            "client_email_id": "acme@example.com",
             "consumer_phone_number": "9876543210",
+            "consumer_email_id": "consumer@example.com",
         },
     )
     assert response.status_code == 201
@@ -64,6 +70,7 @@ def test_trigger_call_job(client: TestClient) -> None:
     mock_service.create_job.return_value = CallJobResponse(
         id=job_id,
         client_phone_number="911171366880",
+        client_email_id="acme@example.com",
         status="pending",
         total_customers=0,
         calls_completed=0,
@@ -80,7 +87,10 @@ def test_trigger_call_job(client: TestClient) -> None:
 
     response = test_client.post(
         "/v1/call-jobs/trigger",
-        json={"client_phone_number": "911171366880"},
+        json={
+            "client_phone_number": "911171366880",
+            "client_email_id": "acme@example.com",
+        },
     )
     assert response.status_code == 202
     data = response.json()

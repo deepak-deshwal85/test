@@ -8,6 +8,7 @@ class SearchRequest(BaseModel):
     max_results: int | None = Field(default=None, ge=1, le=20)
     collection: str | None = None
     phone_number: str | None = None
+    client_email_id: str | None = Field(default=None, min_length=3, max_length=255)
 
 
 class SearchHitResponse(BaseModel):
@@ -20,3 +21,5 @@ class SearchResponse(BaseModel):
     hits: list[SearchHitResponse]
     count: int
     collection: str
+    client_phone_number: str | None = None
+    client_email_id: str | None = None

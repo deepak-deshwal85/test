@@ -10,27 +10,36 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
+import { clientScopeQuery, useClientProfile } from "@/hooks/use-client-profile";
 import { usePermissions } from "@/hooks/use-permissions";
 import type { CollectionInfo, CollectionListResponse } from "@/lib/types";
 import { Trash2 } from "lucide-react";
 
 export default function CollectionsPage() {
   const { canManageData } = usePermissions();
+  const { clientEmailId } = useClientProfile();
   const [collections, setCollections] = useState<string[]>([]);
   const [details, setDetails] = useState<Record<string, CollectionInfo>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const scopeSuffix = (() => {
+    const scope = clientScopeQuery(clientEmailId);
+    return scope ? `?${scope}` : "";
+  })();
+
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch<CollectionListResponse>("v1/collections");
+      const data = await apiFetch<CollectionListResponse>(
+        `v1/collections${scopeSuffix}`,
+      );
       setCollections(data.collections);
       const infoEntries = await Promise.all(
         data.collections.map(async (name) => {
           const info = await apiFetch<CollectionInfo>(
-            `v1/collections/${encodeURIComponent(name)}`,
+            `v1/collections/${encodeURIComponent(name)}${scopeSuffix}`,
           );
           return [name, info] as const;
         }),
@@ -45,12 +54,12 @@ export default function CollectionsPage() {
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [clientEmailId]);
 
   async function handleDelete(name: string) {
     if (!confirm(`Delete collection ${name}? This cannot be undone.`)) return;
     try {
-      await apiFetch(`v1/collections/${encodeURIComponent(name)}`, {
+      await apiFetch(`v1/collections/${encodeURIComponent(name)}${scopeSuffix}`, {
         method: "DELETE",
       });
       await load();
@@ -98,12 +107,12 @@ export default function CollectionsPage() {
                       </p>
                     </div>
                     {canManageData ? (
-                    <Button
-                      variant="ghost"
-                      onClick={() => void handleDelete(name)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => void handleDelete(name)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
                     ) : null}
                   </div>
                 </div>

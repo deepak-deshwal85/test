@@ -67,6 +67,92 @@ async def bootstrap_database_schema(engine: AsyncEngine) -> None:
         await connection.execute(
             text(
                 """
+                CREATE TABLE IF NOT EXISTS clients (
+                    id SERIAL PRIMARY KEY,
+                    client_phone_number VARCHAR(32) NOT NULL UNIQUE,
+                    client_name VARCHAR(255) NOT NULL DEFAULT '',
+                    client_email_id VARCHAR(255) NOT NULL UNIQUE,
+                    cognito_sub VARCHAR(255) UNIQUE,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE IF EXISTS clients
+                ADD COLUMN IF NOT EXISTS client_name VARCHAR(255) NOT NULL DEFAULT ''
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE IF EXISTS clients
+                ADD COLUMN IF NOT EXISTS cognito_sub VARCHAR(255) UNIQUE
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE IF EXISTS customers
+                ADD COLUMN IF NOT EXISTS client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE IF EXISTS customers
+                ADD COLUMN IF NOT EXISTS client_email_id VARCHAR(255) NOT NULL DEFAULT 'unknown@example.com'
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE IF EXISTS customers
+                ADD COLUMN IF NOT EXISTS consumer_email_id VARCHAR(255) NOT NULL DEFAULT 'unknown@example.com'
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE IF EXISTS customers
+                ADD COLUMN IF NOT EXISTS is_approved BOOLEAN NOT NULL DEFAULT FALSE
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE IF EXISTS call_jobs
+                ADD COLUMN IF NOT EXISTS client_email_id VARCHAR(255) NOT NULL DEFAULT 'unknown@example.com'
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS idx_customers_client_email
+                ON customers (client_email_id)
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS idx_call_jobs_client_email
+                ON call_jobs (client_email_id)
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
                 ALTER TABLE IF EXISTS call_jobs
                 ADD COLUMN IF NOT EXISTS results_json TEXT
                 """

@@ -4,7 +4,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.core.dependencies import get_embedding_service, require_permission, verify_access_token
+from app.core.dependencies import (
+    get_embedding_service,
+    require_permission,
+    verify_access_token,
+)
 from app.core.rbac import Permission
 from app.schemas.embeddings import (
     EmbeddingCacheDeleteResponse,

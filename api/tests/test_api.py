@@ -1,13 +1,32 @@
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from app.core.dependencies import get_client_repository
 from app.main import create_app
+
+
+@pytest.fixture
+def mock_client_repository() -> AsyncMock:
+    from datetime import UTC, datetime
+
+    from app.domain.client_models import Client
+
+    repository = AsyncMock()
+    repository.get_by_email.return_value = Client(
+        id=1,
+        client_phone_number="911171366880",
+        client_name="Test Client",
+        client_email_id="user@example.com",
+        cognito_sub="user-123",
+        created_at=datetime.now(UTC),
+    )
+    return repository
 
 
 def test_health() -> None:
@@ -49,8 +68,10 @@ def test_chunk_text_splits_with_overlap() -> None:
     assert all(len(chunk) <= 100 for chunk in chunks)
 
 
-def test_search_requires_collection_or_phone() -> None:
-    client = TestClient(create_app())
+def test_search_requires_collection_or_phone(mock_client_repository: AsyncMock) -> None:
+    app = create_app()
+    app.dependency_overrides[get_client_repository] = lambda: mock_client_repository
+    client = TestClient(app)
     response = client.post("/v1/search", json={"query": "hello"})
     assert response.status_code == 400
 
@@ -94,8 +115,10 @@ def test_search_service_passes_score_threshold_to_qdrant() -> None:
     assert kwargs["score_threshold"] == pytest.approx(0.3)
 
 
-def test_search_invalid_phone() -> None:
-    client = TestClient(create_app())
+def test_search_invalid_phone(mock_client_repository: AsyncMock) -> None:
+    app = create_app()
+    app.dependency_overrides[get_client_repository] = lambda: mock_client_repository
+    client = TestClient(app)
     response = client.post(
         "/v1/search",
         json={"phone_number": "abc", "query": "hello"},

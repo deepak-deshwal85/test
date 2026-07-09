@@ -8,6 +8,7 @@ class DocumentUploadResponse(BaseModel):
     document_id: str
     source_uri: str
     chunks_indexed: int
+    client_phone_number: str | None = None
 
 
 class DocumentSummaryResponse(BaseModel):
@@ -20,6 +21,7 @@ class DocumentListResponse(BaseModel):
     collection: str
     documents: list[DocumentSummaryResponse]
     count: int
+    client_phone_number: str | None = None
 
 
 class DocumentDeleteResponse(BaseModel):

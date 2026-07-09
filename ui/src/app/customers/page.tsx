@@ -25,7 +25,9 @@ export default function CustomersPage() {
   const [form, setForm] = useState({
     client_phone_number: "",
     client_name: "",
+    client_email_id: "",
     consumer_phone_number: "",
+    consumer_email_id: "",
   });
   const [editingId, setEditingId] = useState<number | null>(null);
 
@@ -33,9 +35,11 @@ export default function CustomersPage() {
     setLoading(true);
     setError(null);
     try {
-      const query = filter
-        ? `v1/customers?client_phone_number=${encodeURIComponent(filter)}`
-        : "v1/customers";
+      if (!filter) {
+        setCustomers([]);
+        return;
+      }
+      const query = `v1/customers?client_email_id=${encodeURIComponent(filter)}`;
       const data = await apiFetch<CustomerListResponse>(query);
       setCustomers(data.customers);
     } catch (e) {
@@ -54,11 +58,14 @@ export default function CustomersPage() {
     setError(null);
     try {
       if (editingId) {
-        await apiFetch(`v1/customers/${editingId}`, {
+        await apiFetch(
+          `v1/customers/${editingId}?client_email_id=${encodeURIComponent(form.client_email_id)}`,
+          {
           method: "PUT",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(form),
-        });
+          },
+        );
       } else {
         await apiFetch("v1/customers", {
           method: "POST",
@@ -69,7 +76,9 @@ export default function CustomersPage() {
       setForm({
         client_phone_number: "",
         client_name: "",
+        client_email_id: "",
         consumer_phone_number: "",
+        consumer_email_id: "",
       });
       setEditingId(null);
       await load();
@@ -81,7 +90,10 @@ export default function CustomersPage() {
   async function handleDelete(id: number) {
     if (!confirm("Delete this customer?")) return;
     try {
-      await apiFetch(`v1/customers/${id}`, { method: "DELETE" });
+      await apiFetch(
+        `v1/customers/${id}?client_email_id=${encodeURIComponent(filter)}`,
+        { method: "DELETE" },
+      );
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
@@ -93,8 +105,22 @@ export default function CustomersPage() {
     setForm({
       client_phone_number: customer.client_phone_number,
       client_name: customer.client_name,
+      client_email_id: customer.client_email_id,
       consumer_phone_number: customer.consumer_phone_number,
+      consumer_email_id: customer.consumer_email_id,
     });
+  }
+
+  async function handleApprove(customer: Customer) {
+    try {
+      await apiFetch(
+        `v1/customers/${customer.id}/approve?client_email_id=${encodeURIComponent(customer.client_email_id)}`,
+        { method: "POST" },
+      );
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Approve failed");
+    }
   }
 
   return (
@@ -141,6 +167,17 @@ export default function CustomersPage() {
               />
             </div>
             <div>
+              <Label htmlFor="client_email">Client email</Label>
+              <Input
+                id="client_email"
+                required
+                value={form.client_email_id}
+                onChange={(e) =>
+                  setForm({ ...form, client_email_id: e.target.value })
+                }
+              />
+            </div>
+            <div>
               <Label htmlFor="consumer_phone">Consumer phone</Label>
               <Input
                 id="consumer_phone"
@@ -148,6 +185,17 @@ export default function CustomersPage() {
                 value={form.consumer_phone_number}
                 onChange={(e) =>
                   setForm({ ...form, consumer_phone_number: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="consumer_email">Consumer email</Label>
+              <Input
+                id="consumer_email"
+                required
+                value={form.consumer_email_id}
+                onChange={(e) =>
+                  setForm({ ...form, consumer_email_id: e.target.value })
                 }
               />
             </div>
@@ -165,7 +213,9 @@ export default function CustomersPage() {
                     setForm({
                       client_phone_number: "",
                       client_name: "",
+                      client_email_id: "",
                       consumer_phone_number: "",
+                      consumer_email_id: "",
                     });
                   }}
                 >
@@ -187,7 +237,7 @@ export default function CustomersPage() {
         <Card>
           <div className="mb-4 flex flex-col gap-3 sm:flex-row">
             <Input
-              placeholder="Filter by client phone"
+              placeholder="Filter by client email"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             />
@@ -207,6 +257,7 @@ export default function CustomersPage() {
                   <tr>
                     <th className="px-2 py-2">Client</th>
                     <th className="px-2 py-2">Consumer</th>
+                    <th className="px-2 py-2">Status</th>
                     {canManageData ? (
                       <th className="px-2 py-2">Actions</th>
                     ) : null}
@@ -220,9 +271,14 @@ export default function CustomersPage() {
                         <p className="text-slate-500">
                           {customer.client_phone_number}
                         </p>
+                        <p className="text-slate-500">{customer.client_email_id}</p>
                       </td>
                       <td className="px-2 py-3">
-                        {customer.consumer_phone_number}
+                        <div>{customer.consumer_phone_number}</div>
+                        <div className="text-slate-500">{customer.consumer_email_id}</div>
+                      </td>
+                      <td className="px-2 py-3">
+                        {customer.is_approved ? "approved" : "pending"}
                       </td>
                       {canManageData ? (
                       <td className="px-2 py-3">
@@ -239,6 +295,14 @@ export default function CustomersPage() {
                           >
                             <Trash2 className="h-4 w-4 text-red-600" />
                           </Button>
+                          {!customer.is_approved ? (
+                            <Button
+                              variant="secondary"
+                              onClick={() => void handleApprove(customer)}
+                            >
+                              Approve
+                            </Button>
+                          ) : null}
                         </div>
                       </td>
                       ) : null}

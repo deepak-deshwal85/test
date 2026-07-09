@@ -10,10 +10,12 @@ from app.core.config import Settings, get_settings
 from app.core.oauth import AuthenticatedPrincipal, validate_access_token
 from app.core.rbac import Permission
 from app.db.embedding_provider import EmbeddingProviderFactory
+from app.db.postgres.client_repository import ClientRepository
 from app.db.postgres.customer_repository import CustomerRepository
 from app.db.postgres.session import get_db_session
 from app.db.qdrant_repository import QdrantRepository
 from app.services.call_job_service import CallJobService, build_call_job_service
+from app.services.client_service import ClientService
 from app.services.collection_service import CollectionService
 from app.services.customer_service import CustomerService
 from app.services.document_service import DocumentService
@@ -72,6 +74,18 @@ def get_collection_service(
     qdrant: Annotated[QdrantRepository, Depends(get_qdrant_repository)],
 ) -> CollectionService:
     return CollectionService(qdrant)
+
+
+async def get_client_repository(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> ClientRepository:
+    return ClientRepository(session)
+
+
+async def get_client_service(
+    repository: Annotated[ClientRepository, Depends(get_client_repository)],
+) -> ClientService:
+    return ClientService(repository)
 
 
 async def get_customer_repository(

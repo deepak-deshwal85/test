@@ -3,6 +3,25 @@ import pytest
 from app.core.config import get_settings
 
 
+@pytest.fixture
+def mock_client_repository():
+    from datetime import UTC, datetime
+    from unittest.mock import AsyncMock
+
+    from app.domain.client_models import Client
+
+    repository = AsyncMock()
+    repository.get_by_email.return_value = Client(
+        id=1,
+        client_phone_number="911171366880",
+        client_name="Test Client",
+        client_email_id="user@example.com",
+        cognito_sub="user-123",
+        created_at=datetime.now(UTC),
+    )
+    return repository
+
+
 @pytest.fixture(autouse=True)
 def oauth_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OAUTH_DISABLED", "false")
@@ -75,12 +94,14 @@ def test_protected_route_requires_bearer(monkeypatch: pytest.MonkeyPatch) -> Non
     assert response.status_code == 401
 
 
-def test_guest_client_can_read(monkeypatch: pytest.MonkeyPatch, rsa_keys) -> None:
+def test_guest_client_can_read(
+    monkeypatch: pytest.MonkeyPatch, rsa_keys, mock_client_repository
+) -> None:
     from cryptography.hazmat.primitives import serialization
     from fastapi.testclient import TestClient
     from unittest.mock import MagicMock
 
-    from app.core.dependencies import get_search_service
+    from app.core.dependencies import get_client_repository, get_search_service
     from app.main import create_app
 
     private_key, public_key = rsa_keys
@@ -95,24 +116,32 @@ def test_guest_client_can_read(monkeypatch: pytest.MonkeyPatch, rsa_keys) -> Non
 
     app = create_app()
     app.dependency_overrides[get_search_service] = lambda: mock_service
-    token = _encode_token(private_key, **{"cognito:groups": ["guest-clients"]})
+    app.dependency_overrides[get_client_repository] = lambda: mock_client_repository
+    token = _encode_token(
+        private_key,
+        email="user@example.com",
+        **{"cognito:groups": ["guest-clients"]},
+    )
     client = TestClient(app)
     response = client.post(
         "/v1/search",
-        json={"phone_number": "911171366880", "query": "hello"},
+        json={
+            "query": "hello",
+            "client_email_id": "user@example.com",
+        },
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 200
 
 
 def test_user_without_role_gets_guest_read_access(
-    monkeypatch: pytest.MonkeyPatch, rsa_keys
+    monkeypatch: pytest.MonkeyPatch, rsa_keys, mock_client_repository
 ) -> None:
     from cryptography.hazmat.primitives import serialization
     from fastapi.testclient import TestClient
     from unittest.mock import MagicMock
 
-    from app.core.dependencies import get_search_service
+    from app.core.dependencies import get_client_repository, get_search_service
     from app.main import create_app
 
     private_key, public_key = rsa_keys
@@ -127,20 +156,31 @@ def test_user_without_role_gets_guest_read_access(
 
     app = create_app()
     app.dependency_overrides[get_search_service] = lambda: mock_service
-    token = _encode_token(private_key, client_id="ui-client-id")
+    app.dependency_overrides[get_client_repository] = lambda: mock_client_repository
+    token = _encode_token(
+        private_key,
+        client_id="ui-client-id",
+        email="user@example.com",
+    )
     client = TestClient(app)
     response = client.post(
         "/v1/search",
-        json={"phone_number": "911171366880", "query": "hello"},
+        json={
+            "query": "hello",
+            "client_email_id": "user@example.com",
+        },
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 200
 
 
-def test_guest_cannot_upload_documents(monkeypatch: pytest.MonkeyPatch, rsa_keys) -> None:
+def test_guest_cannot_upload_documents(
+    monkeypatch: pytest.MonkeyPatch, rsa_keys, mock_client_repository
+) -> None:
     from cryptography.hazmat.primitives import serialization
     from fastapi.testclient import TestClient
 
+    from app.core.dependencies import get_client_repository
     from app.main import create_app
 
     private_key, public_key = rsa_keys
@@ -150,10 +190,17 @@ def test_guest_cannot_upload_documents(monkeypatch: pytest.MonkeyPatch, rsa_keys
     )
     _install_fake_jwks(monkeypatch, public_pem)
 
-    token = _encode_token(private_key, **{"cognito:groups": ["guest-clients"]})
-    client = TestClient(create_app())
+    app = create_app()
+    app.dependency_overrides[get_client_repository] = lambda: mock_client_repository
+    token = _encode_token(
+        private_key,
+        email="user@example.com",
+        **{"cognito:groups": ["guest-clients"]},
+    )
+    client = TestClient(app)
     response = client.post(
-        "/v1/collections/phone_911171366880/documents/upload",
+        "/v1/collections/phone_911171366880/documents/upload"
+        "?client_email_id=user%40example.com",
         headers={"Authorization": f"Bearer {token}"},
         files={"file": ("notes.txt", b"hello", "text/plain")},
     )
@@ -162,13 +209,13 @@ def test_guest_cannot_upload_documents(monkeypatch: pytest.MonkeyPatch, rsa_keys
 
 
 def test_approved_client_can_upload_documents(
-    monkeypatch: pytest.MonkeyPatch, rsa_keys
+    monkeypatch: pytest.MonkeyPatch, rsa_keys, mock_client_repository
 ) -> None:
     from cryptography.hazmat.primitives import serialization
     from fastapi.testclient import TestClient
     from unittest.mock import MagicMock
 
-    from app.core.dependencies import get_document_service
+    from app.core.dependencies import get_client_repository, get_document_service
     from app.domain.models import IngestResult
     from app.main import create_app
 
@@ -189,10 +236,16 @@ def test_approved_client_can_upload_documents(
 
     app = create_app()
     app.dependency_overrides[get_document_service] = lambda: mock_service
-    token = _encode_token(private_key, **{"cognito:groups": ["approved-clients"]})
+    app.dependency_overrides[get_client_repository] = lambda: mock_client_repository
+    token = _encode_token(
+        private_key,
+        email="user@example.com",
+        **{"cognito:groups": ["approved-clients"]},
+    )
     client = TestClient(app)
     response = client.post(
-        "/v1/collections/phone_911171366880/documents/upload",
+        "/v1/collections/phone_911171366880/documents/upload"
+        "?client_email_id=user%40example.com",
         headers={"Authorization": f"Bearer {token}"},
         files={"file": ("notes.txt", b"hello", "text/plain")},
     )
@@ -233,13 +286,13 @@ def test_approved_client_cannot_create_customers(
 
 
 def test_m2m_access_token_with_sub_client_id_is_accepted(
-    monkeypatch: pytest.MonkeyPatch, rsa_keys
+    monkeypatch: pytest.MonkeyPatch, rsa_keys, mock_client_repository
 ) -> None:
     from cryptography.hazmat.primitives import serialization
     from fastapi.testclient import TestClient
     from unittest.mock import MagicMock
 
-    from app.core.dependencies import get_search_service
+    from app.core.dependencies import get_client_repository, get_search_service
     from app.main import create_app
 
     private_key, public_key = rsa_keys
@@ -254,6 +307,7 @@ def test_m2m_access_token_with_sub_client_id_is_accepted(
 
     app = create_app()
     app.dependency_overrides[get_search_service] = lambda: mock_service
+    app.dependency_overrides[get_client_repository] = lambda: mock_client_repository
     token = _encode_token(
         private_key,
         sub="m2m-client-id",

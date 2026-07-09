@@ -19,6 +19,7 @@ class AuthenticatedPrincipal:
     subject: str
     client_id: str | None
     username: str | None
+    email: str | None
     scopes: frozenset[str]
     token_use: str
     groups: frozenset[str]
@@ -88,6 +89,7 @@ def validate_access_token(token: str, settings: Settings) -> AuthenticatedPrinci
             subject="dev-user",
             client_id=None,
             username="dev",
+            email="dev@example.com",
             scopes=frozenset({"relaydesk-api/access"}),
             token_use="access",
             groups=frozenset(),
@@ -161,6 +163,7 @@ def validate_access_token(token: str, settings: Settings) -> AuthenticatedPrinci
         subject=str(claims["sub"]),
         client_id=client_id_str,
         username=str(claims["username"]) if claims.get("username") else None,
+        email=str(claims["email"]).lower() if claims.get("email") else None,
         scopes=scopes,
         token_use=token_use,
         groups=groups,

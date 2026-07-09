@@ -11,6 +11,7 @@ from app.db.postgres.models import CallJobRow
 from app.domain.customer_models import (
     CallAttemptResult,
     CallJob,
+    normalize_email,
     normalize_phone_number,
 )
 
@@ -52,6 +53,7 @@ class CallJobRepository:
         return CallJob(
             id=row.id,
             client_phone_number=row.client_phone_number,
+            client_email_id=row.client_email_id,
             status=row.status,
             total_customers=row.total_customers,
             calls_completed=row.calls_completed,
@@ -62,10 +64,13 @@ class CallJobRepository:
             results=self._parse_results(row.results_json),
         )
 
-    async def create(self, *, client_phone_number: str) -> CallJob:
+    async def create(
+        self, *, client_phone_number: str, client_email_id: str
+    ) -> CallJob:
         row = CallJobRow(
             id=uuid4(),
             client_phone_number=normalize_phone_number(client_phone_number),
+            client_email_id=normalize_email(client_email_id),
             status="pending",
         )
         self._session.add(row)
@@ -144,10 +149,15 @@ class CallJobRepository:
     async def list_recent(
         self,
         *,
+        client_email_id: str | None = None,
         client_phone_number: str | None = None,
         limit: int = 20,
     ) -> list[CallJob]:
         query = select(CallJobRow).order_by(CallJobRow.created_at.desc()).limit(limit)
+        if client_email_id:
+            query = query.where(
+                CallJobRow.client_email_id == normalize_email(client_email_id)
+            )
         if client_phone_number:
             query = query.where(
                 CallJobRow.client_phone_number

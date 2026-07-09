@@ -20,5 +20,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     accessToken?: string;
     role?: RelayDeskRole;
+    email?: string;
+    name?: string;
   }
 }

@@ -61,9 +61,7 @@ class Settings(BaseSettings):
     oauth_disabled: bool = Field(default=False, alias="OAUTH_DISABLED")
     cognito_region: str | None = Field(default=None, alias="COGNITO_REGION")
     cognito_user_pool_id: str | None = Field(default=None, alias="COGNITO_USER_POOL_ID")
-    cognito_ui_client_id: str | None = Field(
-        default=None, alias="COGNITO_UI_CLIENT_ID"
-    )
+    cognito_ui_client_id: str | None = Field(default=None, alias="COGNITO_UI_CLIENT_ID")
     cognito_m2m_client_id: str | None = Field(
         default=None, alias="COGNITO_M2M_CLIENT_ID"
     )
@@ -117,7 +115,9 @@ class Settings(BaseSettings):
     livekit_sip_outbound_trunk_id: str | None = Field(
         default=None, alias="LIVEKIT_SIP_OUTBOUND_TRUNK_ID"
     )
-    livekit_agent_name: str = Field(default="relaydesk-agent", alias="LIVEKIT_AGENT_NAME")
+    livekit_agent_name: str = Field(
+        default="relaydesk-agent", alias="LIVEKIT_AGENT_NAME"
+    )
 
     @property
     def livekit_outbound_enabled(self) -> bool:

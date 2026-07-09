@@ -43,6 +43,7 @@ class CallJobService:
         return CallJobResponse(
             id=job.id,
             client_phone_number=job.client_phone_number,
+            client_email_id=job.client_email_id,
             status=job.status,
             total_customers=job.total_customers,
             calls_completed=job.calls_completed,
@@ -53,27 +54,42 @@ class CallJobService:
             results=results,
         )
 
-    async def create_job(self, client_phone_number: str) -> CallJobResponse:
+    async def create_job(
+        self, client_phone_number: str, client_email_id: str
+    ) -> CallJobResponse:
         async with self._session_factory() as session:
             repository = CallJobRepository(session)
-            job = await repository.create(client_phone_number=client_phone_number)
+            job = await repository.create(
+                client_phone_number=client_phone_number,
+                client_email_id=client_email_id,
+            )
             return self._to_response(job)
 
-    async def get_job(self, job_id: UUID) -> CallJobResponse | None:
+    async def get_job(
+        self, job_id: UUID, *, client_email_id: str | None = None
+    ) -> CallJobResponse | None:
         async with self._session_factory() as session:
             repository = CallJobRepository(session)
             job = await repository.get(job_id)
+            if (
+                job
+                and client_email_id
+                and job.client_email_id != client_email_id.strip().lower()
+            ):
+                return None
             return self._to_response(job) if job else None
 
     async def list_jobs(
         self,
         *,
+        client_email_id: str | None = None,
         client_phone_number: str | None = None,
         limit: int = 20,
     ) -> list[CallJobResponse]:
         async with self._session_factory() as session:
             repository = CallJobRepository(session)
             jobs = await repository.list_recent(
+                client_email_id=client_email_id,
                 client_phone_number=client_phone_number,
                 limit=limit,
             )
@@ -92,8 +108,9 @@ class CallJobService:
                     logger.error("call job not found job_id=%s", job_id)
                     return
 
-                customers = await customer_repository.list_by_client_phone(
-                    job.client_phone_number
+                customers = await customer_repository.list_approved_by_client(
+                    client_phone_number=job.client_phone_number,
+                    client_email_id=job.client_email_id,
                 )
                 logger.info(
                     "call job loaded customers job_id=%s client=%s count=%d",

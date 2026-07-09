@@ -21,6 +21,7 @@ import { PhoneCall, RefreshCw } from "lucide-react";
 export default function CallJobsPage() {
   const { canManageData } = usePermissions();
   const [clientPhone, setClientPhone] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
   const [jobs, setJobs] = useState<CallJob[]>([]);
   const [selected, setSelected] = useState<CallJob | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,8 +33,8 @@ export default function CallJobsPage() {
     setError(null);
     try {
       const query = phone
-        ? `v1/call-jobs?client_phone_number=${encodeURIComponent(phone)}&limit=20`
-        : "v1/call-jobs?limit=20";
+        ? `v1/call-jobs?client_phone_number=${encodeURIComponent(phone)}&client_email_id=${encodeURIComponent(clientEmail)}&limit=20`
+        : `v1/call-jobs?client_email_id=${encodeURIComponent(clientEmail)}&limit=20`;
       const data = await apiFetch<CallJobListResponse>(query);
       setJobs(data.jobs);
     } catch (e) {
@@ -56,15 +57,24 @@ export default function CallJobsPage() {
       setError("Enter a client phone number to trigger calls.");
       return;
     }
+    if (!clientEmail.trim()) {
+      setError("Enter a client email id.");
+      return;
+    }
     setTriggering(true);
     setError(null);
     try {
       const result = await apiFetch<{ job_id: string }>("v1/call-jobs/trigger", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ client_phone_number: clientPhone.trim() }),
+        body: JSON.stringify({
+          client_phone_number: clientPhone.trim(),
+          client_email_id: clientEmail.trim().toLowerCase(),
+        }),
       });
-      const job = await apiFetch<CallJob>(`v1/call-jobs/${result.job_id}`);
+      const job = await apiFetch<CallJob>(
+        `v1/call-jobs/${result.job_id}?client_email_id=${encodeURIComponent(clientEmail)}`,
+      );
       setSelected(job);
       await loadJobs(clientPhone.trim());
     } catch (e) {
@@ -76,7 +86,9 @@ export default function CallJobsPage() {
 
   async function viewJob(jobId: string) {
     try {
-      const job = await apiFetch<CallJob>(`v1/call-jobs/${jobId}`);
+      const job = await apiFetch<CallJob>(
+        `v1/call-jobs/${jobId}?client_email_id=${encodeURIComponent(clientEmail)}`,
+      );
       setSelected(job);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load job");
@@ -104,6 +116,15 @@ export default function CallJobsPage() {
                 placeholder="911171366880"
                 value={clientPhone}
                 onChange={(e) => setClientPhone(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="client_email">Client email id</Label>
+              <Input
+                id="client_email"
+                placeholder="client@example.com"
+                value={clientEmail}
+                onChange={(e) => setClientEmail(e.target.value)}
               />
             </div>
             <Button

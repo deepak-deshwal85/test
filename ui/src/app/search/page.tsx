@@ -12,16 +12,22 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
+import { useClientProfile } from "@/hooks/use-client-profile";
+import { usePermissions } from "@/hooks/use-permissions";
 import type { SearchResponse } from "@/lib/types";
 import { Search as SearchIcon } from "lucide-react";
 
 export default function SearchPage() {
+  const { canManageData } = usePermissions();
+  const { clientEmailId, clientPhoneNumber } = useClientProfile();
   const [query, setQuery] = useState("");
   const [phone, setPhone] = useState("");
   const [maxResults, setMaxResults] = useState(5);
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const effectivePhone = canManageData ? phone.trim() : (clientPhoneNumber ?? "");
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -34,11 +40,15 @@ export default function SearchPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           query: query.trim(),
-          phone_number: phone.trim() || undefined,
+          phone_number: effectivePhone || undefined,
+          client_email_id: clientEmailId ?? undefined,
           max_results: maxResults,
         }),
       });
       setResults(data);
+      if (!canManageData && data.client_phone_number) {
+        setPhone(data.client_phone_number);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Search failed");
       setResults(null);
@@ -69,15 +79,22 @@ export default function SearchPage() {
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
-            <div>
-              <Label htmlFor="phone">Phone number (optional)</Label>
-              <Input
-                id="phone"
-                placeholder="911171366880"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
+            {canManageData ? (
+              <div>
+                <Label htmlFor="phone">Phone number (optional)</Label>
+                <Input
+                  id="phone"
+                  placeholder="911171366880"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+            ) : effectivePhone ? (
+              <p className="text-sm text-slate-600">
+                Searching collection for phone{" "}
+                <span className="font-medium">{effectivePhone}</span>
+              </p>
+            ) : null}
             <div>
               <Label htmlFor="max">Max results</Label>
               <Input
@@ -100,23 +117,25 @@ export default function SearchPage() {
           <h2 className="font-semibold text-slate-900">Results</h2>
           {!results ? (
             <EmptyState message="Run a search to see matching chunks." />
+          ) : results.count === 0 ? (
+            <EmptyState message="No matches found." />
           ) : (
             <div className="mt-4 space-y-3">
-              <p className="text-sm text-slate-500">
-                Collection <code>{results.collection}</code> · {results.count}{" "}
-                hits
+              <p className="text-xs text-slate-500">
+                Collection: {results.collection}
+                {results.client_phone_number
+                  ? ` · phone ${results.client_phone_number}`
+                  : ""}
               </p>
               {results.hits.map((hit, index) => (
                 <div
                   key={`${hit.source_uri}-${index}`}
                   className="rounded-xl border border-slate-100 bg-slate-50 p-4"
                 >
-                  <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
-                    <span>{hit.source_uri ?? "unknown source"}</span>
-                    <span>score {(hit.score * 100).toFixed(1)}%</span>
-                  </div>
-                  <p className="text-sm leading-relaxed text-slate-800">
-                    {hit.text}
+                  <p className="text-sm text-slate-800">{hit.text}</p>
+                  <p className="mt-2 text-xs text-slate-500">
+                    score {hit.score.toFixed(3)}
+                    {hit.source_uri ? ` · ${hit.source_uri}` : ""}
                   </p>
                 </div>
               ))}

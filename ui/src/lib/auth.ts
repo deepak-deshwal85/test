@@ -65,6 +65,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       } else if (user?.role) {
         token.role = user.role;
       }
+      if (user?.email) {
+        token.email = user.email;
+      }
+      if (user?.name) {
+        token.name = user.name;
+      }
       return token;
     },
     async session({ session, token }) {
@@ -75,6 +81,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           typeof token.role === "string"
             ? (token.role as RelayDeskRole)
             : "guest-clients";
+        if (typeof token.email === "string") {
+          session.user.email = token.email;
+        }
+        if (typeof token.name === "string") {
+          session.user.name = token.name;
+        }
       }
       return session;
     },

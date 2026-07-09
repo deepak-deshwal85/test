@@ -7,8 +7,16 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.config import Settings, get_settings
-from app.core.dependencies import get_search_service, verify_access_token
+from app.core.collections import collection_from_phone
+from app.core.dependencies import (
+    get_client_repository,
+    get_search_service,
+    verify_access_token,
+)
+from app.core.oauth import AuthenticatedPrincipal
 from app.core.qdrant_errors import is_qdrant_connection_error, qdrant_unavailable_detail
+from app.core.tenant import is_scope_unrestricted, resolve_client_scope
+from app.db.postgres.client_repository import ClientRepository
 from app.schemas.search import SearchHitResponse, SearchRequest, SearchResponse
 from app.services.search_service import SearchService
 
@@ -22,18 +30,44 @@ router = APIRouter(
 
 
 @router.post("/search", response_model=SearchResponse)
-def search(
+async def search(
     body: SearchRequest,
     service: Annotated[SearchService, Depends(get_search_service)],
     settings: Annotated[Settings, Depends(get_settings)],
+    principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
+    repository: Annotated[ClientRepository, Depends(get_client_repository)],
 ) -> SearchResponse:
+    client = None
+    if is_scope_unrestricted(principal) and not body.client_email_id:
+        scope = resolve_client_scope(principal, client_email_id=None, client=None)
+    else:
+        if body.client_email_id:
+            client = await repository.get_by_email(body.client_email_id)
+        scope = resolve_client_scope(
+            principal,
+            client_email_id=body.client_email_id,
+            client=client,
+        )
+
+    phone_number = body.phone_number
+    collection = body.collection
+    if not scope.unrestricted:
+        phone_number = scope.client_phone_number
+        collection = scope.collection_name
+    elif scope.client_phone_number:
+        phone_number = scope.client_phone_number
+        collection = scope.collection_name
+    elif body.client_email_id and client is not None:
+        phone_number = client.client_phone_number
+        collection = collection_from_phone(client.client_phone_number)
+
     started = time.perf_counter()
     try:
-        hits, collection = service.search(
+        hits, resolved_collection = service.search(
             query=body.query,
             max_results=body.max_results,
-            collection=body.collection,
-            phone_number=body.phone_number,
+            collection=collection,
+            phone_number=phone_number,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -47,9 +81,14 @@ def search(
         logger.exception("search failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
+    resolved_phone = phone_number
+    if resolved_phone is None and resolved_collection:
+        if resolved_collection.startswith("phone_"):
+            resolved_phone = resolved_collection.removeprefix("phone_")
+
     logger.info(
         "POST /v1/search collection=%s hits=%d total_ms=%.0f query=%r",
-        collection,
+        resolved_collection,
         len(hits),
         (time.perf_counter() - started) * 1000,
         body.query[:80],
@@ -64,5 +103,7 @@ def search(
             for hit in hits
         ],
         count=len(hits),
-        collection=collection,
+        collection=resolved_collection,
+        client_phone_number=resolved_phone,
+        client_email_id=scope.client_email_id,
     )
