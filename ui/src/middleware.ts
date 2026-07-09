@@ -11,6 +11,7 @@ export default auth((req) => {
 
   const isLoggedIn = !!req.auth;
   const isLoginPage = req.nextUrl.pathname.startsWith("/login");
+  const isSignupPage = req.nextUrl.pathname.startsWith("/signup");
   const isOnboardingPage = req.nextUrl.pathname.startsWith("/onboarding");
   const isAuthApi = req.nextUrl.pathname.startsWith("/api/auth");
   const isBackendApi = req.nextUrl.pathname.startsWith("/api/backend");
@@ -23,13 +24,13 @@ export default auth((req) => {
     return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
   }
 
-  if (!isLoggedIn && !isLoginPage && !isOnboardingPage) {
+  if (!isLoggedIn && !isLoginPage && !isSignupPage && !isOnboardingPage) {
     const login = new URL("/login", req.nextUrl.origin);
     login.searchParams.set("callbackUrl", req.nextUrl.pathname);
     return NextResponse.redirect(login);
   }
 
-  if (isLoggedIn && isLoginPage) {
+  if (isLoggedIn && (isLoginPage || isSignupPage)) {
     return NextResponse.next();
   }
 

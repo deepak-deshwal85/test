@@ -1,8 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { ProfileSetupForm } from "@/components/profile-setup-form";
 import { useClientProfile } from "@/hooks/use-client-profile";
 import { isAuthDisabledForLocal } from "@/lib/runtime-config";
 
@@ -17,31 +17,19 @@ export function LoginClient({
 }) {
   const router = useRouter();
   const { status } = useSession();
-  const { needsOnboarding, loading: profileLoading, refresh } = useClientProfile();
+  const { needsOnboarding, loading: profileLoading } = useClientProfile();
   const skipSsoInLocal = isAuthDisabledForLocal();
 
   if (status === "loading" || (status === "authenticated" && profileLoading)) {
     return <p className="mt-8 text-sm text-slate-500">Loading…</p>;
   }
 
-  if (status === "authenticated" && needsOnboarding) {
-    return (
-      <>
-        <p className="mt-2 text-sm text-slate-600">
-          Complete your profile to access the console.
-        </p>
-        <ProfileSetupForm
-          onComplete={async () => {
-            await refresh();
-            router.replace(callbackUrl);
-          }}
-        />
-      </>
-    );
-  }
-
   if (status === "authenticated") {
-    router.replace(callbackUrl);
+    if (needsOnboarding) {
+      router.replace("/signup");
+    } else {
+      router.replace(callbackUrl);
+    }
     return null;
   }
 
@@ -50,7 +38,7 @@ export function LoginClient({
       <p className="mt-2 text-sm text-slate-600">
         {skipSsoInLocal
           ? "Local mode enabled — SSO is bypassed for local development."
-          : "Sign in with SSO, then enter your name and business phone number on this screen."}
+          : "Sign in with SSO to access the console."}
       </p>
 
       {authError ? (
@@ -71,7 +59,7 @@ export function LoginClient({
         ) : useCognito ? (
           <button
             type="button"
-            onClick={() => signIn("cognito", { callbackUrl: "/login" })}
+            onClick={() => signIn("cognito", { callbackUrl })}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-medium text-white hover:bg-brand-700"
           >
             Continue with SSO
@@ -84,6 +72,16 @@ export function LoginClient({
           </div>
         )}
       </div>
+
+      <p className="mt-6 text-center text-sm text-slate-600">
+        New here?{" "}
+        <Link
+          href="/signup"
+          className="font-medium text-brand-600 hover:underline"
+        >
+          Create an account
+        </Link>
+      </p>
     </>
   );
 }

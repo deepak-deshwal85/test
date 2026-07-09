@@ -8,15 +8,21 @@ import { apiFetch } from "@/lib/api-client";
 import type { ClientProfile } from "@/lib/types";
 
 export function ProfileSetupForm({
+  initialName,
+  initialPhone,
   onComplete,
 }: {
-  onComplete?: () => void | Promise<void>;
+  initialName?: string;
+  initialPhone?: string;
+  onComplete?: (profile: ClientProfile) => void | Promise<void>;
 }) {
   const router = useRouter();
   const { data: session, update } = useSession();
   const email = session?.user?.email ?? "";
-  const [clientName, setClientName] = useState(session?.user?.name ?? "");
-  const [clientPhone, setClientPhone] = useState("");
+  const [clientName, setClientName] = useState(
+    initialName ?? session?.user?.name ?? "",
+  );
+  const [clientPhone, setClientPhone] = useState(initialPhone ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -29,7 +35,7 @@ export function ProfileSetupForm({
     setSaving(true);
     setError(null);
     try {
-      await apiFetch<ClientProfile>("v1/clients/profile", {
+      const saved = await apiFetch<ClientProfile>("v1/clients/profile", {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -40,7 +46,7 @@ export function ProfileSetupForm({
       });
       await update();
       if (onComplete) {
-        await onComplete();
+        await onComplete(saved);
       } else {
         router.replace("/");
       }
