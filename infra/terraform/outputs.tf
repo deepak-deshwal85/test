@@ -185,11 +185,6 @@ output "rds_instance_identifier" {
   value       = var.enable_rds_postgres ? aws_db_instance.postgres[0].identifier : null
 }
 
-output "rds_publicly_accessible" {
-  description = "Whether RDS has a public IP for direct laptop connections."
-  value       = var.enable_rds_postgres ? aws_db_instance.postgres[0].publicly_accessible : null
-}
-
 output "billing_dashboard_name" {
   description = "CloudWatch dashboard for month-to-date estimated AWS charges (us-east-1)."
   value       = var.enable_cost_monitoring ? aws_cloudwatch_dashboard.billing[0].dashboard_name : null

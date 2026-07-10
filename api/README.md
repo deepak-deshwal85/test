@@ -81,6 +81,28 @@ cp .env.example .env
 | `LIVEKIT_AGENT_NAME` | Call jobs | Agent dispatch name |
 | `CORS_ORIGINS` | Optional | e.g. `http://localhost:3000` |
 
+### Run locally against AWS RDS (SSM tunnel)
+
+RDS is private in AWS. Use two terminals from the **repo root**:
+
+**Terminal 1 — tunnel** (leave open):
+
+```powershell
+.\infra\scripts\rds_tunnel.ps1
+```
+
+**Terminal 2 — API**:
+
+```powershell
+$env:RDS_DB_PASSWORD = "RelayDesk2026!"
+.\infra\scripts\write_local_tunnel_database_url.bat
+cd api
+uv sync
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
+```
+
+This writes `api/.env.local` with `DATABASE_URL` pointing at `127.0.0.1:15432`. Requires the [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) and a running ECS API host. See [`../infra/README.md`](../infra/README.md) for details.
+
 ### Start server
 
 ```bash

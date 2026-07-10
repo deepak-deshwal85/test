@@ -2,7 +2,7 @@ resource "aws_db_subnet_group" "postgres" {
   count = var.enable_rds_postgres ? 1 : 0
 
   name       = "${local.name_prefix}-postgres"
-  subnet_ids = local.rds_subnet_ids
+  subnet_ids = aws_subnet.private[*].id
 
   tags = {
     Name = "${local.name_prefix}-postgres-subnets"
@@ -30,17 +30,6 @@ resource "aws_security_group" "rds_postgres" {
     to_port         = 5432
     protocol        = "tcp"
     security_groups = [aws_security_group.ecs_instances.id]
-  }
-
-  dynamic "ingress" {
-    for_each = var.rds_publicly_accessible ? var.rds_public_access_cidrs : []
-    content {
-      description = "PostgreSQL from allowed public CIDR (local dev)"
-      from_port   = 5432
-      to_port     = 5432
-      protocol    = "tcp"
-      cidr_blocks = [ingress.value]
-    }
   }
 
   egress {
@@ -72,7 +61,7 @@ resource "aws_db_instance" "postgres" {
   vpc_security_group_ids = [aws_security_group.rds_postgres[0].id]
 
   multi_az                = false
-  publicly_accessible     = var.rds_publicly_accessible
+  publicly_accessible       = false
   storage_encrypted       = true
   deletion_protection     = false
   skip_final_snapshot     = true

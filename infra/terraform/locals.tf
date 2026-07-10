@@ -24,13 +24,6 @@ locals {
   cognito_approved_group_name = "approved-clients"
   cognito_admin_group_name    = "relaydesk-admins"
 
-  # When enabling public RDS access, add public subnets without removing private
-  # ones (AWS rejects removing subnets the running instance still uses).
-  rds_subnet_ids = var.rds_publicly_accessible ? distinct(concat(
-    aws_subnet.private[*].id,
-    aws_subnet.public[*].id,
-  )) : aws_subnet.private[*].id
-
   api_image   = "${aws_ecr_repository.api.repository_url}:${var.api_ecr_image_tag}"
   voice_image = "${aws_ecr_repository.voice_agent.repository_url}:${var.voice_ecr_image_tag}"
   ui_image    = var.enable_ui ? "${aws_ecr_repository.ui[0].repository_url}:${var.ui_ecr_image_tag}" : ""

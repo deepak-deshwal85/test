@@ -198,78 +198,40 @@ python infra/scripts/set_database_url_from_rds.py \
   --profile relaydesk-admin --region ap-south-1
 ```
 
-**Local API against RDS** (writes `api/.env.local`):
+**Local API against AWS RDS** (SSM tunnel — see [Connect from your laptop](#connect-from-your-laptop-psql--pgadmin)):
 
-```bash
-export RDS_DB_PASSWORD='RelayDesk2026!'
-python infra/scripts/set_database_url_from_rds.py \
-  --profile relaydesk-admin --region ap-south-1 \
-  --write-local-env api/.env.local
+```powershell
+# Terminal 1 — leave open
+.\infra\scripts\rds_tunnel.ps1
+
+# Terminal 2 — write api/.env.local and start API
+$env:RDS_DB_PASSWORD = "YourRdsPassword"
+.\infra\scripts\write_local_tunnel_database_url.bat
+cd api
+uv sync
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
 
-Then redeploy API:
+Then redeploy API (production SSM `DATABASE_URL` uses the private RDS endpoint, not localhost):
 
 ```bash
 aws ecs update-service --cluster relaydesk-prod --service relaydesk-prod-api \
   --force-new-deployment --profile relaydesk-admin --region ap-south-1
 ```
 
-### Connect from your laptop (psql / pgAdmin)
+### Connect from your laptop (psql / pgAdmin / local API)
 
-**Option A — Public RDS (direct connection)**
-
-Enable in `infra/terraform/terraform.tfvars` (restrict to **your** public IP, not `0.0.0.0/0`):
-
-```hcl
-rds_publicly_accessible = true
-rds_public_access_cidrs = ["203.0.113.45/32"]   # curl -s https://checkip.amazonaws.com
-```
-
-```bash
-cd infra/terraform
-terraform apply
-```
-
-Write local env and connect to the RDS hostname on port `5432` (SSL is automatic in the API):
-
-```bash
-export RDS_DB_PASSWORD='...'
-python infra/scripts/set_database_url_from_rds.py \
-  --write-local-env api/.env.local --password "$RDS_DB_PASSWORD"
-```
-
-| Field | Value |
-|-------|-------|
-| Host | `terraform output -raw rds_endpoint` |
-| Port | `5432` |
-| Database | `relaydesk` |
-| Username | `relaydesk_admin` |
-| SSL | Required (pgAdmin: SSL mode *require*) |
-
-**Security:** use a `/32` CIDR for your IP only; disable public access when not needed.
-
----
-
-**Option B — Private RDS (recommended default)**
-
-RDS is **not public** (`publicly_accessible = false`) and sits in **private subnets**. You cannot connect to the RDS hostname directly from your PC without a tunnel.
-
-Use an **SSM port-forward tunnel** through a running ECS API EC2 host:
+RDS is **private** (`publicly_accessible = false`) in **private subnets**. Connect through an **SSM port-forward tunnel** via a running ECS API EC2 host:
 
 1. Install the [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) (Windows: `winget install Amazon.SessionManagerPlugin`, then restart the terminal).
 
-2. Apply the RDS security-group update (allows the ECS host to reach Postgres for the tunnel):
-
-```bash
-cd infra/terraform
-terraform apply -target=aws_security_group.rds_postgres
-```
-
-3. Start the tunnel (leave this terminal open):
+2. Start the tunnel (**leave this terminal open**):
 
 ```powershell
 # PowerShell
 .\infra\scripts\rds_tunnel.ps1
+# or
+.\infra\scripts\rds_tunnel.bat
 ```
 
 ```bash
@@ -277,19 +239,33 @@ terraform apply -target=aws_security_group.rds_postgres
 ./infra/scripts/rds_tunnel.sh
 ```
 
-4. Connect **pgAdmin** or **psql** to:
+3. Point tools at **localhost:15432**:
 
 | Field | Value |
 |-------|-------|
-| Host | `localhost` |
+| Host | `localhost` or `127.0.0.1` |
 | Port | `15432` |
 | Database | `relaydesk` |
 | Username | `relaydesk_admin` |
 | Password | Your `TF_VAR_rds_master_password` |
 
+**Local API** — write `api/.env.local` (loaded after `.env`):
+
+```powershell
+$env:RDS_DB_PASSWORD = "YourRdsPassword"
+.\infra\scripts\write_local_tunnel_database_url.bat
+```
+
+```bash
+export RDS_DB_PASSWORD='...'
+python infra/scripts/write_local_tunnel_database_url.py --password "$RDS_DB_PASSWORD"
+```
+
 ```bash
 psql -h localhost -p 15432 -U relaydesk_admin -d relaydesk
 ```
+
+**Revert public RDS** (if you previously enabled it): set `publicly_accessible = false` in Terraform and run `terraform apply`. Direct connections to the RDS hostname on port `5432` from the internet will stop working — use the tunnel above.
 
 ### Google SSO (optional)
 
@@ -496,8 +472,7 @@ Enable billing alerts in AWS Console → Billing preferences if the dashboard is
 
 | Symptom | Fix |
 |---------|-----|
-| Cannot connect to RDS from laptop | Private RDS: use `rds_tunnel.ps1` → `localhost:15432`. Or set `rds_publicly_accessible = true` + your IP in `rds_public_access_cidrs` and `terraform apply` |
-| `ModifyDBSubnetGroup` subnets in use | Fixed in Terraform: public mode **adds** public subnets instead of replacing private ones. Re-run `terraform apply`. If RDS was created in a private subnet, you may still need a reboot or snapshot-restore for a public IP |
+| Cannot connect to RDS from laptop | Start `.\infra\scripts\rds_tunnel.ps1` (or `.bat`), connect to `localhost:15432`, and set `DATABASE_URL` to `127.0.0.1:15432` in `api/.env.local` |
 | `SessionManagerPlugin is not found` | `winget install Amazon.SessionManagerPlugin` and restart terminal |
 | Voice agent RAG `401` | Run `sync_cognito_voice_client_secret.py`, redeploy voice-agent |
 | UI shows old code after push | Verify `docker build` succeeded; force ECS deployment |
