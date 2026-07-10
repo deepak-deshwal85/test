@@ -108,3 +108,70 @@ def test_normalize_phone_number() -> None:
     from app.domain.customer_models import normalize_phone_number
 
     assert normalize_phone_number("+91 91117 1366880") == "91911171366880"
+    assert normalize_phone_number("9876543210") == "9876543210"
+
+
+def test_create_customer_rejects_duplicate(client: TestClient) -> None:
+    from unittest.mock import AsyncMock
+
+    from app.core.dependencies import get_client_repository, get_customer_service
+
+    mock_service = AsyncMock()
+    mock_service.create.side_effect = ValueError(
+        "Customer already exists for this client and consumer phone number"
+    )
+    mock_repository = AsyncMock()
+    mock_repository.get_by_email.return_value = None
+    mock_repository.get_by_cognito_sub.return_value = None
+
+    app = create_app()
+    app.dependency_overrides[get_customer_service] = lambda: mock_service
+    app.dependency_overrides[get_client_repository] = lambda: mock_repository
+    test_client = TestClient(app)
+
+    response = test_client.post(
+        "/v1/customers",
+        json={
+            "client_business_phone_number": "911171366880",
+            "client_name": "Acme Corp",
+            "client_email_id": "acme@example.com",
+            "consumer_phone_number": "9876543210",
+            "consumer_email_id": "consumer@example.com",
+        },
+    )
+    assert response.status_code == 400
+    assert "already exists" in response.json()["detail"]
+
+
+def test_create_customer_rejects_consumer_matching_business_phone(
+    client: TestClient,
+) -> None:
+    from unittest.mock import AsyncMock
+
+    from app.core.dependencies import get_client_repository, get_customer_service
+
+    mock_service = AsyncMock()
+    mock_service.create.side_effect = ValueError(
+        "Consumer phone number must be different from the client business phone"
+    )
+    mock_repository = AsyncMock()
+    mock_repository.get_by_email.return_value = None
+    mock_repository.get_by_cognito_sub.return_value = None
+
+    app = create_app()
+    app.dependency_overrides[get_customer_service] = lambda: mock_service
+    app.dependency_overrides[get_client_repository] = lambda: mock_repository
+    test_client = TestClient(app)
+
+    response = test_client.post(
+        "/v1/customers",
+        json={
+            "client_business_phone_number": "911171366880",
+            "client_name": "Acme Corp",
+            "client_email_id": "acme@example.com",
+            "consumer_phone_number": "911171366880",
+            "consumer_email_id": "consumer@example.com",
+        },
+    )
+    assert response.status_code == 400
+    assert "different from the client business phone" in response.json()["detail"]

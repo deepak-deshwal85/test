@@ -240,24 +240,34 @@ async def bootstrap_database_schema(engine: AsyncEngine) -> None:
         await connection.execute(
             text(
                 """
-                CREATE INDEX IF NOT EXISTS idx_customers_client_phone
-                ON customers (client_phone_number)
+                UPDATE customers AS c
+                SET client_email_id = cl.client_email_id
+                FROM clients AS cl
+                WHERE c.client_business_phone_number = cl.client_business_phone_number
+                  AND cl.client_email_id IS NOT NULL
+                  AND (
+                    c.client_email_id IS NULL
+                    OR c.client_email_id = 'unknown@example.com'
+                  )
                 """
             )
+        )
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE customers
+                DROP CONSTRAINT IF EXISTS uq_customers_client_consumer
+                """
+            )
+        )
+        await connection.execute(
+            text("DROP INDEX IF EXISTS uq_customers_client_consumer")
         )
         await connection.execute(
             text(
                 """
                 CREATE UNIQUE INDEX IF NOT EXISTS uq_customers_client_consumer
-                ON customers (client_phone_number, consumer_phone_number)
-                """
-            )
-        )
-        await connection.execute(
-            text(
-                """
-                CREATE INDEX IF NOT EXISTS idx_call_jobs_client_phone
-                ON call_jobs (client_phone_number)
+                ON customers (client_email_id, consumer_phone_number)
                 """
             )
         )

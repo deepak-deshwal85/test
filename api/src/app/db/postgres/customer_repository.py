@@ -7,10 +7,47 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.postgres.models import ClientRow, CustomerRow
 from app.domain.customer_models import Customer, normalize_email, normalize_phone_number
 
+_DUPLICATE_CUSTOMER_MESSAGE = (
+    "Customer already exists for this client and consumer phone number"
+)
+
 
 class CustomerRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def _find_by_client_and_consumer_phone(
+        self,
+        *,
+        client_email_id: str,
+        client_business_phone_number: str,
+        consumer_phone_number: str,
+        exclude_customer_id: int | None = None,
+    ) -> CustomerRow | None:
+        normalized_email = normalize_email(client_email_id)
+        normalized_business = normalize_phone_number(client_business_phone_number)
+        normalized_consumer = normalize_phone_number(consumer_phone_number)
+
+        query = select(CustomerRow).where(
+            CustomerRow.consumer_phone_number == normalized_consumer,
+            (
+                (CustomerRow.client_email_id == normalized_email)
+                | (
+                    (CustomerRow.client_business_phone_number == normalized_business)
+                    & CustomerRow.client_email_id.in_(
+                        ["unknown@example.com", normalized_email]
+                    )
+                )
+            ),
+        )
+        if exclude_customer_id is not None:
+            query = query.where(CustomerRow.id != exclude_customer_id)
+
+        return (await self._session.execute(query)).scalars().first()
+
+    @staticmethod
+    def _duplicate_customer_error() -> ValueError:
+        return ValueError(_DUPLICATE_CUSTOMER_MESSAGE)
 
     @staticmethod
     def _to_domain(row: CustomerRow) -> Customer:
@@ -36,13 +73,25 @@ class CustomerRepository:
         consumer_phone_number: str,
         consumer_email_id: str,
     ) -> Customer:
+        normalized_business = normalize_phone_number(client_business_phone_number)
+        normalized_consumer = normalize_phone_number(consumer_phone_number)
+        if normalized_consumer == normalized_business:
+            raise ValueError(
+                "Consumer phone number must be different from the client business phone"
+            )
+
+        if await self._find_by_client_and_consumer_phone(
+            client_email_id=client_email_id,
+            client_business_phone_number=client_business_phone_number,
+            consumer_phone_number=consumer_phone_number,
+        ):
+            raise self._duplicate_customer_error()
+
         row = CustomerRow(
-            client_business_phone_number=normalize_phone_number(
-                client_business_phone_number
-            ),
+            client_business_phone_number=normalized_business,
             client_name=client_name.strip(),
             client_email_id=normalize_email(client_email_id),
-            consumer_phone_number=normalize_phone_number(consumer_phone_number),
+            consumer_phone_number=normalized_consumer,
             consumer_email_id=normalize_email(consumer_email_id),
             is_approved=False,
         )
@@ -51,9 +100,7 @@ class CustomerRepository:
             await self._session.commit()
         except IntegrityError as exc:
             await self._session.rollback()
-            raise ValueError(
-                "Customer already exists for this client and consumer phone number"
-            ) from exc
+            raise self._duplicate_customer_error() from exc
         await self._session.refresh(row)
         return self._to_domain(row)
 
@@ -129,15 +176,26 @@ class CustomerRepository:
         if consumer_email_id is not None:
             row.consumer_email_id = normalize_email(consumer_email_id)
         if consumer_phone_number is not None:
-            row.consumer_phone_number = normalize_phone_number(consumer_phone_number)
+            normalized_consumer = normalize_phone_number(consumer_phone_number)
+            normalized_business = row.client_business_phone_number
+            if normalized_consumer == normalized_business:
+                raise ValueError(
+                    "Consumer phone number must be different from the client business phone"
+                )
+            if await self._find_by_client_and_consumer_phone(
+                client_email_id=row.client_email_id,
+                client_business_phone_number=normalized_business,
+                consumer_phone_number=normalized_consumer,
+                exclude_customer_id=customer_id,
+            ):
+                raise self._duplicate_customer_error()
+            row.consumer_phone_number = normalized_consumer
 
         try:
             await self._session.commit()
         except IntegrityError as exc:
             await self._session.rollback()
-            raise ValueError(
-                "Customer already exists for this client and consumer phone number"
-            ) from exc
+            raise self._duplicate_customer_error() from exc
         await self._session.refresh(row)
         return self._to_domain(row)
 

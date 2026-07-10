@@ -22,6 +22,10 @@ const emptyConsumerForm = {
   consumer_email_id: "",
 };
 
+function normalizePhoneInput(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
 export default function CustomersPage() {
   const { canManageData, canManageOwnCustomers } = usePermissions();
   const { selectedClient, clientEmailId, ready } = useClientScope();
@@ -30,6 +34,7 @@ export default function CustomersPage() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(emptyConsumerForm);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const canEditCustomers = canManageData || canManageOwnCustomers;
 
@@ -64,24 +69,33 @@ export default function CustomersPage() {
       client_business_phone_number: selectedClient.client_business_phone_number,
       client_name: selectedClient.client_name || "Client",
       client_email_id: selectedClient.client_email_id,
-      consumer_phone_number: form.consumer_phone_number,
-      consumer_email_id: form.consumer_email_id,
+      consumer_phone_number: normalizePhoneInput(form.consumer_phone_number),
+      consumer_email_id: form.consumer_email_id.trim().toLowerCase(),
     };
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!clientEmailId) return;
+    if (!clientEmailId || saving) return;
     setError(null);
+    setSaving(true);
     try {
       const scope = clientScopeQuery(clientEmailId);
+      const consumerPhone = normalizePhoneInput(form.consumer_phone_number);
+      const consumerEmail = form.consumer_email_id.trim().toLowerCase();
+      if (!consumerPhone) {
+        throw new Error("Consumer phone number is required.");
+      }
+      if (!consumerEmail) {
+        throw new Error("Consumer email is required.");
+      }
       if (editingId) {
         await apiFetch(`v1/customers/${editingId}?${scope}`, {
           method: "PUT",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            consumer_phone_number: form.consumer_phone_number,
-            consumer_email_id: form.consumer_email_id,
+            consumer_phone_number: consumerPhone,
+            consumer_email_id: consumerEmail,
           }),
         });
       } else {
@@ -96,6 +110,8 @@ export default function CustomersPage() {
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -177,9 +193,9 @@ export default function CustomersPage() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button type="submit">
+                  <Button type="submit" disabled={saving}>
                     <Plus className="h-4 w-4" />
-                    {editingId ? "Update" : "Create"}
+                    {saving ? "Saving…" : editingId ? "Update" : "Create"}
                   </Button>
                   {editingId ? (
                     <Button
