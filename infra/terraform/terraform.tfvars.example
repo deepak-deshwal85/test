@@ -60,6 +60,11 @@ rds_master_username = "relaydesk_admin"
 # Required only on first RDS create:
 #   $env:TF_VAR_rds_master_password="StrongPasswordHere"
 
+# Optional: connect from your laptop without SSM tunnel (restrict to your IP /32)
+# Find your IP: curl -s https://checkip.amazonaws.com
+# rds_publicly_accessible  = true
+# rds_public_access_cidrs  = ["203.0.113.45/32"]
+
 # Cost monitoring
 enable_cost_monitoring = true
 monthly_budget_usd     = 75

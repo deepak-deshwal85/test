@@ -54,3 +54,6 @@ cognito_ui_logout_urls   = ["http://localhost:3000/login"]
 # Sync via: python infra/scripts/sync_ssm_parameters.py
 # (add GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET to infra/scripts/env.properties)
 enable_cognito_google = true
+
+rds_publicly_accessible = true
+rds_public_access_cidrs  = ["122.161.173.195/32"]

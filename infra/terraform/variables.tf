@@ -267,6 +267,30 @@ variable "rds_master_password" {
   }
 }
 
+variable "rds_publicly_accessible" {
+  description = <<-EOT
+    When true, RDS is placed in public subnets and assigned a public IP so you can connect
+    from your laptop (restrict with rds_public_access_cidrs). ECS still connects over the VPC.
+    Prefer false in production; use rds_tunnel.ps1 when possible.
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "rds_public_access_cidrs" {
+  description = "Public IP CIDR blocks allowed to reach RDS on port 5432 when rds_publicly_accessible is true (e.g. [\"203.0.113.45/32\"])."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = (
+      !var.rds_publicly_accessible
+      || length(var.rds_public_access_cidrs) > 0
+    )
+    error_message = "Set rds_public_access_cidrs to your public IP (/32) when rds_publicly_accessible is true."
+  }
+}
+
 variable "log_retention_days" {
   type    = number
   default = 7
