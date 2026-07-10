@@ -240,6 +240,24 @@ async def bootstrap_database_schema(engine: AsyncEngine) -> None:
         await connection.execute(
             text(
                 """
+                ALTER TABLE IF EXISTS customers
+                ALTER COLUMN client_phone_number DROP NOT NULL
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                UPDATE customers
+                SET client_phone_number = client_business_phone_number
+                WHERE client_phone_number IS NULL
+                  AND client_business_phone_number IS NOT NULL
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
                 UPDATE customers AS c
                 SET client_email_id = cl.client_email_id
                 FROM clients AS cl

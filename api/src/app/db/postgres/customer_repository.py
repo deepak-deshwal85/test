@@ -12,6 +12,18 @@ _DUPLICATE_CUSTOMER_MESSAGE = (
 )
 
 
+def _raise_from_integrity_error(exc: IntegrityError) -> None:
+    message = str(exc.orig or exc).lower()
+    if "not-null" in message or "notnull" in message or "null value" in message:
+        raise ValueError(
+            "Customer could not be saved because required database fields are missing. "
+            "Restart the API to apply schema migrations, then try again."
+        ) from exc
+    if "unique" in message or "duplicate" in message:
+        raise ValueError(_DUPLICATE_CUSTOMER_MESSAGE) from exc
+    raise ValueError("Customer could not be saved due to a database constraint.") from exc
+
+
 class CustomerRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -25,20 +37,11 @@ class CustomerRepository:
         exclude_customer_id: int | None = None,
     ) -> CustomerRow | None:
         normalized_email = normalize_email(client_email_id)
-        normalized_business = normalize_phone_number(client_business_phone_number)
         normalized_consumer = normalize_phone_number(consumer_phone_number)
 
         query = select(CustomerRow).where(
+            CustomerRow.client_email_id == normalized_email,
             CustomerRow.consumer_phone_number == normalized_consumer,
-            (
-                (CustomerRow.client_email_id == normalized_email)
-                | (
-                    (CustomerRow.client_business_phone_number == normalized_business)
-                    & CustomerRow.client_email_id.in_(
-                        ["unknown@example.com", normalized_email]
-                    )
-                )
-            ),
         )
         if exclude_customer_id is not None:
             query = query.where(CustomerRow.id != exclude_customer_id)
@@ -100,7 +103,7 @@ class CustomerRepository:
             await self._session.commit()
         except IntegrityError as exc:
             await self._session.rollback()
-            raise self._duplicate_customer_error() from exc
+            _raise_from_integrity_error(exc)
         await self._session.refresh(row)
         return self._to_domain(row)
 
@@ -195,7 +198,7 @@ class CustomerRepository:
             await self._session.commit()
         except IntegrityError as exc:
             await self._session.rollback()
-            raise self._duplicate_customer_error() from exc
+            _raise_from_integrity_error(exc)
         await self._session.refresh(row)
         return self._to_domain(row)
 

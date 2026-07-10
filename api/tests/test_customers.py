@@ -104,7 +104,32 @@ def test_trigger_call_job(client: TestClient) -> None:
     assert data["status"] == "pending"
 
 
-def test_normalize_phone_number() -> None:
+def test_raise_from_integrity_error_maps_not_null() -> None:
+    from sqlalchemy.exc import IntegrityError
+
+    from app.db.postgres.customer_repository import _raise_from_integrity_error
+
+    exc = IntegrityError("INSERT", {}, Exception('null value in column "client_phone_number"'))
+    try:
+        _raise_from_integrity_error(exc)
+    except ValueError as err:
+        assert "schema migrations" in str(err)
+    else:
+        raise AssertionError("expected ValueError")
+
+
+def test_raise_from_integrity_error_maps_unique() -> None:
+    from sqlalchemy.exc import IntegrityError
+
+    from app.db.postgres.customer_repository import _raise_from_integrity_error
+
+    exc = IntegrityError("INSERT", {}, Exception("duplicate key value violates unique constraint"))
+    try:
+        _raise_from_integrity_error(exc)
+    except ValueError as err:
+        assert "already exists" in str(err)
+    else:
+        raise AssertionError("expected ValueError")
     from app.domain.customer_models import normalize_phone_number
 
     assert normalize_phone_number("+91 91117 1366880") == "91911171366880"
