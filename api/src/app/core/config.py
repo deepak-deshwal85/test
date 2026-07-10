@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -46,7 +47,7 @@ class Settings(BaseSettings):
     openai_base_url: str | None = Field(default=None, alias="OPENAI_BASE_URL")
     openai_timeout: float = Field(default=30.0, alias="OPENAI_TIMEOUT")
 
-    qdrant_url: str = Field(default="http://127.0.0.1:6333", alias="QDRANT_URL")
+    qdrant_url: str = Field(default="", alias="QDRANT_URL")
     qdrant_api_key: str | None = Field(default=None, alias="QDRANT_API_KEY")
     qdrant_timeout: float = Field(default=10.0, alias="QDRANT_TIMEOUT")
     qdrant_cluster_endpoint: str | None = Field(
@@ -100,10 +101,22 @@ class Settings(BaseSettings):
         self.qdrant_url = url
         return self
 
-    database_url: str = Field(
-        default="postgresql+asyncpg://postgres:1234@localhost:5432/relaydesk",
-        alias="DATABASE_URL",
-    )
+    @model_validator(mode="after")
+    def require_managed_backends(self) -> Settings:
+        if os.getenv("PYTEST_CURRENT_TEST"):
+            return self
+        if not self.qdrant_cluster_endpoint or not self.qdrant_api_key:
+            raise ValueError(
+                "QDRANT_CLUSTER_ENDPOINT and QDRANT_API_KEY are required "
+                "(managed Qdrant Cloud only)."
+            )
+        if not self.database_url:
+            raise ValueError(
+                "DATABASE_URL is required (use RDS SSM tunnel: 127.0.0.1:15432)."
+            )
+        return self
+
+    database_url: str = Field(default="", alias="DATABASE_URL")
     database_echo: bool = Field(default=False, alias="DATABASE_ECHO")
     outbound_call_webhook_url: str | None = Field(
         default=None, alias="OUTBOUND_CALL_WEBHOOK_URL"

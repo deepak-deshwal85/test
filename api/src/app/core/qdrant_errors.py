@@ -20,13 +20,8 @@ def is_qdrant_connection_error(exc: BaseException) -> bool:
 
 
 def qdrant_unavailable_detail(settings: Settings) -> str:
-    if settings.qdrant_cluster_endpoint:
-        return (
-            f"Qdrant Cloud cluster {settings.qdrant_cluster_name or 'unknown'} "
-            f"is not reachable at {settings.qdrant_url}. "
-            "Check QDRANT_CLUSTER_ENDPOINT and QDRANT_API_KEY."
-        )
+    cluster = settings.qdrant_cluster_name or "unknown"
     return (
-        f"Qdrant is not reachable at {settings.qdrant_url}. "
-        "Start Docker Desktop, then from the repo root run: docker compose up -d qdrant"
+        f"Qdrant Cloud cluster {cluster} is not reachable at {settings.qdrant_url}. "
+        "Check QDRANT_CLUSTER_ENDPOINT and QDRANT_API_KEY."
     )

@@ -16,7 +16,7 @@ RelayDesk is a voice-AI operations platform: a **LiveKit voice agent** handles p
 ## How it fits together
 
 ```
-Browser ──► UI (Next.js :3000) ──► API (:8090) ──► Qdrant + PostgreSQL
+Browser ──► UI (Next.js :3000) ──► API (:8090) ──► Qdrant Cloud + AWS RDS
                                          ▲
 Voice agent (LiveKit) ──M2M OAuth────────┘
      │
@@ -37,37 +37,38 @@ Voice agent (LiveKit) ──M2M OAuth────────┘
 | AWS — Terraform bootstrap, SSM, ECS, Cognito roles, ops scripts | [`infra/README.md`](infra/README.md) |
 | LiveKit agent development | [`AGENTS.md`](AGENTS.md) |
 
-## Quick start (full stack, local)
+## Quick start (local UI + API)
 
-### 1. Start Qdrant
+Local development uses **AWS RDS** (SSM tunnel) and **Qdrant Cloud** — same managed services as production. No local Postgres or Docker Qdrant.
 
-```bash
-docker compose up -d qdrant
+### 1. RDS tunnel (leave open)
+
+```powershell
+.\infra\scripts\rds_tunnel.ps1
 ```
 
-### 2. Start API
+### 2. API
 
-```bash
+```powershell
 cd api
-cp .env.example .env   # edit keys
-uv sync
-uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
+cp .env.example .env   # set OPENAI_API_KEY, QDRANT_CLUSTER_ENDPOINT, QDRANT_API_KEY, OAUTH_DISABLED=true
+$env:RDS_DB_PASSWORD = "YourRdsPassword"
+..\infra\scripts\start_local_api.bat
 ```
 
 Swagger: http://127.0.0.1:8090/docs
 
-### 3. Start UI
+### 3. UI
 
-```bash
+```powershell
 cd ui
-cp .env.example .env   # set AUTH_DISABLE_SSO=true for local-only
-npm install
-npm run dev
+cp .env.example .env   # set AUTH_DISABLE_SSO=true, AUTH_SECRET, AUTH_URL=http://localhost:3000
+..\infra\scripts\start_local_ui.bat
 ```
 
-Open http://localhost:3000
+Open http://localhost:3000 → **Continue in local mode**.
 
-### 4. Start voice agent
+### 4. Voice agent (optional)
 
 ```bash
 cd voice-agent
@@ -87,7 +88,6 @@ telephone-agent/
 ├── ui/               # Next.js operations console
 ├── voice-agent/      # LiveKit voice agent
 ├── infra/            # Terraform + operational scripts
-├── docker-compose.yml
 ├── README.md         # This file
 └── AGENTS.md         # LiveKit agent dev guide
 ```

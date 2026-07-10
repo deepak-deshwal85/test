@@ -17,8 +17,11 @@ Each project uses the `uv` package manager. Run commands from the relevant folde
 
 ```bash
 cd voice-agent && uv sync && uv run python src/agent.py console
+# API: start RDS tunnel first, then:
 cd api && uv sync && uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
+
+Local API requires **AWS RDS** (SSM tunnel to `127.0.0.1:15432`) and **Qdrant Cloud** — see [`api/README.md`](api/README.md).
 
 Run tests per project: `cd voice-agent && uv run pytest` or `cd api && uv run pytest`.
 

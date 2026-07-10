@@ -10,7 +10,7 @@ FastAPI service providing **RAG** (Qdrant vector search, document ingest), **cus
 
 ### What it does
 
-- **RAG:** Upload PDF/text/markdown per phone collection (`phone_<digits>`), embed with OpenAI, search via Qdrant.
+- **RAG:** Upload PDF/text/markdown per phone collection (`phone_<digits>`), embed with OpenAI, search via Qdrant Cloud.
 - **Customers:** CRUD for client/consumer records scoped by `client_email_id`.
 - **Call jobs:** Async outbound dialing of all consumers for a client phone number.
 - **Clients:** Profile setup (name, phone, email) after SSO; links Cognito `sub` to tenant.
@@ -22,7 +22,7 @@ FastAPI service providing **RAG** (Qdrant vector search, document ingest), **cus
 src/app/
   routers/     HTTP routes (Swagger at /docs)
   services/    Business logic
-  db/          PostgreSQL, Qdrant, embedding providers
+  db/          PostgreSQL (RDS), Qdrant Cloud, embedding providers
   schemas/     Pydantic request/response models
   domain/      Internal dataclasses
   core/        Settings, OAuth, RBAC, tenant scoping
@@ -43,49 +43,38 @@ src/app/
 
 ## 2. Run locally
 
+Local development uses **AWS RDS** (SSM tunnel) and **Qdrant Cloud** — the same managed backends as production.
+
 ### Prerequisites
 
 - Python 3.13+, [uv](https://docs.astral.sh/uv/)
-- PostgreSQL (local Docker or installed)
-- Qdrant (`docker compose up -d qdrant` from repo root)
-
-### Setup database
-
-```bash
-cd api
-export PGPASSWORD='1234'
-psql -U postgres -h localhost -p 5432 -f scripts/init_db.sql
-```
+- [AWS CLI](https://aws.amazon.com/cli/) + profile (e.g. `relaydesk-admin`)
+- [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) for the RDS tunnel
+- Qdrant Cloud cluster + API key
+- OpenAI API key (embeddings)
 
 ### Configure environment
 
 ```bash
+cd api
 cp .env.example .env
 ```
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | Yes (RAG) | OpenAI embeddings |
-| `DATABASE_URL` | Yes | `postgresql+asyncpg://user:pass@host:5432/relaydesk` |
-| `QDRANT_URL` | Local | `http://127.0.0.1:6333` |
-| `QDRANT_CLUSTER_ENDPOINT` | Cloud | HTTPS Qdrant Cloud endpoint (overrides `QDRANT_URL`) |
-| `QDRANT_API_KEY` | Cloud | Qdrant Cloud API key |
+| `DATABASE_URL` | Yes | RDS via tunnel: `...@127.0.0.1:15432/relaydesk` (see below) |
+| `QDRANT_CLUSTER_ENDPOINT` | Yes | Qdrant Cloud HTTPS endpoint |
+| `QDRANT_API_KEY` | Yes | Qdrant Cloud API key |
+| `QDRANT_CLUSTER_NAME` | Optional | Cluster label (error messages) |
 | `OAUTH_DISABLED` | Local dev | `true` — skip JWT validation |
-| `COGNITO_REGION` | Production | e.g. `ap-south-1` |
-| `COGNITO_USER_POOL_ID` | Production | User pool ID |
-| `COGNITO_UI_CLIENT_ID` | Production | UI OAuth client |
-| `COGNITO_M2M_CLIENT_ID` | Production | Voice-agent M2M client |
-| `COGNITO_REQUIRED_SCOPE` | Production | Default `relaydesk-api/access` |
-| `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | Call jobs | Real outbound SIP calls |
-| `LIVEKIT_SIP_OUTBOUND_TRUNK_ID` | Call jobs | Outbound trunk ID |
-| `LIVEKIT_AGENT_NAME` | Call jobs | Agent dispatch name |
+| `COGNITO_*` | Production / SSO | User pool and client IDs |
+| `LIVEKIT_*` | Call jobs | Real outbound SIP calls |
 | `CORS_ORIGINS` | Optional | e.g. `http://localhost:3000` |
 
-### Run locally against AWS RDS (SSM tunnel)
+### Start (Windows)
 
-RDS is private in AWS. Use two terminals from the **repo root**:
-
-**Terminal 1 — tunnel** (leave open):
+**Terminal 1 — RDS tunnel** (leave open):
 
 ```powershell
 .\infra\scripts\rds_tunnel.ps1
@@ -94,19 +83,32 @@ RDS is private in AWS. Use two terminals from the **repo root**:
 **Terminal 2 — API**:
 
 ```powershell
-$env:RDS_DB_PASSWORD = "RelayDesk2026!"
+$env:RDS_DB_PASSWORD = "YourRdsPassword"
+.\infra\scripts\start_local_api.bat
+```
+
+Or manually:
+
+```powershell
+$env:RDS_DB_PASSWORD = "YourRdsPassword"
 .\infra\scripts\write_local_tunnel_database_url.bat
 cd api
 uv sync
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
 
-This writes `api/.env.local` with `DATABASE_URL` pointing at `127.0.0.1:15432`. Requires the [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) and a running ECS API host. See [`../infra/README.md`](../infra/README.md) for details.
+`write_local_tunnel_database_url.bat` writes `api/.env.local` with `DATABASE_URL` pointing at `127.0.0.1:15432`.
 
-### Start server
+### Start (Git Bash / macOS / Linux)
 
 ```bash
-uv sync
+# Terminal 1
+./infra/scripts/rds_tunnel.sh
+
+# Terminal 2
+export RDS_DB_PASSWORD='YourRdsPassword'
+python infra/scripts/write_local_tunnel_database_url.py --password "$RDS_DB_PASSWORD"
+cd api && uv sync
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
 
@@ -114,8 +116,6 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 - Health: http://127.0.0.1:8090/health
 
 ### Upload a test document
-
-Use Swagger **POST** `/v1/collections/{collection}/documents` with collection `phone_911171366880` for phone `911171366880`, or:
 
 ```bash
 uv run python scripts/upload_document.py \
@@ -177,27 +177,23 @@ All scripts run from the `api/` directory unless noted.
 
 | Script | Purpose | Usage |
 |--------|---------|--------|
-| `scripts/init_db.sql` | Create `relaydesk` database and tables | `psql -U postgres -f scripts/init_db.sql` |
-| `scripts/seed_db.sql` | Optional seed data | Run against `relaydesk` DB after init |
-| `scripts/migrate_call_job_results.sql` | Add `results_json` to `call_jobs` | For existing DBs upgrading schema |
+| `scripts/init_db.sql` | Reference DDL for RDS (API migrates on startup) | Manual RDS bootstrap only |
+| `scripts/migrate_call_job_results.sql` | Add `results_json` to `call_jobs` | Legacy DB upgrade |
 | `scripts/upload_document.py` | Upload file to a collection via HTTP | `uv run python scripts/upload_document.py --file doc.pdf --collection phone_911171366880` |
-| `scripts/reset_qdrant_collections.py` | Delete all Qdrant collections (destructive) | `uv run python scripts/reset_qdrant_collections.py --yes` |
+| `scripts/reset_qdrant_collections.py` | Delete all Qdrant Cloud collections (destructive) | `uv run python scripts/reset_qdrant_collections.py --yes` |
 | `scripts/bench_search.py` | Benchmark search latency | `uv run python scripts/bench_search.py --query "hello"` |
 
-### `upload_document.py`
+### Infra helpers (repo root)
 
-```bash
-uv run python scripts/upload_document.py \
-  --file path/to/file.pdf \
-  --collection phone_911171366880 \
-  --base-url http://127.0.0.1:8090
-```
-
-Optional: set `RAG_API_KEY` in `.env` if the API requires a bearer token.
+| Script | Purpose |
+|--------|---------|
+| [`../infra/scripts/rds_tunnel.ps1`](../infra/scripts/rds_tunnel.ps1) | SSM port-forward to RDS on `localhost:15432` |
+| [`../infra/scripts/write_local_tunnel_database_url.bat`](../infra/scripts/write_local_tunnel_database_url.bat) | Write `api/.env.local` with tunnel `DATABASE_URL` |
+| [`../infra/scripts/start_local_api.bat`](../infra/scripts/start_local_api.bat) | Tunnel env + start API |
 
 ### `reset_qdrant_collections.py`
 
-Removes every collection in the configured Qdrant instance. Use only in dev.
+Removes every collection in the configured Qdrant Cloud cluster. Use only in dev.
 
 ```bash
 uv run python scripts/reset_qdrant_collections.py --dry-run

@@ -37,7 +37,7 @@ Next.js 15 · TypeScript · Tailwind CSS 4 · NextAuth v5 · Server-side API pro
 ### Prerequisites
 
 - Node.js 22+
-- RelayDesk API running (see [`../api/README.md`](../api/README.md))
+- RelayDesk API running locally (see [`../api/README.md`](../api/README.md)) — RDS tunnel + Qdrant Cloud
 
 ### Configure environment
 
@@ -67,6 +67,8 @@ npm install
 ```bash
 npm run dev
 ```
+
+From repo root (Windows): `infra\scripts\start_local_ui.bat`
 
 Open http://localhost:3000
 

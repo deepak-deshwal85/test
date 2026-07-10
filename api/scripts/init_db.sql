@@ -1,6 +1,6 @@
--- PostgreSQL setup for RelayDesk API
--- Run as postgres superuser, e.g.:
---   psql -U postgres -h localhost -p 5432 -f scripts/init_db.sql
+-- PostgreSQL schema for RelayDesk API (AWS RDS).
+-- The API also applies migrations on startup (see src/app/db/postgres/session.py).
+-- Use only for one-time manual RDS setup if Terraform did not create the database.
 
 CREATE DATABASE relaydesk
     WITH ENCODING 'UTF8'
