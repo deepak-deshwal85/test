@@ -76,7 +76,10 @@ async def trigger_call_job(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Client business phone number cannot be changed",
             )
-    job = await service.create_job(body.client_business_phone_number, scoped_email)
+    try:
+        job = await service.create_job(body.client_business_phone_number, scoped_email)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     background_tasks.add_task(service.run_job, job.id)
     return TriggerCallJobResponse(
         job_id=job.id,

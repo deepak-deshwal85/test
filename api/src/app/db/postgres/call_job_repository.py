@@ -76,7 +76,18 @@ class CallJobRepository:
             status="pending",
         )
         self._session.add(row)
-        await self._session.commit()
+        try:
+            await self._session.commit()
+        except Exception as exc:
+            await self._session.rollback()
+            message = str(exc).lower()
+            if "client_phone_number" in message and "call_jobs" in message:
+                raise ValueError(
+                    "call_jobs table has a legacy client_phone_number column. "
+                    "Run: uv run python scripts/migrate_db.py "
+                    "--file migrate_call_jobs_legacy_phone.sql"
+                ) from exc
+            raise
         await self._session.refresh(row)
         return self._to_domain(row)
 
