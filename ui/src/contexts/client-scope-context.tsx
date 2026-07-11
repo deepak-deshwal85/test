@@ -102,6 +102,7 @@ export function ClientScopeProvider({ children }: { children: React.ReactNode })
           return data.clients[0];
         });
       } else {
+        storeEmail(null);
         const profile = await apiFetch<ClientProfile>("v1/clients/me");
         if (requestId !== requestIdRef.current) return;
         setClients([profile]);
@@ -119,7 +120,13 @@ export function ClientScopeProvider({ children }: { children: React.ReactNode })
         setLoading(false);
       }
     }
-  }, [canManageData, isPublicRoute, session?.accessToken, status]);
+  }, [canManageData, isPublicRoute, session?.accessToken, session?.user?.email, status]);
+
+  useEffect(() => {
+    if (!canManageData) {
+      storeEmail(null);
+    }
+  }, [canManageData, session?.user?.email]);
 
   useEffect(() => {
     if (status === "loading") return;

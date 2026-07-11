@@ -35,6 +35,10 @@ async function proxy(request: NextRequest, path: string[]) {
   if (sessionEmail) {
     headers.set("x-relaydesk-user-email", sessionEmail);
   }
+  const sessionRole = session?.user?.role;
+  if (sessionRole) {
+    headers.set("x-relaydesk-user-role", sessionRole);
+  }
 
   const init: RequestInit = {
     method: request.method,

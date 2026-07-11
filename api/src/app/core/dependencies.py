@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
-from app.core.oauth import AuthenticatedPrincipal, validate_access_token
+from app.core.oauth import AuthenticatedPrincipal, dev_bypass_principal, validate_access_token
 from app.core.rbac import Permission
 from app.db.embedding_provider import EmbeddingProviderFactory
 from app.db.postgres.client_repository import ClientRepository
@@ -131,13 +131,17 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def verify_access_token(
+    request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
     credentials: Annotated[
         HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)
     ] = None,
 ) -> AuthenticatedPrincipal:
     if settings.oauth_disabled:
-        return validate_access_token("", settings)
+        return dev_bypass_principal(
+            session_email=request.headers.get("x-relaydesk-user-email"),
+            session_role=request.headers.get("x-relaydesk-user-role"),
+        )
 
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(

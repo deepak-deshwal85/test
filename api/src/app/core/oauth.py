@@ -85,17 +85,7 @@ def _resolve_client_id(claims: dict[str, object]) -> str | None:
 
 def validate_access_token(token: str, settings: Settings) -> AuthenticatedPrincipal:
     if settings.oauth_disabled:
-        return AuthenticatedPrincipal(
-            subject="dev-user",
-            client_id=None,
-            username="dev",
-            email="dev@example.com",
-            scopes=frozenset({"relaydesk-api/access"}),
-            token_use="access",
-            groups=frozenset(),
-            role=RelayDeskRole.ADMIN,
-            is_m2m=False,
-        )
+        return dev_bypass_principal()
 
     if not settings.cognito_issuer or not settings.cognito_jwks_url:
         raise HTTPException(
@@ -174,4 +164,52 @@ def validate_access_token(token: str, settings: Settings) -> AuthenticatedPrinci
         groups=groups,
         role=role,
         is_m2m=is_m2m,
+    )
+
+
+def dev_bypass_principal(
+    *,
+    session_email: str | None = None,
+    session_role: str | None = None,
+) -> AuthenticatedPrincipal:
+    """Local API bypass (OAUTH_DISABLED=true).
+
+    When the UI sends Cognito session headers, honor the signed-in user instead of
+    always impersonating dev@example.com. Scripts without headers keep dev admin.
+    """
+    normalized_email = (
+        session_email.strip().lower()
+        if session_email and "@" in session_email
+        else None
+    )
+
+    groups: frozenset[str] = frozenset()
+    if session_role and session_role.strip():
+        groups = frozenset({session_role.strip()})
+
+    if not normalized_email and not groups:
+        return AuthenticatedPrincipal(
+            subject="dev-user",
+            client_id=None,
+            username="dev",
+            email="dev@example.com",
+            scopes=frozenset({"relaydesk-api/access"}),
+            token_use="access",
+            groups=frozenset(),
+            role=RelayDeskRole.ADMIN,
+            is_m2m=False,
+        )
+
+    role = resolve_role(groups, default_guest=bool(normalized_email))
+
+    return AuthenticatedPrincipal(
+        subject=normalized_email or "oauth-disabled-user",
+        client_id=None,
+        username=normalized_email,
+        email=normalized_email,
+        scopes=frozenset({"relaydesk-api/access"}),
+        token_use="access",
+        groups=groups,
+        role=role,
+        is_m2m=False,
     )
