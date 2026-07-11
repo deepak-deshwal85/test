@@ -10,11 +10,13 @@ from app.core.config import Settings, get_settings
 from app.core.oauth import AuthenticatedPrincipal, dev_bypass_principal, validate_access_token
 from app.core.rbac import Permission
 from app.db.embedding_provider import EmbeddingProviderFactory
+from app.db.postgres.call_summary_repository import CallSummaryRepository
 from app.db.postgres.client_repository import ClientRepository
 from app.db.postgres.customer_repository import CustomerRepository
 from app.db.postgres.session import get_db_session
 from app.db.qdrant_repository import QdrantRepository
 from app.services.call_job_service import CallJobService, build_call_job_service
+from app.services.call_summary_service import CallSummaryService
 from app.services.client_service import ClientService
 from app.services.collection_service import CollectionService
 from app.services.customer_service import CustomerService
@@ -105,6 +107,18 @@ async def get_customer_service(
     repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
 ) -> CustomerService:
     return CustomerService(repository)
+
+
+async def get_call_summary_repository(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> CallSummaryRepository:
+    return CallSummaryRepository(session)
+
+
+async def get_call_summary_service(
+    repository: Annotated[CallSummaryRepository, Depends(get_call_summary_repository)],
+) -> CallSummaryService:
+    return CallSummaryService(repository)
 
 
 def get_call_job_service(

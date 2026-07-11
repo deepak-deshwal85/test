@@ -53,6 +53,24 @@ export interface CustomerListResponse {
   count: number;
 }
 
+export interface CallSummary {
+  id: number;
+  customer_id: number;
+  client_email_id: string;
+  call_start_time: string;
+  call_end_time: string | null;
+  call_summary: string;
+  job_id: string | null;
+  created_at: string;
+  consumer_phone_number?: string | null;
+  consumer_email_id?: string | null;
+}
+
+export interface CallSummaryListResponse {
+  summaries: CallSummary[];
+  count: number;
+}
+
 export interface CallAttempt {
   customer_id: number;
   consumer_phone_number: string;

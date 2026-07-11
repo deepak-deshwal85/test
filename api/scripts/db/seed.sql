@@ -118,3 +118,41 @@ FROM clients AS c
 WHERE c.client_email_id = 'acme@example.com'
   AND c.client_business_phone_number IS NOT NULL
 ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO call_summaries (
+    customer_id,
+    client_email_id,
+    call_start_time,
+    call_end_time,
+    call_summary,
+    job_id
+)
+SELECT
+    cust.id,
+    cust.client_email_id,
+    NOW() - INTERVAL '2 hours',
+    NOW() - INTERVAL '1 hour 45 minutes',
+    'Agent greeted the caller and answered questions about pricing and onboarding. Caller requested a follow-up email.',
+    'aaaaaaaa-bbbb-cccc-dddd-000000000001'::uuid
+FROM customers AS cust
+WHERE cust.client_email_id = 'acme@example.com'
+  AND cust.consumer_phone_number = '919900000001';
+
+INSERT INTO call_summaries (
+    customer_id,
+    client_email_id,
+    call_start_time,
+    call_end_time,
+    call_summary,
+    job_id
+)
+SELECT
+    cust.id,
+    cust.client_email_id,
+    NOW() - INTERVAL '1 day',
+    NOW() - INTERVAL '1 day' + INTERVAL '8 minutes',
+    'Brief call: caller asked about support hours. Agent provided business hours and offered to schedule a meeting.',
+    'aaaaaaaa-bbbb-cccc-dddd-000000000001'::uuid
+FROM customers AS cust
+WHERE cust.client_email_id = 'acme@example.com'
+  AND cust.consumer_phone_number = '919900000002';

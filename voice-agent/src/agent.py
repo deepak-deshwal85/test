@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 import os
+from datetime import UTC, datetime
+from uuid import UUID
 
 from dotenv import load_dotenv
 from livekit import rtc
@@ -26,6 +28,11 @@ from agent_instructions import build_conversation_flow_instructions
 from client_config import ClientConfig, resolve_client_config
 from client_email_resolver import resolve_client_email
 from rag_client import build_rag_instructions, build_rag_tools, resolve_rag_backend
+from call_summary_builder import build_call_summary_from_history
+from rag_client.call_summary_client import (
+    create_call_summary_client,
+    persist_call_summary,
+)
 from rag_client.config import load_rag_settings
 from rag_client.prefetch import (
     create_knowledge_retriever,
@@ -231,6 +238,24 @@ async def _resolve_session_client(ctx: JobContext) -> ClientConfig:
         except json.JSONDecodeError:
             logger.warning("invalid job metadata JSON: %r", ctx.job.metadata)
 
+    customer_id: int | None = None
+    job_id: UUID | None = None
+    raw_customer_id = parsed_metadata.get("customer_id")
+    if raw_customer_id is not None:
+        try:
+            customer_id = int(raw_customer_id)
+        except (TypeError, ValueError):
+            logger.warning("invalid customer_id in job metadata: %r", raw_customer_id)
+    raw_job_id = parsed_metadata.get("job_id")
+    if raw_job_id:
+        try:
+            job_id = UUID(str(raw_job_id))
+        except ValueError:
+            logger.warning("invalid job_id in job metadata: %r", raw_job_id)
+
+    ctx.proc.userdata["customer_id"] = customer_id
+    ctx.proc.userdata["job_id"] = job_id
+
     phone_override = os.getenv("CLIENT_PHONE_OVERRIDE", "").strip()
     if not phone_digits and phone_override:
         phone_digits = normalize_phone_override(phone_override)
@@ -361,21 +386,38 @@ async def entrypoint(ctx: JobContext) -> None:
         turn_handling=build_turn_handling_options(client_config),
     )
 
-    await session.start(
-        agent=DefaultAgent(
-            client_config=client_config,
-            knowledge_retriever=knowledge_retriever,
-            rag_warmup_task=rag_warmup_task,
-        ),
-        room=ctx.room,
-        room_options=room_io.RoomOptions(
-            audio_input=room_io.AudioInputOptions(
-                noise_cancellation=ai_coustics.audio_enhancement(
-                    model=ai_coustics.EnhancerModel.QUAIL_VF_S,
+    call_start_time = datetime.now(UTC)
+    call_summary_client = create_call_summary_client(client_config, rag_settings)
+    try:
+        await session.start(
+            agent=DefaultAgent(
+                client_config=client_config,
+                knowledge_retriever=knowledge_retriever,
+                rag_warmup_task=rag_warmup_task,
+            ),
+            room=ctx.room,
+            room_options=room_io.RoomOptions(
+                audio_input=room_io.AudioInputOptions(
+                    noise_cancellation=ai_coustics.audio_enhancement(
+                        model=ai_coustics.EnhancerModel.QUAIL_VF_S,
+                    ),
                 ),
             ),
-        ),
-    )
+        )
+    finally:
+        call_end_time = datetime.now(UTC)
+        customer_id = ctx.proc.userdata.get("customer_id")
+        job_id = ctx.proc.userdata.get("job_id")
+        summary_text = build_call_summary_from_history(session.history)
+        await persist_call_summary(
+            client=call_summary_client,
+            customer_id=customer_id,
+            job_id=job_id,
+            call_start_time=call_start_time,
+            call_end_time=call_end_time,
+            call_summary=summary_text,
+        )
+        await call_summary_client.aclose()
 
 
 if __name__ == "__main__":

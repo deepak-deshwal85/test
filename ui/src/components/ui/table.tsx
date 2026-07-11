@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export function Table({ children, className }: { children: ReactNode; className?: string }) {
@@ -36,12 +36,13 @@ export function TableBody({ children }: { children: ReactNode }) {
 export function TableRow({
   children,
   className,
-}: {
+  ...props
+}: HTMLAttributes<HTMLTableRowElement> & {
   children: ReactNode;
   className?: string;
 }) {
   return (
-    <tr className={cn("transition-colors hover:bg-muted/50", className)}>
+    <tr className={cn("transition-colors hover:bg-muted/50", className)} {...props}>
       {children}
     </tr>
   );

@@ -98,3 +98,28 @@ class CallJobRow(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class CallSummaryRow(Base):
+    __tablename__ = "call_summaries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    customer_id: Mapped[int] = mapped_column(
+        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False
+    )
+    client_email_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    call_start_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    call_end_time: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    call_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    job_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("call_jobs.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

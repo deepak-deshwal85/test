@@ -50,6 +50,10 @@ class CustomerService:
         )
         return self._to_response(customer) if customer else None
 
+    async def get_by_id(self, customer_id: int) -> CustomerResponse | None:
+        customer = await self._repository.get_by_id(customer_id)
+        return self._to_response(customer) if customer else None
+
     async def list(
         self,
         *,

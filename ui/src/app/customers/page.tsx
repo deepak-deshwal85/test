@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { CustomerCallHistorySheet } from "@/components/customer-call-history-sheet";
 import {
   Button,
   Card,
@@ -43,6 +45,7 @@ function normalizePhoneInput(value: string): string {
 }
 
 export default function CustomersPage() {
+  const searchParams = useSearchParams();
   const { canManageData, canManageOwnCustomers } = usePermissions();
   const { selectedClient, clientEmailId, ready } = useClientScope();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -52,6 +55,7 @@ export default function CustomersPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [mobileFormOpen, setMobileFormOpen] = useState(false);
+  const [historyCustomer, setHistoryCustomer] = useState<Customer | null>(null);
 
   const canEditCustomers = canManageData || canManageOwnCustomers;
 
@@ -77,6 +81,21 @@ export default function CustomersPage() {
   useEffect(() => {
     void load();
   }, [clientEmailId, ready]);
+
+  useEffect(() => {
+    const customerParam = searchParams.get("customer");
+    if (!customerParam || customers.length === 0) {
+      return;
+    }
+    const customerId = Number(customerParam);
+    if (!Number.isFinite(customerId)) {
+      return;
+    }
+    const match = customers.find((customer) => customer.id === customerId);
+    if (match) {
+      setHistoryCustomer(match);
+    }
+  }, [customers, searchParams]);
 
   function buildCreatePayload() {
     if (!selectedClient?.client_business_phone_number) {
@@ -273,14 +292,21 @@ export default function CustomersPage() {
                   </TableHead>
                   <TableBody>
                     {customers.map((customer) => (
-                      <TableRow key={customer.id}>
+                      <TableRow
+                        key={customer.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setHistoryCustomer(customer)}
+                      >
                         <TableCell className="font-medium">
                           {customer.consumer_phone_number}
                         </TableCell>
                         <TableCell>{customer.consumer_email_id}</TableCell>
                         {canEditCustomers ? (
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
+                            <div
+                              className="flex justify-end gap-1"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -341,6 +367,15 @@ export default function CustomersPage() {
           </Sheet>
         </>
       ) : null}
+
+      <CustomerCallHistorySheet
+        open={historyCustomer !== null}
+        onOpenChange={(open) => !open && setHistoryCustomer(null)}
+        clientEmailId={clientEmailId}
+        customerId={historyCustomer?.id ?? null}
+        customerPhone={historyCustomer?.consumer_phone_number}
+        customerEmail={historyCustomer?.consumer_email_id}
+      />
     </AppShell>
   );
 }

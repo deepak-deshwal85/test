@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   BookOpen,
   Database,
+  History,
   LayoutDashboard,
   Megaphone,
   Search,
@@ -20,6 +21,7 @@ export type NavItem = {
 export const APPROVED_CLIENT_NAV: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/customers", label: "Customers", icon: Users },
+  { href: "/call-history", label: "Call history", icon: History },
   { href: "/campaigns", label: "Campaign", icon: Megaphone },
   { href: "/knowledge", label: "Knowledge", icon: BookOpen },
   { href: "/profile", label: "Profile", icon: UserCircle },

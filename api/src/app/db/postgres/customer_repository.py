@@ -121,6 +121,10 @@ class CustomerRepository:
             return None
         return self._to_domain(row) if row else None
 
+    async def get_by_id(self, customer_id: int) -> Customer | None:
+        row = await self._session.get(CustomerRow, customer_id)
+        return self._to_domain(row) if row else None
+
     async def list(
         self,
         *,
