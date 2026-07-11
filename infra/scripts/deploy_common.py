@@ -77,7 +77,7 @@ def load_terraform_outputs(terraform_dir: Path) -> dict[str, object]:
     if _TF_OUTPUTS is not None:
         return _TF_OUTPUTS
 
-    print(f"\n→ terraform output -json ({terraform_dir})")
+    print(f"\n-> terraform output -json ({terraform_dir})")
     result = subprocess.run(
         ["terraform", "output", "-json"],
         cwd=str(terraform_dir),
@@ -114,7 +114,7 @@ def run_step(
     check: bool = True,
 ) -> int:
     label = " ".join(cmd)
-    print(f"\n→ {label}")
+    print(f"\n-> {label}")
     if dry_run:
         print("[dry-run] skipped")
         return 0
@@ -134,7 +134,7 @@ def add_deploy_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--image-tag",
         default=None,
-        help="ECR image tag (default: latest for api/ui, v1 for voice-agent)",
+        help="ECR image tag (default: tag from running ECS task definition)",
     )
     parser.add_argument(
         "--terraform-dir",
@@ -182,8 +182,102 @@ def resolve_image_tag(service_key: str, explicit: str | None) -> str:
     return DEFAULT_IMAGE_TAGS.get(service_key, "latest")
 
 
+def ecs_service_image_tag(
+    *,
+    cluster: str,
+    service: str,
+    profile: str,
+    region: str,
+    dry_run: bool,
+) -> str | None:
+    """Return the ECR tag from the service's current task definition."""
+    if dry_run:
+        return None
+    svc = subprocess.run(
+        [
+            "aws",
+            "ecs",
+            "describe-services",
+            "--cluster",
+            cluster,
+            "--services",
+            service,
+            "--profile",
+            profile,
+            "--region",
+            region,
+            "--no-cli-pager",
+            "--output",
+            "json",
+            "--query",
+            "services[0].taskDefinition",
+        ],
+        capture_output=True,
+        text=True,
+        env=aws_env(),
+        check=True,
+    )
+    task_def_arn = (svc.stdout or "").strip().strip('"')
+    if not task_def_arn or task_def_arn == "None":
+        return None
+
+    td = subprocess.run(
+        [
+            "aws",
+            "ecs",
+            "describe-task-definition",
+            "--task-definition",
+            task_def_arn,
+            "--profile",
+            profile,
+            "--region",
+            region,
+            "--no-cli-pager",
+            "--output",
+            "json",
+            "--query",
+            "taskDefinition.containerDefinitions[0].image",
+        ],
+        capture_output=True,
+        text=True,
+        env=aws_env(),
+        check=True,
+    )
+    image_ref = (td.stdout or "").strip().strip('"')
+    if not image_ref or ":" not in image_ref:
+        return None
+    return image_ref.rsplit(":", 1)[-1]
+
+
+def resolve_deploy_image_tag(
+    service_key: str,
+    explicit: str | None,
+    *,
+    cluster: str,
+    service: str,
+    profile: str,
+    region: str,
+    dry_run: bool,
+) -> str:
+    if explicit:
+        return explicit
+    ecs_tag = ecs_service_image_tag(
+        cluster=cluster,
+        service=service,
+        profile=profile,
+        region=region,
+        dry_run=dry_run,
+    )
+    if ecs_tag:
+        print(f"  ECS task image tag: {ecs_tag}")
+        return ecs_tag
+    fallback = DEFAULT_IMAGE_TAGS.get(service_key, "latest")
+    print(f"  fallback image tag: {fallback}")
+    return fallback
+
+
 def ecr_login(*, registry: str, profile: str, region: str, dry_run: bool) -> None:
-    print(f"\n→ ECR login ({registry})")
+    print(f"\n-> ECR login ({registry})")
     if dry_run:
         print("[dry-run] skipped ECR login")
         return
@@ -221,7 +315,7 @@ def ecr_login(*, registry: str, profile: str, region: str, dry_run: bool) -> Non
 
 def pull_cache_image(image_ref: str, *, dry_run: bool) -> bool:
     """Pull previous ECR image so BuildKit can reuse layers. Returns True if pulled."""
-    print(f"\n→ docker pull {image_ref} (build cache)")
+    print(f"\n-> docker pull {image_ref} (build cache)")
     if dry_run:
         print("[dry-run] skipped")
         return False
@@ -323,7 +417,7 @@ def deploy_service(
     *,
     profile: str,
     region: str,
-    image_tag: str,
+    image_tag: str | None,
     terraform_dir: Path,
     dry_run: bool = False,
     build_only: bool = False,
@@ -342,13 +436,23 @@ def deploy_service(
     print(f"  docker context:{context_path}")
     print(f"  profile:       {profile}")
     print(f"  region:        {region}")
-    print(f"  image tag:     {image_tag}")
-    print(f"  mode:          {'fast (downtime OK)' if fast else 'safe (rolling)'}")
 
     account_id = terraform_output(tf_dir, "aws_account_id")
     ecr_url = terraform_output(tf_dir, target.ecr_output)
     cluster = terraform_output(tf_dir, "ecs_cluster_name")
     service = terraform_output(tf_dir, target.ecs_service_output)
+
+    image_tag = resolve_deploy_image_tag(
+        target.name,
+        image_tag,
+        cluster=cluster,
+        service=service,
+        profile=profile,
+        region=region,
+        dry_run=dry_run,
+    )
+    print(f"  image tag:     {image_tag}")
+    print(f"  mode:          {'fast (downtime OK)' if fast else 'safe (rolling)'}")
 
     print(f"  ECR:           {ecr_url}")
     print(f"  ECS:           {cluster} / {service}")
@@ -379,7 +483,7 @@ def deploy_service(
     run_step(build_cmd, cwd=root, dry_run=dry_run, env=docker_env())
 
     if build_only:
-        print(f"\n✓ {target.name} image built ({target.local_image})")
+        print(f"\nOK {target.name} image built ({target.local_image})")
         return
 
     run_step(["docker", "tag", target.local_image, tagged], dry_run=dry_run)
@@ -389,11 +493,11 @@ def deploy_service(
         run_step(["docker", "push", latest], dry_run=dry_run, env=docker_env())
 
     if skip_deploy:
-        print(f"\n✓ {target.name} pushed to ECR (ECS deploy skipped)")
+        print(f"\nOK {target.name} pushed to ECR (ECS deploy skipped)")
         return
 
     if fast:
-        print(f"\n→ Fast deploy: stopping old {target.name} tasks")
+        print(f"\n-> Fast deploy: stopping old {target.name} tasks")
         stop_running_tasks(
             cluster=cluster,
             service=service,
@@ -425,7 +529,7 @@ def deploy_service(
         dry_run=dry_run,
         env=aws_env(),
     )
-    print(f"\n✓ {target.name} deployed ({tagged})")
+    print(f"\nOK {target.name} deployed ({tagged})")
     if fast:
         print("  (ECS is pulling the new image; brief downtime is expected)")
 
@@ -442,7 +546,7 @@ def main_for_service(service_key: str, description: str) -> int:
             target,
             profile=resolve_profile(args.profile),
             region=args.region,
-            image_tag=resolve_image_tag(service_key, args.image_tag),
+            image_tag=args.image_tag,
             terraform_dir=Path(args.terraform_dir),
             dry_run=args.dry_run,
             build_only=args.build_only,
