@@ -37,3 +37,11 @@ class ClientListResponse(BaseModel):
 class ClientAdminListResponse(BaseModel):
     clients: list[ClientAdminProfileResponse]
     count: int
+
+
+class ClientDeleteResponse(BaseModel):
+    client_email_id: str
+    deleted_customers: int
+    deleted_call_jobs: int
+    qdrant_collection_deleted: bool
+    cognito_user_deleted: bool

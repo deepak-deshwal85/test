@@ -22,6 +22,14 @@ export interface ClientAdminListResponse {
   count: number;
 }
 
+export interface ClientDeleteResponse {
+  client_email_id: string;
+  deleted_customers: number;
+  deleted_call_jobs: number;
+  qdrant_collection_deleted: boolean;
+  cognito_user_deleted: boolean;
+}
+
 export interface Customer {
   id: number;
   client_id: number | null;

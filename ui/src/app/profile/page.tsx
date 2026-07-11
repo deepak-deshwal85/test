@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { AppShell } from "@/components/app-shell";
+import { DeleteClientAccountSection } from "@/components/delete-client-account-section";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Button,
@@ -179,6 +180,7 @@ function ClientProfileForm() {
 
 export default function ProfilePage() {
   const { canManageData } = usePermissions();
+  const { clients, selectedClient, refresh } = useClientScope();
 
   return (
     <AppShell>
@@ -186,13 +188,22 @@ export default function ProfilePage() {
         title="Profile"
         description={
           canManageData
-            ? "Account settings and appearance preferences."
+            ? "Account settings, client deletion, and appearance preferences."
             : "Update your personal information and appearance preferences."
         }
       />
 
       <div className="space-y-6">
         {canManageData ? <AdminAccountCard /> : <ClientProfileForm />}
+        {canManageData ? (
+          <DeleteClientAccountSection
+            clients={clients}
+            defaultEmail={selectedClient?.client_email_id}
+            onDeleted={async () => {
+              await refresh();
+            }}
+          />
+        ) : null}
         <AppearanceCard />
       </div>
     </AppShell>

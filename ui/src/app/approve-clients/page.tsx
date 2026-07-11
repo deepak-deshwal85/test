@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AdminRouteGuard } from "@/components/admin-route-guard";
+import { DeleteClientAccountSection } from "@/components/delete-client-account-section";
 import {
   Badge,
   Button,
@@ -220,6 +221,15 @@ export default function ApproveClientsPage() {
                 )}
               </div>
             </Card>
+
+            <DeleteClientAccountSection
+              clients={clients}
+              className="max-w-none"
+              onDeleted={async () => {
+                await load();
+                await refreshScope();
+              }}
+            />
           </PageSection>
         )}
       </AppShell>

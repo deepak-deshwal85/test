@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import {
-  Badge,
   Button,
   Card,
   CardDescription,
@@ -204,18 +203,6 @@ export default function CustomersPage() {
     </form>
   );
 
-  async function handleApprove(customer: Customer) {
-    try {
-      await apiFetch(
-        `v1/customers/${customer.id}/approve?client_email_id=${encodeURIComponent(customer.client_email_id)}`,
-        { method: "POST" },
-      );
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Approve failed");
-    }
-  }
-
   return (
     <AppShell>
       <PageHeader
@@ -280,7 +267,6 @@ export default function CustomersPage() {
                   <TableHead>
                     <TableHeaderCell>Phone</TableHeaderCell>
                     <TableHeaderCell>Email</TableHeaderCell>
-                    <TableHeaderCell>Status</TableHeaderCell>
                     {canEditCustomers ? (
                       <TableHeaderCell className="text-right">Actions</TableHeaderCell>
                     ) : null}
@@ -292,17 +278,6 @@ export default function CustomersPage() {
                           {customer.consumer_phone_number}
                         </TableCell>
                         <TableCell>{customer.consumer_email_id}</TableCell>
-                        <TableCell>
-                          <Badge
-                            className={
-                              customer.is_approved
-                                ? "bg-emerald-50 text-emerald-700"
-                                : "bg-zinc-100 text-zinc-600"
-                            }
-                          >
-                            {customer.is_approved ? "approved" : "pending"}
-                          </Badge>
-                        </TableCell>
                         {canEditCustomers ? (
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
@@ -322,15 +297,6 @@ export default function CustomersPage() {
                               >
                                 <Trash2 className="h-4 w-4 text-red-600" aria-hidden />
                               </Button>
-                              {canManageData && !customer.is_approved ? (
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  onClick={() => void handleApprove(customer)}
-                                >
-                                  Approve
-                                </Button>
-                              ) : null}
                             </div>
                           </TableCell>
                         ) : null}

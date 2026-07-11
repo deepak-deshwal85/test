@@ -95,6 +95,23 @@ class CognitoAdminService:
             return
         await asyncio.to_thread(self._promote_to_approved_sync, email)
 
+    def _delete_user_sync(self, email: str) -> None:
+        username = self._find_username_by_email(email)
+        self._client().admin_delete_user(
+            UserPoolId=self._settings.cognito_user_pool_id,
+            Username=username,
+        )
+        logger.info("deleted Cognito user %r (%s)", email, username)
+
+    async def delete_user(self, email: str) -> None:
+        if not self.enabled:
+            logger.info(
+                "skipping Cognito delete for %r (OAuth disabled or not configured)",
+                email,
+            )
+            return
+        await asyncio.to_thread(self._delete_user_sync, email)
+
 
 @lru_cache
 def get_cognito_admin_service(settings: Settings | None = None) -> CognitoAdminService:

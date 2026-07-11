@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+from app.core.collections import collection_from_email
 from app.db.postgres.client_repository import ClientRepository
 from app.schemas.clients import (
     ClientAdminListResponse,
     ClientAdminProfileResponse,
+    ClientDeleteResponse,
     ClientListResponse,
     ClientProfileResponse,
     ClientProfileUpsertRequest,
 )
 from app.services.cognito_admin_service import CognitoAdminError, CognitoAdminService
+from app.services.collection_service import CollectionService
 
 
 class ClientService:
@@ -16,9 +19,11 @@ class ClientService:
         self,
         repository: ClientRepository,
         cognito_admin: CognitoAdminService | None = None,
+        collection_service: CollectionService | None = None,
     ) -> None:
         self._repository = repository
         self._cognito_admin = cognito_admin
+        self._collection_service = collection_service
 
     @staticmethod
     def _to_response(client) -> ClientProfileResponse:
@@ -128,3 +133,39 @@ class ClientService:
         except ValueError as exc:
             raise ValueError(str(exc)) from exc
         return self._to_admin_response(client)
+
+    async def delete_client(self, client_email_id: str) -> ClientDeleteResponse:
+        normalized = client_email_id.strip().lower()
+        if "@" not in normalized:
+            raise ValueError("Invalid client_email_id")
+
+        collection_name = collection_from_email(normalized)
+        counts = await self._repository.delete_by_email(normalized)
+        if counts is None:
+            raise ValueError(f"Client {normalized!r} not found")
+
+        customers_deleted, call_jobs_deleted = counts
+
+        qdrant_deleted = False
+        if self._collection_service is not None:
+            try:
+                self._collection_service.delete_collection(collection_name)
+                qdrant_deleted = True
+            except KeyError:
+                qdrant_deleted = False
+
+        cognito_deleted = False
+        if self._cognito_admin is not None:
+            try:
+                await self._cognito_admin.delete_user(normalized)
+                cognito_deleted = True
+            except CognitoAdminError:
+                cognito_deleted = False
+
+        return ClientDeleteResponse(
+            client_email_id=normalized,
+            deleted_customers=customers_deleted,
+            deleted_call_jobs=call_jobs_deleted,
+            qdrant_collection_deleted=qdrant_deleted,
+            cognito_user_deleted=cognito_deleted,
+        )

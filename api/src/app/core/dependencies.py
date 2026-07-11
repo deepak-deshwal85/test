@@ -84,10 +84,15 @@ async def get_client_repository(
 
 async def get_client_service(
     repository: Annotated[ClientRepository, Depends(get_client_repository)],
+    collection_service: Annotated[CollectionService, Depends(get_collection_service)],
 ) -> ClientService:
     from app.services.cognito_admin_service import get_cognito_admin_service
 
-    return ClientService(repository, get_cognito_admin_service())
+    return ClientService(
+        repository,
+        get_cognito_admin_service(),
+        collection_service,
+    )
 
 
 async def get_customer_repository(

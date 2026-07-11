@@ -11,7 +11,11 @@ from fastapi.testclient import TestClient
 
 from app.core.dependencies import get_client_service
 from app.main import create_app
-from app.schemas.clients import ClientAdminListResponse, ClientAdminProfileResponse
+from app.schemas.clients import (
+    ClientAdminListResponse,
+    ClientAdminProfileResponse,
+    ClientDeleteResponse,
+)
 from app.services.client_service import ClientService
 
 
@@ -220,3 +224,96 @@ def test_approve_client_rejected_for_non_admin(
         },
     )
     assert response.status_code == 403
+
+
+def test_delete_client_admin_success(
+    monkeypatch: pytest.MonkeyPatch, rsa_keys
+) -> None:
+    private_key, public_key = rsa_keys
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    _install_fake_jwks(monkeypatch, public_pem)
+
+    mock_service = AsyncMock(spec=ClientService)
+    mock_service.delete_client.return_value = ClientDeleteResponse(
+        client_email_id="client@example.com",
+        deleted_customers=3,
+        deleted_call_jobs=2,
+        qdrant_collection_deleted=True,
+        cognito_user_deleted=True,
+    )
+
+    app = create_app()
+    app.dependency_overrides[get_client_service] = lambda: mock_service
+    token = _encode_token(
+        private_key,
+        **{"cognito:groups": ["relaydesk-admins"]},
+    )
+    client = TestClient(app)
+    response = client.delete(
+        "/v1/clients/account?client_email_id=client%40example.com",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["deleted_customers"] == 3
+    assert payload["deleted_call_jobs"] == 2
+    assert payload["qdrant_collection_deleted"] is True
+    assert payload["cognito_user_deleted"] is True
+    mock_service.delete_client.assert_awaited_once_with("client@example.com")
+
+
+def test_delete_client_not_found(
+    monkeypatch: pytest.MonkeyPatch, rsa_keys
+) -> None:
+    private_key, public_key = rsa_keys
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    _install_fake_jwks(monkeypatch, public_pem)
+
+    mock_service = AsyncMock(spec=ClientService)
+    mock_service.delete_client.side_effect = ValueError("Client 'missing@example.com' not found")
+
+    app = create_app()
+    app.dependency_overrides[get_client_service] = lambda: mock_service
+    token = _encode_token(
+        private_key,
+        **{"cognito:groups": ["relaydesk-admins"]},
+    )
+    client = TestClient(app)
+    response = client.delete(
+        "/v1/clients/account?client_email_id=missing%40example.com",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 404
+
+
+def test_delete_client_rejected_for_non_admin(
+    monkeypatch: pytest.MonkeyPatch, rsa_keys
+) -> None:
+    private_key, public_key = rsa_keys
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    _install_fake_jwks(monkeypatch, public_pem)
+
+    mock_service = AsyncMock(spec=ClientService)
+    app = create_app()
+    app.dependency_overrides[get_client_service] = lambda: mock_service
+    token = _encode_token(
+        private_key,
+        email="user@example.com",
+        **{"cognito:groups": ["approved-clients"]},
+    )
+    client = TestClient(app)
+    response = client.delete(
+        "/v1/clients/account?client_email_id=client%40example.com",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 403
+    mock_service.delete_client.assert_not_awaited()

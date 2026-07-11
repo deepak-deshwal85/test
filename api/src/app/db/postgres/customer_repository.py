@@ -96,7 +96,7 @@ class CustomerRepository:
             client_email_id=normalize_email(client_email_id),
             consumer_phone_number=normalized_consumer,
             consumer_email_id=normalize_email(consumer_email_id),
-            is_approved=False,
+            is_approved=True,
         )
         self._session.add(row)
         try:

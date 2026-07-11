@@ -25,6 +25,7 @@ from app.schemas.clients import (
     ClientAdminListResponse,
     ClientAdminProfileResponse,
     ClientApproveRequest,
+    ClientDeleteResponse,
     ClientListResponse,
     ClientProfileResponse,
     ClientProfileUpsertRequest,
@@ -107,6 +108,30 @@ async def approve_client(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/account", response_model=ClientDeleteResponse)
+async def delete_client(
+    client_email_id: Annotated[str, Query(min_length=3, max_length=255)],
+    service: Annotated[ClientService, Depends(get_client_service)],
+    _principal: Annotated[object, Depends(require_permission(Permission.ADMIN))] = ...,
+) -> ClientDeleteResponse:
+    normalized = client_email_id.strip().lower()
+    if "@" not in normalized:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid client_email_id",
+        )
+    try:
+        return await service.delete_client(normalized)
+    except ValueError as exc:
+        message = str(exc)
+        if "not found" in message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=message,
+            ) from exc
+        raise HTTPException(status_code=400, detail=message) from exc
 
 
 @router.get("/profile", response_model=ClientProfileResponse)
