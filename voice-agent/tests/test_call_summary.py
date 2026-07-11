@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from call_summary_builder import build_call_summary_from_history
 from livekit.agents import llm
+from livekit.agents.llm.chat_context import AgentHandoff
 from rag_client.call_summary_client import CallSummaryApiClient
 
 
@@ -22,6 +23,23 @@ def test_build_call_summary_from_history():
     summary = build_call_summary_from_history(history)
     assert "Caller: What are your hours?" in summary
     assert "Agent: We are open 9 to 5." in summary
+
+
+def test_build_call_summary_skips_agent_handoff_items():
+    history = llm.ChatContext()
+    history.add_message(role="user", content="Hello?")
+    history.insert(
+        AgentHandoff(
+            old_agent_id="agent-a",
+            new_agent_id="agent-b",
+        )
+    )
+    history.add_message(role="assistant", content="Hi, I can help with that.")
+
+    summary = build_call_summary_from_history(history)
+    assert "Caller: Hello?" in summary
+    assert "Agent: Hi, I can help with that." in summary
+    assert "agent-a" not in summary
 
 
 def test_call_summary_api_client_posts_record():

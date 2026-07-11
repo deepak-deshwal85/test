@@ -48,6 +48,7 @@ from scheduling_tools import (
     build_meeting_scheduling_instructions,
     build_scheduling_tools,
 )
+from session_greeting import greet_caller
 from sip_utils import extract_routing_phone_number
 from tts_config import build_cartesia_tts
 
@@ -143,22 +144,19 @@ class DefaultAgent(Agent):
         super().__init__(instructions=build_agent_instructions(client_config))
 
     async def on_enter(self) -> None:
-        if self._knowledge_retriever is not None:
-            if self._rag_warmup_task is not None:
-                await self._rag_warmup_task
-            else:
-                await warmup_knowledge_retriever(
-                    client_config=self._client_config,
-                    retriever=self._knowledge_retriever,
-                )
+        # Greet immediately — outbound/no-answer calls can end while RAG warms up.
+        await greet_caller(self.session)
 
-        await self.session.generate_reply(
-            instructions=(
-                "Greet the caller briefly. Say you can answer questions from "
-                "the uploaded documents. Ask what they would like to know."
-            ),
-            allow_interruptions=True,
-        )
+        if self._knowledge_retriever is None:
+            return
+
+        if self._rag_warmup_task is not None:
+            await self._rag_warmup_task
+        else:
+            await warmup_knowledge_retriever(
+                client_config=self._client_config,
+                retriever=self._knowledge_retriever,
+            )
 
     async def on_user_turn_completed(
         self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage
@@ -408,16 +406,20 @@ async def entrypoint(ctx: JobContext) -> None:
         call_end_time = datetime.now(UTC)
         customer_id = ctx.proc.userdata.get("customer_id")
         job_id = ctx.proc.userdata.get("job_id")
-        summary_text = build_call_summary_from_history(session.history)
-        await persist_call_summary(
-            client=call_summary_client,
-            customer_id=customer_id,
-            job_id=job_id,
-            call_start_time=call_start_time,
-            call_end_time=call_end_time,
-            call_summary=summary_text,
-        )
-        await call_summary_client.aclose()
+        try:
+            summary_text = build_call_summary_from_history(session.history)
+            await persist_call_summary(
+                client=call_summary_client,
+                customer_id=customer_id,
+                job_id=job_id,
+                call_start_time=call_start_time,
+                call_end_time=call_end_time,
+                call_summary=summary_text,
+            )
+        except Exception:
+            logger.exception("failed to persist call summary after session ended")
+        finally:
+            await call_summary_client.aclose()
 
 
 if __name__ == "__main__":

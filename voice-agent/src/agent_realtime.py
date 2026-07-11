@@ -12,6 +12,8 @@ from livekit.agents import (
 from livekit.plugins import ai_coustics, xai
 from openai.types.realtime.realtime_audio_input_turn_detection import ServerVad
 
+from session_greeting import greet_caller
+
 logger = logging.getLogger("agent-Casey-2342")
 
 load_dotenv(".env.local")
@@ -64,10 +66,7 @@ You are interacting with the user via voice, and must apply the following rules 
 - Protect privacy and minimize sensitive data.""",
         )
     async def on_enter(self):
-        await self.session.generate_reply(
-            instructions="""Greet the user and offer your assistance.""",
-            allow_interruptions=True,
-        )
+        await greet_caller(self.session)
 
 
 server = AgentServer()
