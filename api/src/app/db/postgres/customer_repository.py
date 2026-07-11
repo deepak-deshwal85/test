@@ -63,6 +63,8 @@ class CustomerRepository:
             consumer_phone_number=row.consumer_phone_number,
             consumer_email_id=row.consumer_email_id,
             is_approved=row.is_approved,
+            call_schedule=row.call_schedule,
+            status=row.status,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -75,6 +77,8 @@ class CustomerRepository:
         client_email_id: str,
         consumer_phone_number: str,
         consumer_email_id: str,
+        call_schedule: str = "no",
+        status: str = "active",
     ) -> Customer:
         normalized_business = normalize_phone_number(client_business_phone_number)
         normalized_consumer = normalize_phone_number(consumer_phone_number)
@@ -97,6 +101,8 @@ class CustomerRepository:
             consumer_phone_number=normalized_consumer,
             consumer_email_id=normalize_email(consumer_email_id),
             is_approved=True,
+            call_schedule=call_schedule,
+            status=status,
         )
         self._session.add(row)
         try:
@@ -138,7 +144,7 @@ class CustomerRepository:
         rows = (await self._session.execute(query)).scalars().all()
         return [self._to_domain(row) for row in rows]
 
-    async def list_approved_by_client(
+    async def list_scheduled_for_campaign(
         self, *, client_business_phone_number: str, client_email_id: str
     ) -> list[Customer]:
         query = (
@@ -148,11 +154,21 @@ class CustomerRepository:
                 CustomerRow.client_business_phone_number
                 == normalize_phone_number(client_business_phone_number)
             )
-            .where(CustomerRow.is_approved.is_(True))
+            .where(CustomerRow.call_schedule == "yes")
+            .where(CustomerRow.status == "active")
             .order_by(CustomerRow.id)
         )
         rows = (await self._session.execute(query)).scalars().all()
         return [self._to_domain(row) for row in rows]
+
+    async def list_approved_by_client(
+        self, *, client_business_phone_number: str, client_email_id: str
+    ) -> list[Customer]:
+        """Deprecated: use list_scheduled_for_campaign."""
+        return await self.list_scheduled_for_campaign(
+            client_business_phone_number=client_business_phone_number,
+            client_email_id=client_email_id,
+        )
 
     async def update(
         self,
@@ -163,6 +179,8 @@ class CustomerRepository:
         client_name: str | None = None,
         consumer_email_id: str | None = None,
         consumer_phone_number: str | None = None,
+        call_schedule: str | None = None,
+        status: str | None = None,
     ) -> Customer | None:
         row = await self._session.get(CustomerRow, customer_id)
         if row is None:
@@ -193,6 +211,14 @@ class CustomerRepository:
             ):
                 raise self._duplicate_customer_error()
             row.consumer_phone_number = normalized_consumer
+        if call_schedule is not None:
+            if call_schedule not in {"yes", "no"}:
+                raise ValueError("call_schedule must be 'yes' or 'no'")
+            row.call_schedule = call_schedule
+        if status is not None:
+            if status not in {"active", "inactive"}:
+                raise ValueError("status must be 'active' or 'inactive'")
+            row.status = status
 
         try:
             await self._session.commit()

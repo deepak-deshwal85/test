@@ -46,20 +46,43 @@ async def _scoped_email(
     "/trigger",
     response_model=TriggerCallJobResponse,
     status_code=status.HTTP_202_ACCEPTED,
+    summary="Trigger outbound campaign",
 )
 async def trigger_call_job(
     body: TriggerCallJobRequest,
     background_tasks: BackgroundTasks,
     service: Annotated[CallJobService, Depends(get_call_job_service)],
-    _principal: Annotated[object, Depends(require_permission(Permission.ADMIN))] = ...,
+    repository: Annotated[ClientRepository, Depends(get_client_repository)],
+    principal: Annotated[
+        AuthenticatedPrincipal,
+        Depends(require_permission(Permission.DOCUMENT_WRITE)),
+    ],
 ) -> TriggerCallJobResponse:
-    job = await service.create_job(body.client_business_phone_number, body.client_email_id)
+    scoped_email = await verify_client_email_scope(
+        principal, body.client_email_id, repository
+    )
+    if not is_scope_unrestricted(principal):
+        client = await repository.get_by_email(scoped_email)
+        if client is None or not client.client_business_phone_number:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Client business phone number is not configured",
+            )
+        if (
+            body.client_business_phone_number.strip()
+            != client.client_business_phone_number
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Client business phone number cannot be changed",
+            )
+    job = await service.create_job(body.client_business_phone_number, scoped_email)
     background_tasks.add_task(service.run_job, job.id)
     return TriggerCallJobResponse(
         job_id=job.id,
         status=job.status,
         message=(
-            f"Call job queued for client {job.client_business_phone_number}. "
+            f"Campaign queued for client {job.client_business_phone_number}. "
             f"Poll GET /v1/call-jobs/{job.id} for status."
         ),
     )

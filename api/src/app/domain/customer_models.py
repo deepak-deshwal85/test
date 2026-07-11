@@ -39,6 +39,8 @@ class Customer:
     consumer_phone_number: str
     consumer_email_id: str
     is_approved: bool
+    call_schedule: str
+    status: str
     created_at: datetime
     updated_at: datetime
 

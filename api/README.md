@@ -210,7 +210,8 @@ All scripts run from the `api/` directory unless noted.
 | `scripts/db/schema.sql` | Idempotent DDL (clients, customers, call_jobs) | Used by `init_db.py` / `reset_db.py` |
 | `scripts/db/seed.sql` | Dummy dev rows (Acme client, 3 customers, 2 call jobs) | Used by `init_db.py` |
 | `scripts/init_db.sql` | Deprecated pointer | Use `init_db.py` instead |
-| `scripts/migrate_call_job_results.sql` | Legacy `results_json` column | Superseded by `schema.sql` |
+| `scripts/migrate_db.py` | Apply SQL migrations to existing DB | `uv run python scripts/migrate_db.py` |
+| `scripts/db/migrate_customer_campaign.sql` | Add `call_schedule` + `status` columns | Used by `migrate_db.py` |
 | `scripts/upload_document.py` | Upload file to a collection via HTTP | `uv run python scripts/upload_document.py --file doc.pdf --collection phone_911171366880` |
 | `scripts/reset_qdrant_collections.py` | Delete all Qdrant Cloud collections (destructive) | `uv run python scripts/reset_qdrant_collections.py --yes` |
 | `scripts/bench_search.py` | Benchmark search latency | `uv run python scripts/bench_search.py --query "hello"` |

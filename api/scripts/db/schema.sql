@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS customers (
     consumer_phone_number VARCHAR(32) NOT NULL,
     consumer_email_id VARCHAR(255) NOT NULL,
     is_approved BOOLEAN NOT NULL DEFAULT TRUE,
+    call_schedule VARCHAR(3) NOT NULL DEFAULT 'no',
+    status VARCHAR(32) NOT NULL DEFAULT 'active',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -33,6 +35,23 @@ CREATE INDEX IF NOT EXISTS idx_customers_client_business_phone
 
 CREATE INDEX IF NOT EXISTS idx_customers_client_email
     ON customers (client_email_id);
+
+CREATE INDEX IF NOT EXISTS idx_customers_call_schedule
+    ON customers (client_email_id, call_schedule);
+
+ALTER TABLE customers
+    DROP CONSTRAINT IF EXISTS chk_customers_call_schedule;
+
+ALTER TABLE customers
+    ADD CONSTRAINT chk_customers_call_schedule
+    CHECK (call_schedule IN ('yes', 'no'));
+
+ALTER TABLE customers
+    DROP CONSTRAINT IF EXISTS chk_customers_status;
+
+ALTER TABLE customers
+    ADD CONSTRAINT chk_customers_status
+    CHECK (status IN ('active', 'inactive'));
 
 CREATE TABLE IF NOT EXISTS call_jobs (
     id UUID PRIMARY KEY,

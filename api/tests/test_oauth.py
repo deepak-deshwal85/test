@@ -285,6 +285,8 @@ def test_approved_client_can_create_customers(
         consumer_phone_number="9000000000",
         consumer_email_id="consumer@example.com",
         is_approved=False,
+        call_schedule="no",
+        status="active",
         created_at=now,
         updated_at=now,
     )

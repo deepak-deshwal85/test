@@ -108,12 +108,12 @@ class CallJobService:
                     logger.error("call job not found job_id=%s", job_id)
                     return
 
-                customers = await customer_repository.list_approved_by_client(
+                customers = await customer_repository.list_scheduled_for_campaign(
                     client_business_phone_number=job.client_business_phone_number,
                     client_email_id=job.client_email_id,
                 )
                 logger.info(
-                    "call job loaded customers job_id=%s client=%s count=%d",
+                    "campaign job loaded customers job_id=%s client=%s scheduled=%d",
                     job_id,
                     job.client_business_phone_number,
                     len(customers),

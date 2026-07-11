@@ -3,7 +3,7 @@ import {
   BookOpen,
   Database,
   LayoutDashboard,
-  PhoneCall,
+  Megaphone,
   Search,
   ShieldCheck,
   UserCircle,
@@ -20,12 +20,12 @@ export type NavItem = {
 export const APPROVED_CLIENT_NAV: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/customers", label: "Customers", icon: Users },
+  { href: "/campaigns", label: "Campaign", icon: Megaphone },
   { href: "/knowledge", label: "Knowledge", icon: BookOpen },
   { href: "/profile", label: "Profile", icon: UserCircle },
 ];
 
 export const ADMIN_ONLY_NAV: NavItem[] = [
-  { href: "/call-jobs", label: "Call Jobs", icon: PhoneCall },
   { href: "/search", label: "Search", icon: Search },
   { href: "/collections", label: "Collections", icon: Database },
   { href: "/approve-clients", label: "Approve Clients", icon: ShieldCheck },
@@ -39,7 +39,6 @@ export const ADMIN_NAV: NavItem[] = [
 
 /** Routes only admins may access (approved clients are redirected). */
 export const ADMIN_ONLY_PATHS = [
-  "/call-jobs",
   "/search",
   "/collections",
   "/approve-clients",

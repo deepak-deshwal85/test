@@ -401,6 +401,7 @@ All scripts in `infra/scripts/`. Run from repo root unless noted.
 | **`sync_ssm_parameters.ps1`** | Windows PowerShell variant of SSM sync | `.\infra\scripts\sync-ssm-parameters.ps1` |
 | **`set_database_url_from_rds.py`** | Write RDS connection string to SSM `DATABASE_URL` | `python infra/scripts/set_database_url_from_rds.py --profile relaydesk-admin` |
 | **`init_database.py`** | Create PostgreSQL tables + optional dummy seed (not on ECS startup) | `python infra/scripts/init_database.py --use-tunnel` |
+| **`migrate_database.py`** | Apply SQL migrations (e.g. campaign columns) | `python infra/scripts/migrate_database.py --use-tunnel` |
 | **`reset_database.py`** | Drop all tables and recreate schema + seed | `python infra/scripts/reset_database.py --use-tunnel --yes` |
 | **`approve_cognito_user.py`** | Assign or revoke Cognito role groups by email | `python infra/scripts/approve_cognito_user.py --email u@x.com --role relaydesk-admins` |
 | **`backfill_guest_clients.py`** | Add `guest-clients` group to existing pool users | `python infra/scripts/backfill_guest_clients.py --profile relaydesk-admin` |

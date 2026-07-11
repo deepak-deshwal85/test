@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+CallScheduleValue = Literal["yes", "no"]
+CustomerStatusValue = Literal["active", "inactive"]
 
 
 class CustomerCreateRequest(BaseModel):
@@ -11,6 +15,8 @@ class CustomerCreateRequest(BaseModel):
     client_email_id: str = Field(min_length=3, max_length=255)
     consumer_phone_number: str = Field(min_length=1, max_length=32)
     consumer_email_id: str = Field(min_length=3, max_length=255)
+    call_schedule: CallScheduleValue = "no"
+    status: CustomerStatusValue = "active"
 
 
 class CustomerUpdateRequest(BaseModel):
@@ -21,6 +27,8 @@ class CustomerUpdateRequest(BaseModel):
     client_email_id: str | None = Field(default=None, min_length=3, max_length=255)
     consumer_phone_number: str | None = Field(default=None, min_length=1, max_length=32)
     consumer_email_id: str | None = Field(default=None, min_length=3, max_length=255)
+    call_schedule: CallScheduleValue | None = None
+    status: CustomerStatusValue | None = None
 
 
 class CustomerResponse(BaseModel):
@@ -32,6 +40,8 @@ class CustomerResponse(BaseModel):
     consumer_phone_number: str
     consumer_email_id: str
     is_approved: bool
+    call_schedule: CallScheduleValue
+    status: CustomerStatusValue
     created_at: datetime
     updated_at: datetime
 

@@ -37,7 +37,9 @@ INSERT INTO customers (
     client_email_id,
     consumer_phone_number,
     consumer_email_id,
-    is_approved
+    is_approved,
+    call_schedule,
+    status
 )
 SELECT
     c.id,
@@ -46,14 +48,16 @@ SELECT
     c.client_email_id,
     v.consumer_phone_number,
     v.consumer_email_id,
-    TRUE
+    TRUE,
+    v.call_schedule,
+    v.status
 FROM clients AS c
 CROSS JOIN (
     VALUES
-        ('919900000001', 'alice.consumer@example.com'),
-        ('919900000002', 'bob.consumer@example.com'),
-        ('919900000003', 'carol.consumer@example.com')
-) AS v(consumer_phone_number, consumer_email_id)
+        ('919900000001', 'alice.consumer@example.com', 'yes', 'active'),
+        ('919900000002', 'bob.consumer@example.com', 'yes', 'active'),
+        ('919900000003', 'carol.consumer@example.com', 'no', 'active')
+) AS v(consumer_phone_number, consumer_email_id, call_schedule, status)
 WHERE c.client_email_id = 'acme@example.com'
   AND c.client_business_phone_number IS NOT NULL
 ON CONFLICT (client_email_id, consumer_phone_number) DO UPDATE SET
@@ -61,6 +65,8 @@ ON CONFLICT (client_email_id, consumer_phone_number) DO UPDATE SET
     client_name = EXCLUDED.client_name,
     client_business_phone_number = EXCLUDED.client_business_phone_number,
     is_approved = EXCLUDED.is_approved,
+    call_schedule = EXCLUDED.call_schedule,
+    status = EXCLUDED.status,
     updated_at = NOW();
 
 INSERT INTO call_jobs (

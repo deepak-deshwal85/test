@@ -41,6 +41,8 @@ def test_create_customer(client: TestClient) -> None:
         consumer_phone_number="9876543210",
         consumer_email_id="consumer@example.com",
         is_approved=False,
+        call_schedule="no",
+        status="active",
         created_at=now,
         updated_at=now,
     )
@@ -68,7 +70,7 @@ def test_create_customer(client: TestClient) -> None:
 
 
 def test_trigger_call_job(client: TestClient) -> None:
-    from app.core.dependencies import get_call_job_service
+    from app.core.dependencies import get_call_job_service, get_client_repository
 
     job_id = uuid4()
     now = datetime.now(UTC)
@@ -86,9 +88,13 @@ def test_trigger_call_job(client: TestClient) -> None:
         created_at=now,
     )
     mock_service.run_job = AsyncMock()
+    mock_repository = AsyncMock()
+    mock_repository.get_by_email.return_value = None
+    mock_repository.get_by_cognito_sub.return_value = None
 
     app = create_app()
     app.dependency_overrides[get_call_job_service] = lambda: mock_service
+    app.dependency_overrides[get_client_repository] = lambda: mock_repository
     test_client = TestClient(app)
 
     response = test_client.post(

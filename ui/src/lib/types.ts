@@ -30,6 +30,9 @@ export interface ClientDeleteResponse {
   cognito_user_deleted: boolean;
 }
 
+export type CallScheduleValue = "yes" | "no";
+export type CustomerStatusValue = "active" | "inactive";
+
 export interface Customer {
   id: number;
   client_id: number | null;
@@ -39,6 +42,8 @@ export interface Customer {
   consumer_phone_number: string;
   consumer_email_id: string;
   is_approved: boolean;
+  call_schedule: CallScheduleValue;
+  status: CustomerStatusValue;
   created_at: string;
   updated_at: string;
 }

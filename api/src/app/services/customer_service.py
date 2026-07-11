@@ -24,6 +24,8 @@ class CustomerService:
             consumer_phone_number=customer.consumer_phone_number,
             consumer_email_id=customer.consumer_email_id,
             is_approved=customer.is_approved,
+            call_schedule=customer.call_schedule,
+            status=customer.status,
             created_at=customer.created_at,
             updated_at=customer.updated_at,
         )
@@ -35,6 +37,8 @@ class CustomerService:
             client_email_id=body.client_email_id,
             consumer_phone_number=body.consumer_phone_number,
             consumer_email_id=body.consumer_email_id,
+            call_schedule=body.call_schedule,
+            status=body.status,
         )
         return self._to_response(customer)
 
@@ -76,6 +80,8 @@ class CustomerService:
             client_name=body.client_name,
             consumer_email_id=body.consumer_email_id,
             consumer_phone_number=body.consumer_phone_number,
+            call_schedule=body.call_schedule,
+            status=body.status,
         )
         return self._to_response(customer) if customer else None
 

@@ -21,7 +21,7 @@ import type {
   CustomerListResponse,
   HealthResponse,
 } from "@/lib/types";
-import { ArrowRight, BookOpen, PhoneCall, Users } from "lucide-react";
+import { ArrowRight, BookOpen, Megaphone, Users } from "lucide-react";
 
 export default function DashboardPage() {
   const { clientEmailId, ready } = useClientScope();
@@ -142,11 +142,11 @@ export default function DashboardPage() {
             </CardHeader>
             <div className="grid gap-3 sm:grid-cols-2">
               <Link
-                href="/call-jobs"
+                href="/campaigns"
                 className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm font-medium text-zinc-800 transition-colors hover:border-zinc-300 hover:bg-white"
               >
-                <PhoneCall className="h-4 w-4 text-brand-600" aria-hidden />
-                Trigger outbound calls
+                <Megaphone className="h-4 w-4 text-brand-600" aria-hidden />
+                Manage campaign
               </Link>
               <Link
                 href="/search"
@@ -179,12 +179,12 @@ export default function DashboardPage() {
                   </div>
                   <Badge
                     className={
-                      customer.is_approved
+                      customer.call_schedule === "yes"
                         ? "bg-emerald-50 text-emerald-700"
                         : "bg-zinc-100 text-zinc-600"
                     }
                   >
-                    {customer.is_approved ? "approved" : "pending"}
+                    {customer.call_schedule === "yes" ? "scheduled" : "not scheduled"}
                   </Badge>
                 </li>
               ))}
