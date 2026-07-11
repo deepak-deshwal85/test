@@ -12,7 +12,7 @@ LiveKit voice agent for inbound/outbound phone calls. Runs an STT → LLM → TT
 
 - Connects to **LiveKit Cloud** for real-time audio rooms and SIP telephony.
 - Uses **Deepgram** (STT), **xAI** (LLM), **Cartesia** (TTS).
-- Loads per-phone config from `config/phone_number_<digits>.json`.
+- Loads per-client config from the **RelayDesk API** (`GET /v1/voice-agent-config/resolve-by-phone`) at call start.
 - Calls the **RAG API** (`POST /v1/search`) with Cognito M2M OAuth in production.
 - Optional **Cal.com** tools for meeting scheduling.
 
@@ -23,10 +23,10 @@ voice-agent/
 ├── src/
 │   ├── agent.py              # Entry point
 │   ├── agent_instructions.py
-│   ├── client_config.py      # Per-phone JSON config loader
+│   ├── client_config.py      # Runtime API config loader
+│   ├── voice_agent_config_client.py
 │   ├── scheduling_tools.py   # Cal.com integration
 │   └── rag_client/           # HTTP client for RAG API
-├── config/                   # phone_number_<digits>.json
 ├── scripts/                  # Cal.com debug utilities
 ├── tests/
 ├── Dockerfile
@@ -69,21 +69,15 @@ cp .env.example .env
 | `COGNITO_CLIENT_SECRET` | Production | M2M client secret |
 | `COGNITO_SCOPE` | Production | `relaydesk-api/access` |
 
-### Phone configuration
+### Voice agent configuration
 
-Create `config/phone_number_<digits>.json`:
+Per-client settings (greeting with service offerings, Cal.com) live in Postgres and are edited in the RelayDesk UI under **Voice agent**, or via the API. When callers ask questions, the agent searches uploaded documents automatically.
 
-```json
-{
-  "phone_number": "911171366880",
-  "client_name": "Acme Corp",
-  "knowledge_base_topic": "Your business",
-  "calcom_username": "your-calcom-username",
-  "calcom_event_type_slug": "30min",
-  "calcom_event_type_id": 1234567,
-  "rag_api_url": "http://127.0.0.1:8090"
-}
-```
+- `GET /v1/voice-agent-config?client_email_id=...` — read settings (UI)
+- `PUT /v1/voice-agent-config?client_email_id=...` — update settings (UI)
+- `GET /v1/voice-agent-config/resolve-by-phone?phone_number=...` — M2M, used by the voice agent at runtime
+
+Ensure each approved client has a business phone number in Postgres so inbound calls resolve correctly.
 
 ### Run
 

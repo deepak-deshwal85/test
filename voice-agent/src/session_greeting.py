@@ -7,8 +7,9 @@ from livekit.agents import AgentSession
 logger = logging.getLogger("relaydesk-agent")
 
 GREETING_INSTRUCTIONS = (
-    "Greet the caller briefly. Say you can answer questions from "
-    "the uploaded documents. Ask what they would like to know."
+    "Greet the caller briefly. Introduce the business and summarize key service "
+    "offerings. Say you can answer questions by searching the uploaded documents. "
+    "Ask what they would like to know."
 )
 
 
@@ -16,11 +17,15 @@ def is_session_closing_error(exc: BaseException) -> bool:
     return isinstance(exc, RuntimeError) and "AgentSession is closing" in str(exc)
 
 
-async def greet_caller(session: AgentSession) -> bool:
+async def greet_caller(session: AgentSession, *, greeting_instructions: str) -> bool:
     """Speak the opening greeting. Returns False if the call ended first."""
+    instructions = greeting_instructions.strip()
+    if not instructions:
+        logger.warning("empty greeting instructions; skipping greeting")
+        return False
     try:
         await session.generate_reply(
-            instructions=GREETING_INSTRUCTIONS,
+            instructions=instructions,
             allow_interruptions=True,
         )
         return True

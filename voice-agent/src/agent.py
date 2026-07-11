@@ -26,7 +26,6 @@ from dataclasses import replace
 
 from agent_instructions import build_conversation_flow_instructions
 from client_config import ClientConfig, resolve_client_config
-from client_email_resolver import resolve_client_email
 from rag_client import build_rag_instructions, build_rag_tools
 from call_summary_builder import build_call_summary_from_history
 from rag_client.call_summary_client import (
@@ -143,7 +142,10 @@ class DefaultAgent(Agent):
 
     async def on_enter(self) -> None:
         # Greet immediately — outbound/no-answer calls can end while RAG warms up.
-        await greet_caller(self.session)
+        await greet_caller(
+            self.session,
+            greeting_instructions=self._client_config.greeting_message,
+        )
 
         if self._knowledge_retriever is None:
             return
@@ -273,23 +275,23 @@ async def _resolve_session_client(ctx: JobContext) -> ClientConfig:
             phone_digits,
         )
 
-    client_config = resolve_client_config(phone_digits)
-    if client_config is None:
-        raise RuntimeError(f"No client config found for phone number {phone_digits!r}")
-
-    client_email_id = await resolve_client_email(
+    client_config = await resolve_client_config(
+        phone_digits,
         metadata_email=metadata_email,
-        config_email=client_config.client_email_id,
-        phone_digits=phone_digits,
     )
-    if not client_email_id:
+    if client_config is None:
         raise RuntimeError(
-            f"Could not resolve client_email_id for phone {phone_digits!r}. "
-            "Ensure the client exists in Postgres with a business phone, or set "
-            "client_email_id in job metadata or phone_number_*.json."
+            f"No voice agent config found for phone {phone_digits!r}. "
+            "Ensure the client exists in Postgres with voice agent settings."
         )
 
-    client_config = replace(client_config, client_email_id=client_email_id)
+    if metadata_email and "@" in metadata_email:
+        client_config = replace(
+            client_config,
+            client_email_id=metadata_email.strip().lower(),
+        )
+
+    client_email_id = client_config.client_email_id
 
     ctx.proc.userdata["client_config"] = client_config
     ctx.proc.userdata["client_phone_number"] = client_config.phone_number

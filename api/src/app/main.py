@@ -27,6 +27,7 @@ from app.routers import (
     embeddings,
     health,
     search,
+    voice_agent_config,
 )
 
 logger = logging.getLogger("relaydesk-api")
@@ -76,6 +77,7 @@ def create_app() -> FastAPI:
     app.include_router(search.router)
     app.include_router(customers.router)
     app.include_router(call_summaries.router)
+    app.include_router(voice_agent_config.router)
     app.include_router(clients.router)
     app.include_router(call_jobs.router)
 

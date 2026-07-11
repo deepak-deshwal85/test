@@ -123,3 +123,30 @@ class CallSummaryRow(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class ClientVoiceAgentConfigRow(Base):
+    __tablename__ = "client_voice_agent_configs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    client_id: Mapped[int] = mapped_column(
+        ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    voice_agent_greeting_message: Mapped[str] = mapped_column(Text, nullable=False)
+    calcom_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    calcom_event_type_slug: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    calcom_event_type_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    calcom_organization_slug: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )

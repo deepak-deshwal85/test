@@ -1,3 +1,18 @@
+export interface VoiceAgentConfig {
+  id: number;
+  client_id: number;
+  client_email_id: string;
+  client_name: string;
+  client_business_phone_number: string | null;
+  voice_agent_greeting_message: string;
+  calcom_username: string | null;
+  calcom_event_type_slug: string | null;
+  calcom_event_type_id: number | null;
+  calcom_organization_slug: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ClientProfile {
   id: number;
   client_phone_number: string | null;

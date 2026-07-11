@@ -6,7 +6,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from session_greeting import greet_caller, is_session_closing_error
+from session_greeting import GREETING_INSTRUCTIONS, greet_caller, is_session_closing_error
 
 
 def test_is_session_closing_error():
@@ -21,7 +21,7 @@ def test_is_session_closing_error():
 async def test_greet_caller_success():
     session = MagicMock()
     session.generate_reply = AsyncMock()
-    assert await greet_caller(session) is True
+    assert await greet_caller(session, greeting_instructions=GREETING_INSTRUCTIONS) is True
     session.generate_reply.assert_awaited_once()
 
 
@@ -31,4 +31,4 @@ async def test_greet_caller_skips_when_session_closing():
     session.generate_reply = AsyncMock(
         side_effect=RuntimeError("AgentSession is closing, cannot use generate_reply()")
     )
-    assert await greet_caller(session) is False
+    assert await greet_caller(session, greeting_instructions=GREETING_INSTRUCTIONS) is False

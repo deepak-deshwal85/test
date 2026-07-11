@@ -12,12 +12,16 @@ from app.core.rbac import Permission
 from app.db.embedding_provider import EmbeddingProviderFactory
 from app.db.postgres.call_summary_repository import CallSummaryRepository
 from app.db.postgres.client_repository import ClientRepository
+from app.db.postgres.client_voice_agent_config_repository import (
+    ClientVoiceAgentConfigRepository,
+)
 from app.db.postgres.customer_repository import CustomerRepository
 from app.db.postgres.session import get_db_session
 from app.db.qdrant_repository import QdrantRepository
 from app.services.call_job_service import CallJobService, build_call_job_service
 from app.services.call_summary_service import CallSummaryService
 from app.services.client_service import ClientService
+from app.services.client_voice_agent_config_service import ClientVoiceAgentConfigService
 from app.services.collection_service import CollectionService
 from app.services.customer_service import CustomerService
 from app.services.document_service import DocumentService
@@ -119,6 +123,22 @@ async def get_call_summary_service(
     repository: Annotated[CallSummaryRepository, Depends(get_call_summary_repository)],
 ) -> CallSummaryService:
     return CallSummaryService(repository)
+
+
+async def get_client_voice_agent_config_repository(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> ClientVoiceAgentConfigRepository:
+    return ClientVoiceAgentConfigRepository(session)
+
+
+async def get_client_voice_agent_config_service(
+    repository: Annotated[
+        ClientVoiceAgentConfigRepository,
+        Depends(get_client_voice_agent_config_repository),
+    ],
+    client_repository: Annotated[ClientRepository, Depends(get_client_repository)],
+) -> ClientVoiceAgentConfigService:
+    return ClientVoiceAgentConfigService(repository, client_repository)
 
 
 def get_call_job_service(

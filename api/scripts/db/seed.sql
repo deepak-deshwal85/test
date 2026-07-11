@@ -156,3 +156,24 @@ SELECT
 FROM customers AS cust
 WHERE cust.client_email_id = 'acme@example.com'
   AND cust.consumer_phone_number = '919900000002';
+
+INSERT INTO client_voice_agent_configs (
+    client_id,
+    voice_agent_greeting_message,
+    calcom_username,
+    calcom_event_type_slug,
+    calcom_event_type_id
+)
+SELECT
+    c.id,
+    'Greet the caller briefly. Introduce the business and summarize key service offerings. Say you can answer questions by searching the uploaded documents. Ask what they would like to know.',
+    'deepak-kumar-a7vq7q',
+    '30min',
+    6073963
+FROM clients AS c
+WHERE c.client_email_id = 'acme@example.com'
+ON CONFLICT (client_id) DO UPDATE SET
+    calcom_username = EXCLUDED.calcom_username,
+    calcom_event_type_slug = EXCLUDED.calcom_event_type_slug,
+    calcom_event_type_id = EXCLUDED.calcom_event_type_id,
+    updated_at = NOW();

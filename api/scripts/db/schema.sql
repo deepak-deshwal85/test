@@ -95,3 +95,22 @@ CREATE INDEX IF NOT EXISTS idx_call_summaries_client_email
 
 CREATE INDEX IF NOT EXISTS idx_call_summaries_call_start
     ON call_summaries (client_email_id, call_start_time DESC);
+
+CREATE TABLE IF NOT EXISTS client_voice_agent_configs (
+    id SERIAL PRIMARY KEY,
+    client_id INTEGER NOT NULL UNIQUE REFERENCES clients(id) ON DELETE CASCADE,
+    voice_agent_greeting_message TEXT NOT NULL DEFAULT (
+        'Greet the caller briefly. Introduce the business and summarize key service '
+        'offerings. Say you can answer questions by searching the uploaded documents. '
+        'Ask what they would like to know.'
+    ),
+    calcom_username VARCHAR(255),
+    calcom_event_type_slug VARCHAR(255),
+    calcom_event_type_id INTEGER,
+    calcom_organization_slug VARCHAR(255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_client_voice_agent_configs_client_id
+    ON client_voice_agent_configs (client_id);

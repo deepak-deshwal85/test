@@ -1,14 +1,14 @@
-import json
 import logging
 import re
 from dataclasses import dataclass
-from pathlib import Path
-
-from paths import CONFIG_DIR
 
 logger = logging.getLogger("relaydesk-agent")
 
-CONFIG_FILE_PATTERN = "phone_number_{phone_number}.json"
+DEFAULT_VOICE_AGENT_GREETING = (
+    "Greet the caller briefly. Introduce the business and summarize key service "
+    "offerings. Say you can answer questions by searching the uploaded documents. "
+    "Ask what they would like to know."
+)
 
 
 @dataclass(frozen=True)
@@ -23,70 +23,85 @@ class CalComConfig:
 class ClientConfig:
     phone_number: str
     client_name: str
-    client_email_id: str | None = None
+    client_email_id: str
+    greeting_message: str
     calcom: CalComConfig | None = None
-    qdrant_collection: str | None = None
     rag_api_url: str | None = None
-    knowledge_base_topic: str | None = None
 
 
 def normalize_phone_number(phone: str) -> str:
     return re.sub(r"\D", "", phone)
 
 
-def config_path_for_phone(phone_number: str) -> Path:
-    return CONFIG_DIR / CONFIG_FILE_PATTERN.format(phone_number=phone_number)
-
-
-def load_client_config(phone_number: str) -> ClientConfig:
-    path = config_path_for_phone(phone_number)
-    if not path.is_file():
-        raise FileNotFoundError(
-            f"No client config found for phone number {phone_number!r}"
-        )
-
-    with path.open(encoding="utf-8") as f:
-        data = json.load(f)
-
+def client_config_from_resolved(
+    *,
+    phone_digits: str,
+    resolved,
+) -> ClientConfig:
     calcom = None
-    if data.get("calcom_username") and data.get("calcom_event_type_slug"):
-        event_type_id = data.get("calcom_event_type_id")
+    if resolved.calcom_username and resolved.calcom_event_type_slug:
         calcom = CalComConfig(
-            username=data["calcom_username"],
-            event_type_slug=data["calcom_event_type_slug"],
-            event_type_id=int(event_type_id) if event_type_id is not None else None,
-            organization_slug=data.get("calcom_organization_slug"),
+            username=resolved.calcom_username,
+            event_type_slug=resolved.calcom_event_type_slug,
+            event_type_id=resolved.calcom_event_type_id,
+            organization_slug=resolved.calcom_organization_slug,
         )
+
+    phone_number = normalize_phone_number(
+        resolved.client_business_phone_number or phone_digits
+    )
+    greeting = resolved.voice_agent_greeting_message.strip() or DEFAULT_VOICE_AGENT_GREETING
 
     return ClientConfig(
-        phone_number=data["phone_number"],
-        client_name=data["client_name"],
-        client_email_id=(data.get("client_email_id") or "").strip().lower() or None,
+        phone_number=phone_number,
+        client_name=resolved.client_name,
+        client_email_id=resolved.client_email_id,
+        greeting_message=greeting,
         calcom=calcom,
-        qdrant_collection=data.get("qdrant_collection"),
-        rag_api_url=data.get("rag_api_url"),
-        knowledge_base_topic=data.get("knowledge_base_topic"),
     )
 
 
-def resolve_knowledge_base_topic(client_config: ClientConfig) -> str:
-    if client_config.knowledge_base_topic:
-        return client_config.knowledge_base_topic.strip()
-    return client_config.client_name
+async def resolve_client_config(
+    phone_digits: str,
+    *,
+    metadata_email: str | None = None,
+    base_url: str | None = None,
+) -> ClientConfig | None:
+    """Load per-client voice agent settings from the RelayDesk API at runtime."""
+    from rag_client.config import load_rag_settings
+    from voice_agent_config_client import (
+        resolve_voice_agent_config_by_email,
+        resolve_voice_agent_config_by_phone,
+    )
 
-
-def resolve_client_config(phone_digits: str) -> ClientConfig | None:
-    """Match a SIP phone number to a per-number client config."""
-    if not phone_digits:
+    if not phone_digits and not metadata_email:
         return None
 
-    if config_path_for_phone(phone_digits).is_file():
-        return load_client_config(phone_digits)
+    rag_settings = load_rag_settings()
+    api_base_url = base_url or rag_settings.rag_api_base_url
 
-    for config_file in sorted(CONFIG_DIR.glob("phone_number_*.json")):
-        suffix = config_file.stem.removeprefix("phone_number_")
-        if phone_digits == suffix or phone_digits.endswith(suffix):
-            return load_client_config(suffix)
+    resolved = None
+    if phone_digits:
+        resolved = await resolve_voice_agent_config_by_phone(
+            phone_digits=phone_digits,
+            base_url=api_base_url,
+        )
 
-    logger.warning("No client config matched phone digits %s", phone_digits)
-    return None
+    if resolved is None and metadata_email and "@" in metadata_email:
+        resolved = await resolve_voice_agent_config_by_email(
+            client_email_id=metadata_email,
+            base_url=api_base_url,
+        )
+
+    if resolved is None:
+        logger.warning(
+            "No voice agent config matched phone=%s email=%s",
+            phone_digits,
+            metadata_email,
+        )
+        return None
+
+    return client_config_from_resolved(
+        phone_digits=phone_digits or resolved.client_business_phone_number or "",
+        resolved=resolved,
+    )

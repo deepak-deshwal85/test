@@ -15,15 +15,15 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from calcom_client import CalComClient, CalComEventConfig
-from client_config import load_client_config
+from client_config import resolve_client_config
 
 
 async def main(phone_number: str) -> int:
     load_dotenv(".env.local")
     load_dotenv(".env")
 
-    config = load_client_config(phone_number)
-    if config.calcom is None:
+    config = await resolve_client_config(phone_number)
+    if config is None or config.calcom is None:
         print("Cal.com is not configured for this phone number.")
         return 1
 
@@ -72,8 +72,8 @@ async def main(phone_number: str) -> int:
     except Exception as exc:
         print(f"Slot lookup failed: {exc}")
         print(
-            "If the slug is wrong, update calcom_event_type_slug in the phone config "
-            "or set calcom_event_type_id."
+            "If the slug is wrong, update calcom_event_type_slug in the voice agent "
+            "settings UI or set calcom_event_type_id."
         )
         await client.aclose()
         return 1

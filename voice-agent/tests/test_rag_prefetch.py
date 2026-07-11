@@ -64,6 +64,7 @@ def test_warmup_knowledge_retriever_runs_searches():
         phone_number="911171366880",
         client_name="Test Client",
         client_email_id="client@example.com",
+        greeting_message="Hello.",
     )
 
     asyncio.run(
@@ -109,6 +110,7 @@ def test_requires_sync_turn_completion():
         phone_number="911171366880",
         client_name="Test Client",
         client_email_id="client@example.com",
+        greeting_message="Hello.",
     )
     assert requires_sync_turn_completion(config) is True
 

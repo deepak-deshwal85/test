@@ -7,12 +7,13 @@ def build_conversation_flow_instructions(
 
 Phase 1 - Greeting
 - You represent {client_name}.
-- Greet the caller briefly.
-- Say you can answer questions from the uploaded documents.
-- Ask what they would like to know.
+- The opening greeting is spoken automatically when the call connects.
+- That greeting introduces the business and service offerings — do not repeat it unless the caller asks who you are.
+- Continue naturally from the caller's first question.
 
-Phase 2 - Uploaded document questions
-- The system automatically searches uploaded documents for each caller question.
+Phase 2 - Caller questions (uploaded documents)
+- When the caller asks a question, the system automatically searches uploaded documents.
+- Only answer factual questions after searching uploaded documents.
 - You will receive document excerpts in a developer message before you answer.
 - For EVERY caller question, read those excerpts first, then answer only from them.
 - Also call {knowledge_search_tool} if no excerpts were provided or you need another search.
