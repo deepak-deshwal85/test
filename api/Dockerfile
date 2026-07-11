@@ -4,19 +4,21 @@ ARG PYTHON_VERSION=3.13
 FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim
 
 ENV PYTHONUNBUFFERED=1
+ENV UV_COMPILE_BYTECODE=1
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y gcc g++ python3-dev \
+# System deps once (cached unless base image changes)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc g++ python3-dev curl \
   && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml ./
-RUN mkdir -p src
-RUN uv sync
+# Dependency layer cached unless lockfile changes
+COPY pyproject.toml uv.lock ./
+RUN mkdir -p src && uv sync --locked --no-install-project
 
+# App code last — code-only changes skip uv sync
 COPY . .
-
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
-  && rm -rf /var/lib/apt/lists/*
+RUN uv sync --locked
 
 ENV RAG_API_HOST=0.0.0.0
 ENV RAG_API_PORT=8090

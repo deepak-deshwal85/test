@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """Build and deploy API, UI, and voice-agent to ECS.
 
-Default: parallel deploy (new terminal per service on Windows, wait for all).
+Default: parallel + fast (downtime OK, ECR layer cache, stop old tasks).
 
 Usage (from repo root):
   python infra/scripts/deploy_all.py
+  python infra/scripts/deploy_all.py --only api
   python infra/scripts/deploy_all.py --only api,ui
+  python infra/scripts/deploy_all.py --safe
   python infra/scripts/deploy_all.py --sequential
-  python infra/scripts/deploy_all.py --dry-run
 
-Windows double-click:
-  infra/scripts/deploy_all.bat
+Windows:
+  infra\\scripts\\deploy_click.bat   (double-click — interactive menu)
+  infra\\scripts\\deploy_all.bat     (double-click menu, or pass CLI args)
+  infra\\scripts\\deploy_fast.bat api
 """
 from __future__ import annotations
 
@@ -94,7 +97,10 @@ def _deploy_parallel(
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Build and deploy API, UI, and voice-agent to ECS (parallel by default)"
+        description=(
+            "Build and deploy API, UI, and voice-agent to ECS "
+            "(parallel + fast by default)"
+        )
     )
     parser.add_argument(
         "--only",
@@ -123,9 +129,9 @@ def main() -> int:
         help="ECR tag for all services (default: api/ui=latest, voice-agent=v1)",
     )
     parser.add_argument(
-        "--fast",
+        "--safe",
         action="store_true",
-        help="Fast dev deploy (downtime OK): stop tasks, single push, BuildKit",
+        help="Slower rolling deploy (keep old task until new is healthy)",
     )
     parser.add_argument("--terraform-dir", default="infra/terraform")
     parser.add_argument("--dry-run", action="store_true")
@@ -143,6 +149,11 @@ def main() -> int:
     else:
         services = list(DEPLOY_ORDER)
 
+    print(
+        f"Deploy mode: {'safe (rolling)' if args.safe else 'fast (downtime OK)'} | "
+        f"services: {', '.join(services)}"
+    )
+
     shared_args: list[str] = []
     if args.profile:
         shared_args.extend(["--profile", args.profile])
@@ -156,8 +167,8 @@ def main() -> int:
         shared_args.append("--build-only")
     if args.skip_deploy:
         shared_args.append("--skip-deploy")
-    if args.fast:
-        shared_args.append("--fast")
+    if args.safe:
+        shared_args.append("--safe")
 
     if args.sequential:
         code = _deploy_sequential(services, shared_args)
