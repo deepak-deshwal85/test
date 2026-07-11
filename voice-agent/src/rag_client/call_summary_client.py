@@ -60,12 +60,14 @@ class CallSummaryApiClient:
         call_end_time: datetime | None,
         call_summary: str,
         job_id: UUID | None = None,
+        meeting_scheduled: bool = False,
     ) -> None:
         payload: dict[str, object] = {
             "customer_id": customer_id,
             "call_start_time": call_start_time.isoformat(),
             "call_end_time": call_end_time.isoformat() if call_end_time else None,
             "call_summary": call_summary[:MAX_SUMMARY_LENGTH],
+            "meeting_scheduled": meeting_scheduled,
         }
         if job_id is not None:
             payload["job_id"] = str(job_id)
@@ -104,6 +106,7 @@ async def persist_call_summary(
     call_start_time: datetime,
     call_end_time: datetime,
     call_summary: str,
+    meeting_scheduled: bool = False,
 ) -> None:
     if customer_id is None:
         logger.info("skipping call summary save: no customer_id in job metadata")
@@ -118,10 +121,12 @@ async def persist_call_summary(
             call_end_time=call_end_time,
             call_summary=call_summary,
             job_id=job_id,
+            meeting_scheduled=meeting_scheduled,
         )
         logger.info(
-            "saved call summary customer_id=%s duration_seconds=%.1f",
+            "saved call summary customer_id=%s meeting_scheduled=%s duration_seconds=%.1f",
             customer_id,
+            meeting_scheduled,
             (call_end_time - call_start_time).total_seconds(),
         )
     except Exception:

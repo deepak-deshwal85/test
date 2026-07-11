@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS customers (
     consumer_email_id VARCHAR(255) NOT NULL,
     is_approved BOOLEAN NOT NULL DEFAULT TRUE,
     call_schedule VARCHAR(3) NOT NULL DEFAULT 'no',
-    status VARCHAR(32) NOT NULL DEFAULT 'active',
+    status VARCHAR(32) NOT NULL DEFAULT 'READY',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -51,7 +51,7 @@ ALTER TABLE customers
 
 ALTER TABLE customers
     ADD CONSTRAINT chk_customers_status
-    CHECK (status IN ('active', 'inactive'));
+    CHECK (status IN ('READY', 'MEETING_SCHEDULED', 'MEETING_NOT_SCHEDULED'));
 
 CREATE TABLE IF NOT EXISTS call_jobs (
     id UUID PRIMARY KEY,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.db.postgres.call_summary_repository import CallSummaryRepository
+from app.db.postgres.customer_repository import CustomerRepository
 from app.domain.call_summary_models import CallSummary
 from app.schemas.call_summaries import (
     CallSummaryCreateRequest,
@@ -10,8 +11,13 @@ from app.schemas.call_summaries import (
 
 
 class CallSummaryService:
-    def __init__(self, repository: CallSummaryRepository) -> None:
+    def __init__(
+        self,
+        repository: CallSummaryRepository,
+        customer_repository: CustomerRepository,
+    ) -> None:
         self._repository = repository
+        self._customer_repository = customer_repository
 
     @staticmethod
     def _to_response(summary: CallSummary) -> CallSummaryResponse:
@@ -41,6 +47,11 @@ class CallSummaryService:
             call_end_time=body.call_end_time,
             call_summary=body.call_summary,
             job_id=body.job_id,
+        )
+        await self._customer_repository.update_status_after_call(
+            body.customer_id,
+            client_email_id=client_email_id,
+            meeting_scheduled=body.meeting_scheduled,
         )
         return self._to_response(summary)
 

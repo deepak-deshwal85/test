@@ -24,3 +24,33 @@ export function statusColor(status: string): string {
       return "bg-slate-100 text-slate-700";
   }
 }
+
+export function customerStatusLabel(value: string): string {
+  switch (value) {
+    case "READY":
+      return "Ready";
+    case "MEETING_SCHEDULED":
+      return "Meeting scheduled";
+    case "MEETING_NOT_SCHEDULED":
+      return "No meeting";
+    default:
+      return value;
+  }
+}
+
+export function customerStatusColor(value: string): string {
+  switch (value) {
+    case "READY":
+      return "bg-emerald-50 text-emerald-700";
+    case "MEETING_SCHEDULED":
+      return "bg-blue-50 text-blue-700";
+    case "MEETING_NOT_SCHEDULED":
+      return "bg-zinc-100 text-zinc-600";
+    default:
+      return "bg-zinc-100 text-zinc-600";
+  }
+}
+
+export function callScheduleLabel(value: string): string {
+  return value === "yes" ? "Yes" : "No";
+}

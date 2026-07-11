@@ -46,7 +46,10 @@ export interface ClientDeleteResponse {
 }
 
 export type CallScheduleValue = "yes" | "no";
-export type CustomerStatusValue = "active" | "inactive";
+export type CustomerStatusValue =
+  | "READY"
+  | "MEETING_SCHEDULED"
+  | "MEETING_NOT_SCHEDULED";
 
 export interface Customer {
   id: number;

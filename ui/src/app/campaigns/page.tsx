@@ -49,7 +49,9 @@ export default function CampaignsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const scheduledCount = customers.filter((c) => c.call_schedule === "yes").length;
+  const scheduledCount = customers.filter(
+    (c) => c.call_schedule === "yes" && c.status === "READY",
+  ).length;
 
   async function loadCustomers() {
     if (!ready || !clientEmailId) {
@@ -135,7 +137,9 @@ export default function CampaignsPage() {
     }
     if (!clientEmailId) return;
     if (scheduledCount === 0) {
-      setError("Set call schedule to Yes for at least one active customer.");
+      setError(
+        "Set call schedule to Yes and status to Ready for at least one customer.",
+      );
       return;
     }
     setTriggering(true);
@@ -154,7 +158,7 @@ export default function CampaignsPage() {
       const job = await apiFetch<CallJob>(`v1/call-jobs/${result.job_id}?${scope}`);
       setSelectedJob(job);
       setSuccess(
-        `Campaign started — ${scheduledCount} customer${scheduledCount === 1 ? "" : "s"} scheduled.`,
+        `Campaign started — ${scheduledCount} customer${scheduledCount === 1 ? "" : "s"} queued.`,
       );
       await loadJobs();
     } catch (e) {
@@ -200,7 +204,7 @@ export default function CampaignsPage() {
               <CardTitle>Trigger campaign</CardTitle>
               <CardDescription>
                 Calls customers with call schedule <strong>Yes</strong> and status{" "}
-                <strong>active</strong> using business phone{" "}
+                <strong>Ready</strong> using business phone{" "}
                 {clientBusinessPhoneNumber ?? "—"}.
               </CardDescription>
             </CardHeader>
@@ -210,7 +214,7 @@ export default function CampaignsPage() {
                 disabled={triggering || !clientBusinessPhoneNumber || scheduledCount === 0}
               >
                 {triggering ? <Spinner /> : <Megaphone className="h-4 w-4" aria-hidden />}
-                {triggering ? "Starting…" : `Trigger campaign (${scheduledCount} scheduled)`}
+                {triggering ? "Starting…" : `Trigger campaign (${scheduledCount} queued)`}
               </Button>
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -224,6 +228,8 @@ export default function CampaignsPage() {
               <CardTitle>Customers</CardTitle>
               <CardDescription className="mt-1">
                 Set call schedule to Yes to include a customer in the next campaign.
+                Status starts as Ready for new customers; after a call it becomes
+                Meeting scheduled or No meeting automatically.
               </CardDescription>
             </div>
             <div className="p-2 sm:p-4">
@@ -275,8 +281,9 @@ export default function CampaignsPage() {
                               })
                             }
                           >
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
+                            <option value="READY">Ready</option>
+                            <option value="MEETING_SCHEDULED">Meeting scheduled</option>
+                            <option value="MEETING_NOT_SCHEDULED">No meeting</option>
                           </Select>
                         </TableCell>
                       </TableRow>

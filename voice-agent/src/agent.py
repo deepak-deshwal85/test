@@ -201,12 +201,15 @@ class DefaultAgent(Agent):
 def build_session_tools(
     client_config: ClientConfig,
     knowledge_retriever=None,
+    *,
+    call_outcome: dict[str, bool] | None = None,
 ) -> list[object]:
     return [
         *build_rag_tools(client_config, retriever=knowledge_retriever),
         *build_scheduling_tools(
             client_config,
             default_timezone=DEFAULT_MEETING_TIMEZONE,
+            call_outcome=call_outcome,
         ),
     ]
 
@@ -253,6 +256,8 @@ async def _resolve_session_client(ctx: JobContext) -> ClientConfig:
 
     ctx.proc.userdata["customer_id"] = customer_id
     ctx.proc.userdata["job_id"] = job_id
+    call_outcome: dict[str, bool] = {"meeting_scheduled": False}
+    ctx.proc.userdata["call_outcome"] = call_outcome
 
     phone_override = os.getenv("CLIENT_PHONE_OVERRIDE", "").strip()
     if not phone_digits and phone_override:
@@ -347,7 +352,12 @@ async def entrypoint(ctx: JobContext) -> None:
     client_config = await _resolve_session_client(ctx)
     rag_settings = load_rag_settings()
     knowledge_retriever = create_knowledge_retriever(client_config, rag_settings)
-    session_tools = build_session_tools(client_config, knowledge_retriever)
+    call_outcome = ctx.proc.userdata["call_outcome"]
+    session_tools = build_session_tools(
+        client_config,
+        knowledge_retriever,
+        call_outcome=call_outcome,
+    )
     tool_names = [
         getattr(tool, "id", getattr(tool, "name", repr(tool))) for tool in session_tools
     ]
@@ -405,6 +415,7 @@ async def entrypoint(ctx: JobContext) -> None:
         call_end_time = datetime.now(UTC)
         customer_id = ctx.proc.userdata.get("customer_id")
         job_id = ctx.proc.userdata.get("job_id")
+        call_outcome = ctx.proc.userdata.get("call_outcome") or {}
         try:
             summary_text = build_call_summary_from_history(session.history)
             await persist_call_summary(
@@ -414,6 +425,7 @@ async def entrypoint(ctx: JobContext) -> None:
                 call_start_time=call_start_time,
                 call_end_time=call_end_time,
                 call_summary=summary_text,
+                meeting_scheduled=bool(call_outcome.get("meeting_scheduled")),
             )
         except Exception:
             logger.exception("failed to persist call summary after session ended")

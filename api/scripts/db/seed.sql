@@ -54,9 +54,9 @@ SELECT
 FROM clients AS c
 CROSS JOIN (
     VALUES
-        ('919900000001', 'alice.consumer@example.com', 'yes', 'active'),
-        ('919900000002', 'bob.consumer@example.com', 'yes', 'active'),
-        ('919900000003', 'carol.consumer@example.com', 'no', 'active')
+        ('919900000001', 'alice.consumer@example.com', 'yes', 'READY'),
+        ('919900000002', 'bob.consumer@example.com', 'yes', 'READY'),
+        ('919900000003', 'carol.consumer@example.com', 'no', 'MEETING_NOT_SCHEDULED')
 ) AS v(consumer_phone_number, consumer_email_id, call_schedule, status)
 WHERE c.client_email_id = 'acme@example.com'
   AND c.client_business_phone_number IS NOT NULL

@@ -26,6 +26,7 @@ def build_scheduling_tools(
     client_config: ClientConfig,
     *,
     default_timezone: str,
+    call_outcome: dict[str, bool] | None = None,
 ) -> list[object]:
     if client_config.calcom is None:
         logger.warning(
@@ -75,7 +76,7 @@ def build_scheduling_tools(
         notes: str = "",
     ) -> str:
         try:
-            return await book_meeting(
+            result = await book_meeting(
                 MeetingRequest(
                     client_phone_number=client_config.phone_number,
                     client_name=client_config.client_name,
@@ -88,6 +89,9 @@ def build_scheduling_tools(
                 ),
                 calcom,
             )
+            if call_outcome is not None:
+                call_outcome["meeting_scheduled"] = True
+            return result
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
 

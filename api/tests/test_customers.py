@@ -42,7 +42,7 @@ def test_create_customer(client: TestClient) -> None:
         consumer_email_id="consumer@example.com",
         is_approved=False,
         call_schedule="no",
-        status="active",
+        status="READY",
         created_at=now,
         updated_at=now,
     )

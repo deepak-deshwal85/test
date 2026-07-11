@@ -12,6 +12,7 @@ class CallSummaryCreateRequest(BaseModel):
     call_end_time: datetime | None = None
     call_summary: str = Field(default="", max_length=16000)
     job_id: UUID | None = None
+    meeting_scheduled: bool = False
 
 
 class CallSummaryUpdateRequest(BaseModel):

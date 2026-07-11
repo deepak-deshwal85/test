@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 CallScheduleValue = Literal["yes", "no"]
-CustomerStatusValue = Literal["active", "inactive"]
+CustomerStatusValue = Literal["READY", "MEETING_SCHEDULED", "MEETING_NOT_SCHEDULED"]
 
 
 class CustomerCreateRequest(BaseModel):
@@ -16,7 +16,7 @@ class CustomerCreateRequest(BaseModel):
     consumer_phone_number: str = Field(min_length=1, max_length=32)
     consumer_email_id: str = Field(min_length=3, max_length=255)
     call_schedule: CallScheduleValue = "no"
-    status: CustomerStatusValue = "active"
+    status: CustomerStatusValue = "READY"
 
 
 class CustomerUpdateRequest(BaseModel):

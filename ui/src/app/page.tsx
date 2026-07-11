@@ -22,6 +22,7 @@ import type {
   HealthResponse,
 } from "@/lib/types";
 import { ArrowRight, BookOpen, Megaphone, Users } from "lucide-react";
+import { callScheduleLabel, customerStatusColor, customerStatusLabel } from "@/lib/utils";
 
 export default function DashboardPage() {
   const { clientEmailId, ready } = useClientScope();
@@ -177,14 +178,8 @@ export default function DashboardPage() {
                       {customer.consumer_email_id}
                     </p>
                   </div>
-                  <Badge
-                    className={
-                      customer.call_schedule === "yes"
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-zinc-100 text-zinc-600"
-                    }
-                  >
-                    {customer.call_schedule === "yes" ? "scheduled" : "not scheduled"}
+                  <Badge className={customerStatusColor(customer.status)}>
+                    {customerStatusLabel(customer.status)}
                   </Badge>
                 </li>
               ))}

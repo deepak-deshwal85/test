@@ -6,6 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.postgres.models import ClientRow, CustomerRow
 from app.domain.customer_models import Customer, normalize_email, normalize_phone_number
+from app.domain.customer_status import (
+    VALID_CALL_SCHEDULES,
+    VALID_CUSTOMER_STATUSES,
+    customer_status_after_call,
+)
 
 _DUPLICATE_CUSTOMER_MESSAGE = (
     "Customer already exists for this client and consumer phone number"
@@ -78,7 +83,7 @@ class CustomerRepository:
         consumer_phone_number: str,
         consumer_email_id: str,
         call_schedule: str = "no",
-        status: str = "active",
+        status: str = "READY",
     ) -> Customer:
         normalized_business = normalize_phone_number(client_business_phone_number)
         normalized_consumer = normalize_phone_number(consumer_phone_number)
@@ -159,7 +164,7 @@ class CustomerRepository:
                 == normalize_phone_number(client_business_phone_number)
             )
             .where(CustomerRow.call_schedule == "yes")
-            .where(CustomerRow.status == "active")
+            .where(CustomerRow.status == "READY")
             .order_by(CustomerRow.id)
         )
         rows = (await self._session.execute(query)).scalars().all()
@@ -216,12 +221,14 @@ class CustomerRepository:
                 raise self._duplicate_customer_error()
             row.consumer_phone_number = normalized_consumer
         if call_schedule is not None:
-            if call_schedule not in {"yes", "no"}:
+            if call_schedule not in VALID_CALL_SCHEDULES:
                 raise ValueError("call_schedule must be 'yes' or 'no'")
             row.call_schedule = call_schedule
         if status is not None:
-            if status not in {"active", "inactive"}:
-                raise ValueError("status must be 'active' or 'inactive'")
+            if status not in VALID_CUSTOMER_STATUSES:
+                raise ValueError(
+                    "status must be READY, MEETING_SCHEDULED, or MEETING_NOT_SCHEDULED"
+                )
             row.status = status
 
         try:
@@ -231,6 +238,19 @@ class CustomerRepository:
             _raise_from_integrity_error(exc)
         await self._session.refresh(row)
         return self._to_domain(row)
+
+    async def update_status_after_call(
+        self,
+        customer_id: int,
+        *,
+        client_email_id: str,
+        meeting_scheduled: bool,
+    ) -> Customer | None:
+        return await self.update(
+            customer_id,
+            client_email_id=client_email_id,
+            status=customer_status_after_call(meeting_scheduled=meeting_scheduled),
+        )
 
     async def delete(self, customer_id: int, *, client_email_id: str) -> bool:
         row = await self._session.get(CustomerRow, customer_id)

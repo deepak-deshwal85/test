@@ -121,8 +121,9 @@ async def get_call_summary_repository(
 
 async def get_call_summary_service(
     repository: Annotated[CallSummaryRepository, Depends(get_call_summary_repository)],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
 ) -> CallSummaryService:
-    return CallSummaryService(repository)
+    return CallSummaryService(repository, customer_repository)
 
 
 async def get_client_voice_agent_config_repository(
