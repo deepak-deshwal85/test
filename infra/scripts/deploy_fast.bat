@@ -8,9 +8,8 @@ REM   infra\scripts\deploy_fast.bat voice-agent
 REM   infra\scripts\deploy_fast.bat api,ui
 REM
 REM Fastest iteration during dev: run API/UI locally instead of ECS:
-REM   Terminal 1: infra\scripts\rds_tunnel.bat
-REM   Terminal 2: infra\scripts\start_local_api.bat
-REM   Terminal 3: infra\scripts\start_local_ui.bat
+REM   set RDS_DB_PASSWORD=YourRdsPassword
+REM   infra\scripts\dev_local.bat
 
 setlocal
 cd /d "%~dp0..\.."
