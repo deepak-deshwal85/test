@@ -42,13 +42,13 @@ def test_api_rag_retriever_calls_search_endpoint():
         client = httpx.AsyncClient(transport=transport, base_url="http://rag.test")
         retriever = ApiRagRetriever(
             base_url="http://rag.test",
-            phone_number="911171366880",
+            client_email_id="client@example.com",
             settings=settings,
             http_client=client,
         )
         hits = await retriever.search("What are Deepak's skills?", max_results=3)
         assert captured["path"] == "/v1/search"
-        assert captured["payload"]["phone_number"] == "911171366880"
+        assert captured["payload"]["client_email_id"] == "client@example.com"
         assert hits[0].text.startswith("Python engineer")
         await retriever.aclose()
 

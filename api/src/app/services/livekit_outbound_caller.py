@@ -27,6 +27,7 @@ class LiveKitOutboundCaller:
         metadata = json.dumps(
             {
                 "call_type": "outbound",
+                "client_email_id": customer.client_email_id,
                 "client_business_phone_number": customer.client_business_phone_number,
                 "client_name": customer.client_name,
                 "consumer_phone_number": customer.consumer_phone_number,

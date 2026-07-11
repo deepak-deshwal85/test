@@ -154,9 +154,7 @@ export function ClientScopeProvider({ children }: { children: React.ReactNode })
       clientEmailId,
       clientBusinessPhoneNumber: businessPhone,
       clientPersonalPhoneNumber: selectedClient?.client_phone_number ?? null,
-      collectionName: businessPhone
-        ? `phone_${businessPhone.replace(/\D/g, "")}`
-        : null,
+      collectionName: clientEmailId,
       refresh,
       selectClient,
       selectClientByEmail,
@@ -174,8 +172,6 @@ export function ClientScopeProvider({ children }: { children: React.ReactNode })
       selectClientByEmail,
     ],
   );
-
-  return (
     <ClientScopeContext.Provider value={value}>
       {children}
     </ClientScopeContext.Provider>

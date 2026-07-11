@@ -85,8 +85,9 @@ def test_resolve_scope_without_profile_returns_empty_collection_scope() -> None:
     assert scope.unrestricted is False
     assert scope.client_email_id == "client@example.com"
     assert scope.client_business_phone_number is None
-    assert scope.collection_name is None
-    assert filter_collections(scope, ["phone_91911171366880"]) == []
+    assert scope.collection_name == "client@example.com"
+    assert filter_collections(scope, ["client@example.com"]) == ["client@example.com"]
+    assert filter_collections(scope, ["other@example.com"]) == []
 
 
 def test_resolve_scope_for_ui_client_with_profile() -> None:
@@ -98,7 +99,7 @@ def test_resolve_scope_for_ui_client_with_profile() -> None:
     )
     assert scope.unrestricted is False
     assert scope.client_business_phone_number == "91911171366880"
-    assert scope.collection_name == "phone_91911171366880"
+    assert scope.collection_name == "client@example.com"
 
 
 def test_filter_collections_for_scoped_client() -> None:
@@ -109,9 +110,9 @@ def test_filter_collections_for_scoped_client() -> None:
     )
     filtered = filter_collections(
         scope,
-        ["phone_91911171366880", "phone_9999999999"],
+        ["client@example.com", "other@example.com"],
     )
-    assert filtered == ["phone_91911171366880"]
+    assert filtered == ["client@example.com"]
 
 
 def test_ensure_collection_access_denies_other_collection() -> None:
@@ -121,7 +122,7 @@ def test_ensure_collection_access_denies_other_collection() -> None:
         client=_client(),
     )
     with pytest.raises(HTTPException) as exc:
-        ensure_collection_access(scope, "phone_9999999999")
+        ensure_collection_access(scope, "other@example.com")
     assert exc.value.status_code == 403
 
 

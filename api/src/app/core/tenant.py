@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from fastapi import HTTPException, status
 
-from app.core.collections import collection_from_phone
+from app.core.collections import collection_from_email
 from app.core.oauth import AuthenticatedPrincipal
 from app.core.rbac import Permission
 from app.db.postgres.client_repository import ClientRepository
@@ -125,9 +125,7 @@ def resolve_client_scope(
     if is_scope_unrestricted(principal):
         if client_email_id and client is not None:
             business_phone = client.client_business_phone_number
-            collection = (
-                collection_from_phone(business_phone) if business_phone else None
-            )
+            collection = collection_from_email(client.client_email_id)
             return ResolvedClientScope(
                 client_email_id=client.client_email_id,
                 client_business_phone_number=business_phone,
@@ -147,12 +145,12 @@ def resolve_client_scope(
         return ResolvedClientScope(
             client_email_id=normalized,
             client_business_phone_number=None,
-            collection_name=None,
+            collection_name=collection_from_email(normalized),
             unrestricted=False,
         )
 
     business_phone = client.client_business_phone_number
-    collection = collection_from_phone(business_phone) if business_phone else None
+    collection = collection_from_email(client.client_email_id)
     return ResolvedClientScope(
         client_email_id=normalized,
         client_business_phone_number=business_phone,

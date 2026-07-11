@@ -29,11 +29,13 @@ class SearchService:
         query: str,
         max_results: int | None,
         collection: str | None = None,
+        client_email_id: str | None = None,
         phone_number: str | None = None,
     ) -> tuple[list[RagSearchHit], str]:
         limit = max_results or self._settings.rag_max_results
         started = time.perf_counter()
         resolved_collection = resolve_collection(
+            client_email_id=client_email_id,
             phone_number=phone_number,
             collection=collection,
         )
@@ -56,7 +58,7 @@ class SearchService:
         logger.info(
             "search collection=%s hits=%d min_score=%.2f "
             "embed_ms=%.0f qdrant_ms=%.0f total_ms=%.0f "
-            "embed_cache_hits=%d embed_cache_misses=%d phone=%s",
+            "embed_cache_hits=%d embed_cache_misses=%d client_email_id=%s phone=%s",
             resolved_collection,
             len(hits),
             self._settings.rag_min_score,
@@ -65,6 +67,7 @@ class SearchService:
             total_ms,
             embedding_result.cache_hits,
             embedding_result.cache_misses,
+            client_email_id,
             phone_number,
         )
         return hits, resolved_collection

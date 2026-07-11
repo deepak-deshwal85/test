@@ -23,7 +23,7 @@ import type { SearchResponse } from "@/lib/types";
 import { Search as SearchIcon } from "lucide-react";
 
 export default function SearchPage() {
-  const { clientEmailId, clientBusinessPhoneNumber, ready } = useClientScope();
+  const { clientEmailId, ready } = useClientScope();
   const [query, setQuery] = useState("");
   const [maxResults, setMaxResults] = useState(5);
   const [results, setResults] = useState<SearchResponse | null>(null);
@@ -41,7 +41,6 @@ export default function SearchPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           query: query.trim(),
-          phone_number: clientBusinessPhoneNumber || undefined,
           client_email_id: clientEmailId,
           max_results: maxResults,
         }),

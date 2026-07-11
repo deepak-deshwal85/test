@@ -28,6 +28,7 @@ def mock_client_repository() -> AsyncMock:
         created_at=datetime.now(UTC),
     )
     repository.get_by_cognito_sub.return_value = None
+    repository.get_by_business_phone.return_value = repository.get_by_email.return_value
     return repository
 
 
@@ -78,12 +79,24 @@ def test_search_requires_collection_or_phone(mock_client_repository: AsyncMock) 
     assert response.status_code == 400
 
 
-def test_collection_from_phone() -> None:
+def test_collection_from_email() -> None:
+    from app.core.collections import (
+        collection_from_email,
+        collection_from_phone,
+        resolve_collection,
+    )
+
+    assert collection_from_email("Client@Example.com") == "client@example.com"
+    assert collection_from_phone("+911171366880") == "phone_911171366880"
+    assert resolve_collection(client_email_id="client@example.com") == "client@example.com"
+    assert resolve_collection(collection="custom") == "custom"
+
+
+def test_collection_from_phone_legacy() -> None:
     from app.core.collections import collection_from_phone, resolve_collection
 
     assert collection_from_phone("+911171366880") == "phone_911171366880"
     assert resolve_collection(phone_number="911171366880") == "phone_911171366880"
-    assert resolve_collection(collection="custom") == "custom"
 
 
 def test_search_service_passes_score_threshold_to_qdrant() -> None:
@@ -107,10 +120,10 @@ def test_search_service_passes_score_threshold_to_qdrant() -> None:
     hits, collection = service.search(
         query="workforce",
         max_results=5,
-        phone_number="911171366880",
+        client_email_id="client@example.com",
     )
 
-    assert collection == "phone_911171366880"
+    assert collection == "client@example.com"
     assert len(hits) == 1
     assert hits[0].text == "relevant"
     _, kwargs = qdrant.search.call_args
@@ -118,6 +131,7 @@ def test_search_service_passes_score_threshold_to_qdrant() -> None:
 
 
 def test_search_invalid_phone(mock_client_repository: AsyncMock) -> None:
+    mock_client_repository.get_by_business_phone.return_value = None
     app = create_app()
     app.dependency_overrides[get_client_repository] = lambda: mock_client_repository
     client = TestClient(app)

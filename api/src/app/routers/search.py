@@ -6,8 +6,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.core.collections import collection_from_email
 from app.core.config import Settings, get_settings
-from app.core.collections import collection_from_phone
 from app.core.dependencies import (
     get_client_repository,
     get_search_service,
@@ -29,6 +29,24 @@ router = APIRouter(
 )
 
 
+async def _resolve_search_client(
+    body: SearchRequest,
+    repository: ClientRepository,
+) -> tuple[str | None, object | None]:
+    """Resolve client_email_id from body or legacy phone_number lookup."""
+    if body.client_email_id:
+        email = body.client_email_id.strip().lower()
+        client = await repository.get_by_email(email)
+        return email, client
+
+    if body.phone_number:
+        client = await repository.get_by_business_phone(body.phone_number)
+        if client is not None:
+            return client.client_email_id, client
+
+    return None, None
+
+
 @router.post("/search", response_model=SearchResponse)
 async def search(
     body: SearchRequest,
@@ -37,34 +55,44 @@ async def search(
     principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
     repository: Annotated[ClientRepository, Depends(get_client_repository)],
 ) -> SearchResponse:
-    client = None
-    if is_scope_unrestricted(principal) and not body.client_email_id:
-        scope = resolve_client_scope(principal, client_email_id=None, client=None)
+    resolved_email, client = await _resolve_search_client(body, repository)
+
+    if is_scope_unrestricted(principal):
+        if resolved_email:
+            scope = resolve_client_scope(
+                principal,
+                client_email_id=resolved_email,
+                client=client,
+            )
+        else:
+            scope = resolve_client_scope(principal, client_email_id=None, client=None)
     else:
-        if not body.client_email_id:
+        if not resolved_email:
             raise HTTPException(status_code=400, detail="client_email_id is required")
-        await verify_client_email_scope(principal, body.client_email_id, repository)
-        client = await repository.get_by_email(body.client_email_id)
+        await verify_client_email_scope(principal, resolved_email, repository)
+        if client is None:
+            client = await repository.get_by_email(resolved_email)
         scope = resolve_client_scope(
             principal,
-            client_email_id=body.client_email_id,
+            client_email_id=resolved_email,
             client=client,
         )
 
-    phone_number = body.phone_number
     collection = body.collection
+    client_email_id = scope.client_email_id or resolved_email
+    phone_number = scope.client_business_phone_number
+
     if not scope.unrestricted:
-        phone_number = scope.client_business_phone_number
         collection = scope.collection_name
-    elif scope.client_business_phone_number:
-        phone_number = scope.client_business_phone_number
-        collection = scope.collection_name
-    elif body.client_email_id and client is not None:
-        phone_number = client.client_business_phone_number
-        collection = (
-            collection_from_phone(client.client_business_phone_number)
-            if client.client_business_phone_number
-            else None
+    elif client_email_id:
+        collection = collection_from_email(client_email_id)
+    elif body.collection:
+        collection = body.collection.strip()
+
+    if not collection and not client_email_id and not body.phone_number:
+        raise HTTPException(
+            status_code=400,
+            detail="client_email_id or phone_number is required",
         )
 
     started = time.perf_counter()
@@ -73,7 +101,8 @@ async def search(
             query=body.query,
             max_results=body.max_results,
             collection=collection,
-            phone_number=phone_number,
+            client_email_id=client_email_id,
+            phone_number=body.phone_number if not client_email_id else None,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -86,11 +115,6 @@ async def search(
             ) from exc
         logger.exception("search failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    resolved_phone = phone_number
-    if resolved_phone is None and resolved_collection:
-        if resolved_collection.startswith("phone_"):
-            resolved_phone = resolved_collection.removeprefix("phone_")
 
     logger.info(
         "POST /v1/search collection=%s hits=%d total_ms=%.0f query=%r",
@@ -110,6 +134,6 @@ async def search(
         ],
         count=len(hits),
         collection=resolved_collection,
-        client_business_phone_number=resolved_phone,
-        client_email_id=scope.client_email_id,
+        client_business_phone_number=phone_number,
+        client_email_id=client_email_id,
     )

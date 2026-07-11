@@ -64,6 +64,7 @@ def test_warmup_knowledge_retriever_runs_searches():
         phone_number="911171366880",
         client_name="Test Client",
         xai_collection_id="phone_911171366880",
+        client_email_id="client@example.com",
         rag_backend="qdrant",
     )
 
@@ -110,6 +111,7 @@ def test_requires_sync_turn_completion_when_qdrant_backend():
         phone_number="911171366880",
         client_name="Test Client",
         xai_collection_id="phone_911171366880",
+        client_email_id="client@example.com",
         rag_backend="qdrant",
     )
     assert requires_sync_turn_completion(config) is True

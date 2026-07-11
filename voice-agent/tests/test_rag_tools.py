@@ -40,6 +40,7 @@ def test_build_rag_tools_uses_qdrant_function_tool():
         phone_number="911171366880",
         client_name="Deepak Kumar",
         xai_collection_id="collection_test",
+        client_email_id="client@example.com",
         rag_backend="qdrant",
     )
     settings = RagClientSettings(

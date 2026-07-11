@@ -19,12 +19,12 @@ class ApiRagRetriever:
         self,
         *,
         base_url: str,
-        phone_number: str,
+        client_email_id: str,
         settings: RagClientSettings,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
         self._base_url = base_url.rstrip("/")
-        self._phone_number = phone_number
+        self._client_email_id = client_email_id.strip().lower()
         self._settings = settings
         self._http_client = http_client
         self._owns_client = http_client is None
@@ -61,7 +61,7 @@ class ApiRagRetriever:
 
     async def search(self, query: str, *, max_results: int) -> list[RagSearchHit]:
         payload = {
-            "phone_number": self._phone_number,
+            "client_email_id": self._client_email_id,
             "query": query,
             "max_results": max_results,
         }
@@ -77,8 +77,8 @@ class ApiRagRetriever:
         )
         if response.status_code == 401:
             logger.error(
-                "rag api unauthorized phone=%s detail=%s auth_configured=%s",
-                self._phone_number,
+                "rag api unauthorized client_email_id=%s detail=%s auth_configured=%s",
+                self._client_email_id,
                 response.text[:300],
                 self._token_provider is not None,
             )
@@ -86,8 +86,8 @@ class ApiRagRetriever:
         data = response.json()
         hits = self._parse_hits(data)
         logger.info(
-            "rag api search phone=%s hits=%d api_ms=%.0f",
-            self._phone_number,
+            "rag api search client_email_id=%s hits=%d api_ms=%.0f",
+            self._client_email_id,
             len(hits),
             (time.perf_counter() - started) * 1000,
         )
@@ -121,8 +121,12 @@ def create_api_rag_retriever(
     client_config,
     settings: RagClientSettings,
 ) -> ApiRagRetriever:
+    if not client_config.client_email_id:
+        raise ValueError(
+            f"client_email_id is required for RAG API search (phone {client_config.phone_number})"
+        )
     return ApiRagRetriever(
         base_url=resolve_rag_api_url(client_config, settings),
-        phone_number=client_config.phone_number,
+        client_email_id=client_config.client_email_id,
         settings=settings,
     )

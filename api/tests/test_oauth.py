@@ -21,6 +21,7 @@ def mock_client_repository():
         created_at=datetime.now(UTC),
     )
     repository.get_by_cognito_sub.return_value = None
+    repository.get_by_business_phone.return_value = repository.get_by_email.return_value
     return repository
 
 
@@ -114,7 +115,7 @@ def test_guest_client_can_read(
     _install_fake_jwks(monkeypatch, public_pem)
 
     mock_service = MagicMock()
-    mock_service.search.return_value = ([], "phone_911171366880")
+    mock_service.search.return_value = ([], "user@example.com")
 
     app = create_app()
     app.dependency_overrides[get_search_service] = lambda: mock_service
@@ -154,7 +155,7 @@ def test_user_without_role_gets_guest_read_access(
     _install_fake_jwks(monkeypatch, public_pem)
 
     mock_service = MagicMock()
-    mock_service.search.return_value = ([], "phone_911171366880")
+    mock_service.search.return_value = ([], "user@example.com")
 
     app = create_app()
     app.dependency_overrides[get_search_service] = lambda: mock_service
@@ -201,7 +202,7 @@ def test_guest_cannot_upload_documents(
     )
     client = TestClient(app)
     response = client.post(
-        "/v1/collections/phone_911171366880/documents/upload"
+        "/v1/collections/user@example.com/documents/upload"
         "?client_email_id=user%40example.com",
         headers={"Authorization": f"Bearer {token}"},
         files={"file": ("notes.txt", b"hello", "text/plain")},
@@ -230,7 +231,7 @@ def test_approved_client_can_upload_documents(
 
     mock_service = MagicMock()
     mock_service.ingest_upload.return_value = IngestResult(
-        collection="phone_911171366880",
+        collection="user@example.com",
         document_id="doc-1",
         source_uri="notes.txt",
         chunks_indexed=1,
@@ -246,7 +247,7 @@ def test_approved_client_can_upload_documents(
     )
     client = TestClient(app)
     response = client.post(
-        "/v1/collections/phone_911171366880/documents/upload"
+        "/v1/collections/user@example.com/documents/upload"
         "?client_email_id=user%40example.com",
         headers={"Authorization": f"Bearer {token}"},
         files={"file": ("notes.txt", b"hello", "text/plain")},
@@ -329,7 +330,7 @@ def test_m2m_access_token_with_sub_client_id_is_accepted(
     _install_fake_jwks(monkeypatch, public_pem)
 
     mock_service = MagicMock()
-    mock_service.search.return_value = ([], "phone_911171366880")
+    mock_service.search.return_value = ([], "user@example.com")
 
     app = create_app()
     app.dependency_overrides[get_search_service] = lambda: mock_service

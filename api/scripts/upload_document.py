@@ -44,11 +44,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("file", type=Path, help="PDF, TXT, or MD file to upload")
     parser.add_argument(
         "--collection",
-        help="Qdrant collection name (e.g. phone_911171366880)",
+        help="Qdrant collection name (client email id, e.g. client@example.com)",
+    )
+    parser.add_argument(
+        "--email",
+        help="Client email id; used as the collection name",
     )
     parser.add_argument(
         "--phone",
-        help="Client phone digits; resolves to phone_{digits} collection",
+        help="Legacy: phone digits; resolves to phone_{digits} collection",
     )
     parser.add_argument(
         "--base-url",
@@ -65,6 +69,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     collection = args.collection
+    if not collection and args.email:
+        collection = args.email.strip().lower()
     if not collection and args.phone:
         digits = "".join(character for character in args.phone if character.isdigit())
         if not digits:
@@ -72,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         collection = f"phone_{digits}"
     if not collection:
-        print("Provide --collection or --phone", file=sys.stderr)
+        print("Provide --collection, --email, or --phone", file=sys.stderr)
         return 1
 
     result = upload_document(

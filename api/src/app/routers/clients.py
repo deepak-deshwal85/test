@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
+from app.core.collections import collection_from_email
 from app.core.dependencies import (
     get_client_repository,
     get_client_service,
@@ -19,6 +20,7 @@ from app.core.tenant import (
     verify_client_email_scope,
 )
 from app.db.postgres.client_repository import ClientRepository
+from app.schemas.client_resolve import ClientResolveByPhoneResponse
 from app.schemas.clients import (
     ClientAdminListResponse,
     ClientAdminProfileResponse,
@@ -165,3 +167,30 @@ async def upsert_client_profile(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/resolve-by-phone", response_model=ClientResolveByPhoneResponse)
+async def resolve_client_by_phone(
+    phone_number: Annotated[str, Query(min_length=5, max_length=32)],
+    principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
+    repository: Annotated[ClientRepository, Depends(get_client_repository)],
+) -> ClientResolveByPhoneResponse:
+    if not principal.is_m2m:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Phone resolution is available to machine clients only",
+        )
+
+    client = await repository.get_by_business_phone(phone_number)
+    if client is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No client found for this business phone number",
+        )
+
+    return ClientResolveByPhoneResponse(
+        client_email_id=client.client_email_id,
+        client_name=client.client_name,
+        client_business_phone_number=client.client_business_phone_number,
+        collection_name=collection_from_email(client.client_email_id),
+    )

@@ -20,8 +20,11 @@ from livekit.agents import (
 from livekit.agents.voice.turn import EndpointingOptions
 from livekit.plugins import ai_coustics, deepgram, xai
 
+from dataclasses import replace
+
 from agent_instructions import build_conversation_flow_instructions
 from client_config import ClientConfig, resolve_client_config
+from client_email_resolver import resolve_client_email
 from rag_client import build_rag_instructions, build_rag_tools, resolve_rag_backend
 from rag_client.config import load_rag_settings
 from rag_client.prefetch import (
@@ -205,11 +208,19 @@ def build_session_tools(
 
 async def _resolve_session_client(ctx: JobContext) -> ClientConfig:
     phone_digits: str | None = None
+    metadata_email: str | None = None
+    parsed_metadata: dict[str, object] = {}
 
     if ctx.job.metadata:
         try:
-            metadata = json.loads(ctx.job.metadata)
-            raw_phone = metadata.get("client_business_phone_number") or metadata.get(
+            parsed_metadata = json.loads(ctx.job.metadata)
+            raw_email = parsed_metadata.get("client_email_id")
+            if raw_email:
+                metadata_email = str(raw_email).strip().lower()
+                logger.info(
+                    "using client email from job metadata: %s", metadata_email
+                )
+            raw_phone = parsed_metadata.get("client_business_phone_number") or parsed_metadata.get(
                 "client_phone_number"
             )
             if raw_phone:
@@ -245,17 +256,33 @@ async def _resolve_session_client(ctx: JobContext) -> ClientConfig:
     if client_config is None:
         raise RuntimeError(f"No client config found for phone number {phone_digits!r}")
 
+    client_email_id = await resolve_client_email(
+        metadata_email=metadata_email,
+        config_email=client_config.client_email_id,
+        phone_digits=phone_digits,
+    )
+    if not client_email_id:
+        raise RuntimeError(
+            f"Could not resolve client_email_id for phone {phone_digits!r}. "
+            "Ensure the client exists in Postgres with a business phone, or set "
+            "client_email_id in job metadata or phone_number_*.json."
+        )
+
+    client_config = replace(client_config, client_email_id=client_email_id)
+
     ctx.proc.userdata["client_config"] = client_config
     ctx.proc.userdata["client_phone_number"] = client_config.phone_number
+    ctx.proc.userdata["client_email_id"] = client_email_id
     calcom_label = "disabled"
     if client_config.calcom is not None:
         calcom_label = (
             f"{client_config.calcom.username}/{client_config.calcom.event_type_slug}"
         )
     logger.info(
-        "loaded client %s for phone %s (rag=%s, collection %s, calcom=%s)",
+        "loaded client %s for phone %s email %s (rag=%s, collection %s, calcom=%s)",
         client_config.client_name,
         client_config.phone_number,
+        client_email_id,
         resolve_rag_backend(client_config),
         client_config.xai_collection_id,
         calcom_label,

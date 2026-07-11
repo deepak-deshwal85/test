@@ -24,6 +24,17 @@ class ClientRepository:
             created_at=row.created_at,
         )
 
+    async def get_by_business_phone(self, phone_number: str) -> Client | None:
+        normalized = normalize_phone_number(phone_number)
+        row = (
+            await self._session.execute(
+                select(ClientRow).where(
+                    ClientRow.client_business_phone_number == normalized
+                )
+            )
+        ).scalar_one_or_none()
+        return self._to_domain(row) if row else None
+
     async def get_by_email(self, client_email_id: str) -> Client | None:
         row = (
             await self._session.execute(
