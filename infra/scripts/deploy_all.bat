@@ -1,5 +1,5 @@
 @echo off
-REM Double-click to build and deploy API, UI, and voice-agent to AWS ECS.
+REM Double-click: parallel deploy (api + ui + voice-agent in separate windows).
 cd /d "%~dp0..\.."
 python infra\scripts\deploy_all.py %*
 if errorlevel 1 (

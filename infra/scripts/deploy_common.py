@@ -47,6 +47,16 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def aws_env() -> dict[str, str]:
+    """Disable AWS CLI pager (avoids less/'press q' on long JSON output)."""
+    import os
+
+    env = os.environ.copy()
+    env["AWS_PAGER"] = ""
+    env["AWS_CLI_AUTO_PROMPT"] = "off"
+    return env
+
+
 def terraform_output(terraform_dir: Path, name: str) -> str:
     result = subprocess.run(
         ["terraform", "output", "-raw", name],
@@ -65,13 +75,19 @@ def terraform_output(terraform_dir: Path, name: str) -> str:
     return value
 
 
-def run_step(cmd: list[str], *, cwd: Path | None = None, dry_run: bool = False) -> None:
+def run_step(
+    cmd: list[str],
+    *,
+    cwd: Path | None = None,
+    dry_run: bool = False,
+    env: dict[str, str] | None = None,
+) -> None:
     label = " ".join(cmd)
     print(f"\n→ {label}")
     if dry_run:
         print("[dry-run] skipped")
         return
-    result = subprocess.run(cmd, cwd=str(cwd) if cwd else None)
+    result = subprocess.run(cmd, cwd=str(cwd) if cwd else None, env=env)
     if result.returncode != 0:
         raise RuntimeError(f"Command failed ({result.returncode}): {label}")
 
@@ -169,12 +185,19 @@ def deploy_service(
         profile,
         "--region",
         region,
+        "--no-cli-pager",
     ]
     print(f"\n→ ECR login ({registry})")
     if dry_run:
         print("[dry-run] skipped ECR login")
     else:
-        login = subprocess.run(login_cmd, capture_output=True, text=True, check=True)
+        login = subprocess.run(
+            login_cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+            env=aws_env(),
+        )
         docker_login = subprocess.run(
             [
                 "docker",
@@ -215,8 +238,14 @@ def deploy_service(
             profile,
             "--region",
             region,
+            "--no-cli-pager",
+            "--output",
+            "json",
+            "--query",
+            "service.{name:serviceName,status:status,desired:desiredCount,running:runningCount,deployment:deployments[0].rolloutState}",
         ],
         dry_run=dry_run,
+        env=aws_env(),
     )
     print(f"\n✓ {target.name} deployed ({tagged})")
 

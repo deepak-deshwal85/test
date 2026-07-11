@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Build and deploy API, UI, and voice-agent to ECS (one command).
+"""Build and deploy API, UI, and voice-agent to ECS.
 
-Runs deploy_api.py, deploy_ui.py, and deploy_voice_agent.py in sequence.
+Default: parallel deploy (new terminal per service on Windows, wait for all).
 
 Usage (from repo root):
   python infra/scripts/deploy_all.py
   python infra/scripts/deploy_all.py --only api,ui
+  python infra/scripts/deploy_all.py --sequential
   python infra/scripts/deploy_all.py --dry-run
 
 Windows double-click:
@@ -27,13 +28,92 @@ SCRIPT_NAMES = {
 }
 
 
+def _build_cmd(service: str, shared_args: list[str]) -> list[str]:
+    script = SCRIPT_DIR / SCRIPT_NAMES[service]
+    return [sys.executable, str(script), *shared_args]
+
+
+def _deploy_sequential(services: list[str], shared_args: list[str]) -> int:
+    for service in services:
+        cmd = _build_cmd(service, shared_args)
+        print(f"\n{'=' * 60}\nRunning {SCRIPT_NAMES[service]}\n{'=' * 60}")
+        result = subprocess.run(cmd)
+        if result.returncode != 0:
+            print(f"\n✗ {service} deploy failed", file=sys.stderr)
+            return result.returncode
+    return 0
+
+
+def _deploy_parallel(
+    services: list[str],
+    shared_args: list[str],
+    *,
+    new_terminal: bool,
+    wait: bool,
+) -> int:
+    procs: list[tuple[str, subprocess.Popen[bytes] | subprocess.Popen[str]]] = []
+
+    for service in services:
+        cmd = _build_cmd(service, shared_args)
+        label = SCRIPT_NAMES[service]
+
+        if new_terminal and sys.platform == "win32":
+            print(f"→ Opening new terminal for {service} ({label})")
+            proc = subprocess.Popen(
+                cmd,
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+            )
+        else:
+            print(f"→ Starting {service} in background ({label})")
+            proc = subprocess.Popen(cmd)
+
+        procs.append((service, proc))
+
+    if not wait:
+        print(
+            "\nDeploy started in parallel. "
+            + (
+                "Check each terminal window for progress."
+                if new_terminal and sys.platform == "win32"
+                else "Processes running in background."
+            )
+        )
+        return 0
+
+    failed: list[str] = []
+    for service, proc in procs:
+        code = proc.wait()
+        if code != 0:
+            failed.append(service)
+            print(f"✗ {service} deploy failed (exit {code})", file=sys.stderr)
+        else:
+            print(f"✓ {service} deploy finished")
+
+    return 1 if failed else 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Build and deploy API, UI, and voice-agent to ECS"
+        description="Build and deploy API, UI, and voice-agent to ECS (parallel by default)"
     )
     parser.add_argument(
         "--only",
         help="Comma-separated services to deploy: api, ui, voice-agent (default: all)",
+    )
+    parser.add_argument(
+        "--sequential",
+        action="store_true",
+        help="Deploy one service at a time in this terminal (old behavior)",
+    )
+    parser.add_argument(
+        "--no-wait",
+        action="store_true",
+        help="Start parallel deploys and exit without waiting for completion",
+    )
+    parser.add_argument(
+        "--no-new-terminal",
+        action="store_true",
+        help="Run parallel deploys in this terminal instead of new windows",
     )
     parser.add_argument("--profile", default=None)
     parser.add_argument("--region", default="ap-south-1")
@@ -67,17 +147,19 @@ def main() -> int:
     if args.skip_deploy:
         shared_args.append("--skip-deploy")
 
-    for service in services:
-        script = SCRIPT_DIR / SCRIPT_NAMES[service]
-        cmd = [sys.executable, str(script), *shared_args]
-        print(f"\n{'=' * 60}\nRunning {script.name}\n{'=' * 60}")
-        result = subprocess.run(cmd)
-        if result.returncode != 0:
-            print(f"\n✗ {service} deploy failed", file=sys.stderr)
-            return result.returncode
+    if args.sequential:
+        code = _deploy_sequential(services, shared_args)
+    else:
+        code = _deploy_parallel(
+            services,
+            shared_args,
+            new_terminal=not args.no_new_terminal,
+            wait=not args.no_wait,
+        )
 
-    print("\n✓ All selected services deployed successfully")
-    return 0
+    if code == 0:
+        print("\n✓ All selected services deployed successfully")
+    return code
 
 
 if __name__ == "__main__":
