@@ -1,10 +1,11 @@
 "use client";
 
-import { Label } from "@/components/ui";
+import { Label, Select, Spinner } from "@/components/ui";
 import { useClientScope } from "@/contexts/client-scope-context";
 import { usePermissions } from "@/hooks/use-permissions";
+import { cn } from "@/lib/utils";
 
-function ReadOnlyField({
+function MetaField({
   label,
   value,
 }: {
@@ -13,10 +14,10 @@ function ReadOnlyField({
 }) {
   return (
     <div className="min-w-0">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
-      <p className="truncate text-sm font-medium text-slate-900">
+      <p className="mt-1 truncate text-sm font-medium text-foreground">
         {value?.trim() ? value : "—"}
       </p>
     </div>
@@ -35,16 +36,19 @@ export function ClientHeaderBar() {
 
   if (loading) {
     return (
-      <div className="border-b border-slate-200/80 bg-slate-50 px-4 py-3 lg:px-8">
-        <p className="text-sm text-slate-500">Loading client context…</p>
+      <div className="border-b border-border bg-card px-4 py-3 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-6xl items-center gap-2 text-sm text-muted-foreground">
+          <Spinner />
+          Loading client context…
+        </div>
       </div>
     );
   }
 
   if (!selectedClient && clients.length === 0) {
     return (
-      <div className="border-b border-slate-200/80 bg-amber-50 px-4 py-3 lg:px-8">
-        <p className="text-sm text-amber-800">
+      <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/30 sm:px-6 lg:px-8">
+        <p className="mx-auto max-w-6xl text-sm text-amber-900 dark:text-amber-200">
           {error ?? "No client profile available."}
         </p>
       </div>
@@ -55,61 +59,34 @@ export function ClientHeaderBar() {
     const email = selectedClient?.client_email_id ?? "";
 
     return (
-      <div className="border-b border-slate-200/80 bg-slate-50 px-4 py-3 lg:px-8">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.15em] text-brand-600">
-          Active client
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="border-b border-border bg-card px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))] lg:items-end">
           <div>
-            <Label htmlFor="header_client_email">Client email</Label>
-            <select
-              id="header_client_email"
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-brand-600">
+              Active client
+            </p>
+            <Label htmlFor="header_client_select" className="sr-only">
+              Select client
+            </Label>
+            <Select
+              id="header_client_select"
               value={email}
               onChange={(e) => selectClientByEmail(e.target.value)}
             >
-              <option value="">Select email</option>
-              {clients.map((client) => (
-                <option key={client.id} value={client.client_email_id}>
-                  {client.client_email_id}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="header_client_name">Client name</Label>
-            <select
-              id="header_client_name"
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-              value={email}
-              onChange={(e) => selectClientByEmail(e.target.value)}
-            >
-              <option value="">Select name</option>
+              <option value="">Select a client…</option>
               {clients.map((client) => (
                 <option key={client.id} value={client.client_email_id}>
                   {client.client_name || "(no name)"} · {client.client_email_id}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
-          <div>
-            <Label htmlFor="header_client_phone">Client phone</Label>
-            <select
-              id="header_client_phone"
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-              value={email}
-              onChange={(e) => selectClientByEmail(e.target.value)}
-            >
-              <option value="">Select phone</option>
-              {clients.map((client) => (
-                <option key={client.id} value={client.client_email_id}>
-                  {client.client_phone_number || "(no phone)"} ·{" "}
-                  {client.client_email_id}
-                </option>
-              ))}
-            </select>
-          </div>
-          <ReadOnlyField
+          <MetaField label="Client name" value={selectedClient?.client_name} />
+          <MetaField
+            label="Personal phone"
+            value={selectedClient?.client_phone_number}
+          />
+          <MetaField
             label="Business phone"
             value={selectedClient?.client_business_phone_number}
           />
@@ -119,17 +96,30 @@ export function ClientHeaderBar() {
   }
 
   return (
-    <div className="border-b border-slate-200/80 bg-slate-50 px-4 py-3 lg:px-8">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.15em] text-brand-600">
+    <div className="border-b border-border bg-card px-4 py-4 sm:px-6 lg:px-8">
+      <p className="mx-auto mb-3 max-w-6xl text-[11px] font-semibold uppercase tracking-wider text-brand-600">
         Your account
       </p>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <ReadOnlyField label="Client name" value={selectedClient?.client_name} />
-        <ReadOnlyField label="Client email" value={selectedClient?.client_email_id} />
-        <ReadOnlyField
-          label="Client phone"
+      <div
+        className={cn(
+          "mx-auto grid max-w-6xl gap-4 sm:grid-cols-2",
+          selectedClient?.client_business_phone_number
+            ? "lg:grid-cols-4"
+            : "lg:grid-cols-3",
+        )}
+      >
+        <MetaField label="Name" value={selectedClient?.client_name} />
+        <MetaField label="Email" value={selectedClient?.client_email_id} />
+        <MetaField
+          label="Personal phone"
           value={selectedClient?.client_phone_number}
         />
+        {selectedClient?.client_business_phone_number ? (
+          <MetaField
+            label="Business phone"
+            value={selectedClient.client_business_phone_number}
+          />
+        ) : null}
       </div>
     </div>
   );

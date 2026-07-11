@@ -7,10 +7,21 @@ import {
   Badge,
   Button,
   Card,
+  CardDescription,
+  CardTitle,
   EmptyState,
   ErrorBanner,
   Input,
   PageHeader,
+  PageSection,
+  Spinner,
+  SuccessBanner,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
 } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
 import { useClientScope } from "@/contexts/client-scope-context";
@@ -91,60 +102,50 @@ export default function ApproveClientsPage() {
           description="Review signed-up clients, assign a business phone, and promote them to approved-clients in Cognito."
           action={
             <Button variant="secondary" onClick={() => void load()}>
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className="h-4 w-4" aria-hidden />
               Refresh
             </Button>
           }
         />
 
         {error ? <ErrorBanner message={error} /> : null}
-        {successMessage ? (
-          <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            {successMessage}
-          </div>
-        ) : null}
+        {successMessage ? <SuccessBanner message={successMessage} /> : null}
 
         {loading ? (
-          <p className="text-sm text-slate-500">Loading clients…</p>
+          <div className="flex items-center gap-2 text-sm text-zinc-500">
+            <Spinner />
+            Loading clients…
+          </div>
         ) : clients.length === 0 ? (
           <EmptyState message="Clients appear here after they sign in via SSO for the first time." />
         ) : (
-          <div className="space-y-6">
-            <Card>
-              <h2 className="text-base font-semibold text-slate-900">
-                Pending approval ({pending.length})
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Enter a business phone number and approve to grant console access.
-              </p>
-              {pending.length === 0 ? (
-                <p className="mt-4 text-sm text-slate-500">No pending clients.</p>
-              ) : (
-                <div className="mt-4 overflow-x-auto">
-                  <table className="min-w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-slate-500">
-                        <th className="px-2 py-2 font-medium">Email</th>
-                        <th className="px-2 py-2 font-medium">Name</th>
-                        <th className="px-2 py-2 font-medium">Personal phone</th>
-                        <th className="px-2 py-2 font-medium">Business phone</th>
-                        <th className="px-2 py-2 font-medium">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+          <PageSection className="space-y-6">
+            <Card padding={false}>
+              <div className="border-b border-zinc-100 px-5 py-4 sm:px-6">
+                <CardTitle>Pending approval ({pending.length})</CardTitle>
+                <CardDescription className="mt-1">
+                  Enter a business phone number and approve to grant console access.
+                </CardDescription>
+              </div>
+              <div className="p-2 sm:p-4">
+                {pending.length === 0 ? (
+                  <p className="px-3 py-6 text-sm text-zinc-500">No pending clients.</p>
+                ) : (
+                  <Table>
+                    <TableHead>
+                      <TableHeaderCell>Email</TableHeaderCell>
+                      <TableHeaderCell>Name</TableHeaderCell>
+                      <TableHeaderCell>Personal phone</TableHeaderCell>
+                      <TableHeaderCell>Business phone</TableHeaderCell>
+                      <TableHeaderCell>Action</TableHeaderCell>
+                    </TableHead>
+                    <TableBody>
                       {pending.map((client) => (
-                        <tr
-                          key={client.id}
-                          className="border-b border-slate-100 align-top"
-                        >
-                          <td className="px-2 py-3">{client.client_email_id}</td>
-                          <td className="px-2 py-3">
-                            {client.client_name || "—"}
-                          </td>
-                          <td className="px-2 py-3">
-                            {client.client_phone_number || "—"}
-                          </td>
-                          <td className="px-2 py-3">
+                        <TableRow key={client.id} className="align-top">
+                          <TableCell>{client.client_email_id}</TableCell>
+                          <TableCell>{client.client_name || "—"}</TableCell>
+                          <TableCell>{client.client_phone_number || "—"}</TableCell>
+                          <TableCell>
                             <Input
                               id={`business_${client.id}`}
                               aria-label="Business phone"
@@ -157,73 +158,69 @@ export default function ApproveClientsPage() {
                                 }))
                               }
                             />
-                          </td>
-                          <td className="px-2 py-3">
+                          </TableCell>
+                          <TableCell>
                             <Button
+                              size="sm"
                               onClick={() => void approveClient(client)}
                               disabled={approvingEmail === client.client_email_id}
                             >
-                              <CheckCircle2 className="h-4 w-4" />
+                              {approvingEmail === client.client_email_id ? (
+                                <Spinner />
+                              ) : (
+                                <CheckCircle2 className="h-4 w-4" aria-hidden />
+                              )}
                               {approvingEmail === client.client_email_id
                                 ? "Approving…"
                                 : "Approve"}
                             </Button>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
             </Card>
 
-            <Card>
-              <h2 className="text-base font-semibold text-slate-900">
-                Approved ({approved.length})
-              </h2>
-              {approved.length === 0 ? (
-                <p className="mt-4 text-sm text-slate-500">No approved clients yet.</p>
-              ) : (
-                <div className="mt-4 overflow-x-auto">
-                  <table className="min-w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-slate-500">
-                        <th className="px-2 py-2 font-medium">Email</th>
-                        <th className="px-2 py-2 font-medium">Name</th>
-                        <th className="px-2 py-2 font-medium">Personal phone</th>
-                        <th className="px-2 py-2 font-medium">Business phone</th>
-                        <th className="px-2 py-2 font-medium">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+            <Card padding={false}>
+              <div className="border-b border-zinc-100 px-5 py-4 sm:px-6">
+                <CardTitle>Approved ({approved.length})</CardTitle>
+              </div>
+              <div className="p-2 sm:p-4">
+                {approved.length === 0 ? (
+                  <p className="px-3 py-6 text-sm text-zinc-500">No approved clients yet.</p>
+                ) : (
+                  <Table>
+                    <TableHead>
+                      <TableHeaderCell>Email</TableHeaderCell>
+                      <TableHeaderCell>Name</TableHeaderCell>
+                      <TableHeaderCell>Personal phone</TableHeaderCell>
+                      <TableHeaderCell>Business phone</TableHeaderCell>
+                      <TableHeaderCell>Status</TableHeaderCell>
+                    </TableHead>
+                    <TableBody>
                       {approved.map((client) => (
-                        <tr
-                          key={client.id}
-                          className="border-b border-slate-100"
-                        >
-                          <td className="px-2 py-3">{client.client_email_id}</td>
-                          <td className="px-2 py-3">
-                            {client.client_name || "—"}
-                          </td>
-                          <td className="px-2 py-3">
-                            {client.client_phone_number || "—"}
-                          </td>
-                          <td className="px-2 py-3">
+                        <TableRow key={client.id}>
+                          <TableCell>{client.client_email_id}</TableCell>
+                          <TableCell>{client.client_name || "—"}</TableCell>
+                          <TableCell>{client.client_phone_number || "—"}</TableCell>
+                          <TableCell>
                             {client.client_business_phone_number || "—"}
-                          </td>
-                          <td className="px-2 py-3">
-                            <Badge className="bg-emerald-100 text-emerald-800">
+                          </TableCell>
+                          <TableCell>
+                            <Badge className="bg-emerald-50 text-emerald-700">
                               Approved
                             </Badge>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
             </Card>
-          </div>
+          </PageSection>
         )}
       </AppShell>
     </AdminRouteGuard>

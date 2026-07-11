@@ -3,19 +3,36 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import {
+  Badge,
   Button,
   Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   EmptyState,
   ErrorBanner,
   Input,
   Label,
   PageHeader,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  Spinner,
+  SplitLayout,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
 } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
 import { clientScopeQuery, useClientScope } from "@/contexts/client-scope-context";
 import { usePermissions } from "@/hooks/use-permissions";
 import type { Customer, CustomerListResponse } from "@/lib/types";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 const emptyConsumerForm = {
   consumer_phone_number: "",
@@ -35,6 +52,7 @@ export default function CustomersPage() {
   const [form, setForm] = useState(emptyConsumerForm);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [mobileFormOpen, setMobileFormOpen] = useState(false);
 
   const canEditCustomers = canManageData || canManageOwnCustomers;
 
@@ -107,6 +125,7 @@ export default function CustomersPage() {
       }
       setForm(emptyConsumerForm);
       setEditingId(null);
+      setMobileFormOpen(false);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
@@ -132,7 +151,58 @@ export default function CustomersPage() {
       consumer_phone_number: customer.consumer_phone_number,
       consumer_email_id: customer.consumer_email_id,
     });
+    setMobileFormOpen(true);
   }
+
+  function resetForm() {
+    setEditingId(null);
+    setForm(emptyConsumerForm);
+    setMobileFormOpen(false);
+  }
+
+  const consumerForm = (
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <div>
+        <Label htmlFor="consumer_phone">Consumer phone</Label>
+        <Input
+          id="consumer_phone"
+          required
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="9876543210"
+          value={form.consumer_phone_number}
+          onChange={(e) =>
+            setForm({ ...form, consumer_phone_number: e.target.value })
+          }
+        />
+      </div>
+      <div>
+        <Label htmlFor="consumer_email">Consumer email</Label>
+        <Input
+          id="consumer_email"
+          required
+          type="email"
+          autoComplete="email"
+          placeholder="consumer@example.com"
+          value={form.consumer_email_id}
+          onChange={(e) =>
+            setForm({ ...form, consumer_email_id: e.target.value })
+          }
+        />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={saving}>
+          {saving ? <Spinner /> : <Plus className="h-4 w-4" aria-hidden />}
+          {saving ? "Saving…" : editingId ? "Update" : "Create"}
+        </Button>
+        {editingId ? (
+          <Button type="button" variant="secondary" onClick={resetForm}>
+            Cancel
+          </Button>
+        ) : null}
+      </div>
+    </form>
+  );
 
   async function handleApprove(customer: Customer) {
     try {
@@ -153,6 +223,7 @@ export default function CustomersPage() {
         description="Manage consumers for the selected client."
         action={
           <Button onClick={() => void load()} variant="secondary">
+            <RefreshCw className="h-4 w-4" aria-hidden />
             Refresh
           </Button>
         }
@@ -163,129 +234,147 @@ export default function CustomersPage() {
       {!clientEmailId ? (
         <EmptyState message="Select a client in the header to view customers." />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-          {canEditCustomers ? (
-            <Card>
-              <h2 className="font-semibold text-slate-900">
-                {editingId ? "Edit consumer" : "Add consumer"}
-              </h2>
-              <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
-                <div>
-                  <Label htmlFor="consumer_phone">Consumer phone</Label>
-                  <Input
-                    id="consumer_phone"
-                    required
-                    value={form.consumer_phone_number}
-                    onChange={(e) =>
-                      setForm({ ...form, consumer_phone_number: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="consumer_email">Consumer email</Label>
-                  <Input
-                    id="consumer_email"
-                    required
-                    value={form.consumer_email_id}
-                    onChange={(e) =>
-                      setForm({ ...form, consumer_email_id: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={saving}>
-                    <Plus className="h-4 w-4" />
-                    {saving ? "Saving…" : editingId ? "Update" : "Create"}
-                  </Button>
-                  {editingId ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => {
-                        setEditingId(null);
-                        setForm(emptyConsumerForm);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  ) : null}
-                </div>
-              </form>
-            </Card>
-          ) : (
-            <Card>
-              <h2 className="font-semibold text-slate-900">Read-only access</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                Your role can view customers but cannot create or edit records.
-              </p>
-            </Card>
-          )}
-
-          <Card>
-            {loading ? (
-              <p className="text-sm text-slate-500">Loading…</p>
-            ) : customers.length === 0 ? (
-              <EmptyState message="No customers for this client yet." />
+        <SplitLayout
+          sidebar={
+            canEditCustomers ? (
+              <Card className="hidden lg:block">
+                <CardHeader>
+                  <CardTitle>
+                    {editingId ? "Edit consumer" : "Add consumer"}
+                  </CardTitle>
+                  <CardDescription>
+                    Phone and email for outbound campaigns.
+                  </CardDescription>
+                </CardHeader>
+                {consumerForm}
+              </Card>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="text-slate-500">
-                    <tr>
-                      <th className="px-2 py-2">Consumer phone</th>
-                      <th className="px-2 py-2">Consumer email</th>
-                      <th className="px-2 py-2">Status</th>
-                      {canEditCustomers ? (
-                        <th className="px-2 py-2">Actions</th>
-                      ) : null}
-                    </tr>
-                  </thead>
-                  <tbody>
+              <Card className="hidden lg:block">
+                <CardHeader>
+                  <CardTitle>Read-only access</CardTitle>
+                  <CardDescription>
+                    Your role can view customers but cannot create or edit records.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            )
+          }
+        >
+          <Card padding={false}>
+            <div className="border-b border-border px-5 py-4 sm:px-6">
+              <CardTitle>All consumers</CardTitle>
+              <CardDescription className="mt-1">
+                {customers.length} record{customers.length === 1 ? "" : "s"}
+              </CardDescription>
+            </div>
+            <div className="p-2 sm:p-4">
+              {loading ? (
+                <div className="flex items-center gap-2 px-3 py-8 text-sm text-muted-foreground">
+                  <Spinner />
+                  Loading customers…
+                </div>
+              ) : customers.length === 0 ? (
+                <EmptyState message="No customers for this client yet." />
+              ) : (
+                <Table>
+                  <TableHead>
+                    <TableHeaderCell>Phone</TableHeaderCell>
+                    <TableHeaderCell>Email</TableHeaderCell>
+                    <TableHeaderCell>Status</TableHeaderCell>
+                    {canEditCustomers ? (
+                      <TableHeaderCell className="text-right">Actions</TableHeaderCell>
+                    ) : null}
+                  </TableHead>
+                  <TableBody>
                     {customers.map((customer) => (
-                      <tr key={customer.id} className="border-t border-slate-100">
-                        <td className="px-2 py-3">
+                      <TableRow key={customer.id}>
+                        <TableCell className="font-medium">
                           {customer.consumer_phone_number}
-                        </td>
-                        <td className="px-2 py-3">
-                          {customer.consumer_email_id}
-                        </td>
-                        <td className="px-2 py-3">
-                          {customer.is_approved ? "approved" : "pending"}
-                        </td>
+                        </TableCell>
+                        <TableCell>{customer.consumer_email_id}</TableCell>
+                        <TableCell>
+                          <Badge
+                            className={
+                              customer.is_approved
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "bg-zinc-100 text-zinc-600"
+                            }
+                          >
+                            {customer.is_approved ? "approved" : "pending"}
+                          </Badge>
+                        </TableCell>
                         {canEditCustomers ? (
-                          <td className="px-2 py-3">
-                            <div className="flex gap-2">
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
                               <Button
                                 variant="ghost"
+                                size="icon"
+                                aria-label="Edit customer"
                                 onClick={() => startEdit(customer)}
                               >
-                                <Pencil className="h-4 w-4" />
+                                <Pencil className="h-4 w-4" aria-hidden />
                               </Button>
                               <Button
                                 variant="ghost"
+                                size="icon"
+                                aria-label="Delete customer"
                                 onClick={() => void handleDelete(customer.id)}
                               >
-                                <Trash2 className="h-4 w-4 text-red-600" />
+                                <Trash2 className="h-4 w-4 text-red-600" aria-hidden />
                               </Button>
                               {canManageData && !customer.is_approved ? (
                                 <Button
                                   variant="secondary"
+                                  size="sm"
                                   onClick={() => void handleApprove(customer)}
                                 >
                                   Approve
                                 </Button>
                               ) : null}
                             </div>
-                          </td>
+                          </TableCell>
                         ) : null}
-                      </tr>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
           </Card>
-        </div>
+        </SplitLayout>
       )}
+
+      {canEditCustomers && clientEmailId ? (
+        <>
+          <Button
+            type="button"
+            size="icon"
+            className="fixed bottom-20 right-4 z-30 h-12 w-12 rounded-full shadow-[var(--shadow-elevated)] lg:hidden"
+            aria-label="Add consumer"
+            onClick={() => {
+              setEditingId(null);
+              setForm(emptyConsumerForm);
+              setMobileFormOpen(true);
+            }}
+          >
+            <Plus className="h-5 w-5" aria-hidden />
+          </Button>
+
+          <Sheet open={mobileFormOpen} onOpenChange={setMobileFormOpen}>
+            <SheetContent side="bottom">
+              <SheetHeader>
+                <SheetTitle>
+                  {editingId ? "Edit consumer" : "Add consumer"}
+                </SheetTitle>
+                <SheetDescription>
+                  Phone and email for outbound campaigns.
+                </SheetDescription>
+              </SheetHeader>
+              {consumerForm}
+            </SheetContent>
+          </Sheet>
+        </>
+      ) : null}
     </AppShell>
   );
 }

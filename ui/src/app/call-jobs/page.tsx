@@ -7,9 +7,20 @@ import {
   Badge,
   Button,
   Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   EmptyState,
   ErrorBanner,
   PageHeader,
+  Spinner,
+  SplitLayout,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
 } from "@/components/ui";
 import { apiFetch, errorMessageFromUnknown } from "@/lib/api-client";
 import { clientScopeQuery, useClientScope } from "@/contexts/client-scope-context";
@@ -96,171 +107,185 @@ export default function CallJobsPage() {
   return (
     <AdminRouteGuard>
       <AppShell>
-      <PageHeader
-        title="Call Jobs"
-        description="Trigger outbound voice campaigns and monitor progress."
-      />
+        <PageHeader
+          title="Call Jobs"
+          description="Trigger outbound voice campaigns and monitor progress."
+        />
 
-      {error ? <ErrorBanner message={error} /> : null}
+        {error ? <ErrorBanner message={error} /> : null}
 
-      {!clientEmailId ? (
-        <EmptyState message="Select a client in the header to view call jobs." />
-      ) : (
-        <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-          {canManageData ? (
-            <Card>
-              <h2 className="font-semibold text-slate-900">Trigger campaign</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                Uses the business phone from the active client in the header.
-              </p>
-              <Button
-                className="mt-4 w-full"
-                onClick={() => void triggerJob()}
-                disabled={triggering || !clientBusinessPhoneNumber}
-              >
-                <PhoneCall className="h-4 w-4" />
-                {triggering ? "Triggering…" : "Start outbound calls"}
-              </Button>
-              <Button
-                variant="secondary"
-                className="mt-2 w-full"
-                onClick={() => void loadJobs()}
-              >
-                <RefreshCw className="h-4 w-4" />
-                Refresh list
-              </Button>
-            </Card>
-          ) : (
-            <Card>
-              <h2 className="font-semibold text-slate-900">Monitor jobs</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                View outbound call progress for your account.
-              </p>
-              <Button
-                variant="secondary"
-                className="mt-4 w-full"
-                onClick={() => void loadJobs()}
-              >
-                <RefreshCw className="h-4 w-4" />
-                Refresh list
-              </Button>
-            </Card>
-          )}
-
-          <div className="space-y-4">
-            <Card>
-              <h2 className="font-semibold text-slate-900">Recent jobs</h2>
-              {loading && jobs.length === 0 ? (
-                <p className="mt-4 text-sm text-slate-500">Loading…</p>
-              ) : jobs.length === 0 ? (
-                <EmptyState message="No call jobs yet." />
-              ) : (
-                <div className="mt-4 space-y-2">
-                  {jobs.map((job) => (
-                    <button
-                      key={job.id}
-                      type="button"
-                      onClick={() => void viewJob(job.id)}
-                      className="flex w-full items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-left hover:bg-white"
-                    >
-                      <div>
-                        <p className="font-medium">{job.client_business_phone_number}</p>
-                        <p className="text-xs text-slate-500">
-                          {formatDate(job.created_at)}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <Badge className={statusColor(job.status)}>
-                          {job.status}
-                        </Badge>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {job.calls_completed}/{job.total_customers} calls
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </Card>
-
-            {selected ? (
+        {!clientEmailId ? (
+          <EmptyState message="Select a client in the header to view call jobs." />
+        ) : (
+          <SplitLayout
+            className="lg:grid-cols-[minmax(260px,300px)_1fr]"
+            sidebar={
               <Card>
-                <div className="flex items-center justify-between">
-                  <h2 className="font-semibold text-slate-900">Job details</h2>
-                  <Badge className={statusColor(selected.status)}>
-                    {selected.status}
-                  </Badge>
-                </div>
-                <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-                  <div>
-                    <dt className="text-slate-500">Job ID</dt>
-                    <dd className="break-all font-mono text-xs">{selected.id}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-slate-500">Progress</dt>
-                    <dd>
-                      {selected.calls_completed} / {selected.total_customers}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-slate-500">Started</dt>
-                    <dd>{formatDate(selected.started_at)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-slate-500">Completed</dt>
-                    <dd>{formatDate(selected.completed_at)}</dd>
-                  </div>
-                </dl>
-                {selected.error_message ? (
-                  <p className="mt-3 text-sm text-red-600">
-                    {selected.error_message}
-                  </p>
+                <CardHeader>
+                  <CardTitle>
+                    {canManageData ? "Trigger campaign" : "Monitor jobs"}
+                  </CardTitle>
+                  <CardDescription>
+                    {canManageData
+                      ? "Uses the business phone from the active client."
+                      : "View outbound call progress for your account."}
+                  </CardDescription>
+                </CardHeader>
+                {canManageData ? (
+                  <Button
+                    className="w-full"
+                    onClick={() => void triggerJob()}
+                    disabled={triggering || !clientBusinessPhoneNumber}
+                  >
+                    {triggering ? (
+                      <Spinner />
+                    ) : (
+                      <PhoneCall className="h-4 w-4" aria-hidden />
+                    )}
+                    {triggering ? "Triggering…" : "Start outbound calls"}
+                  </Button>
                 ) : null}
-                {selected.results?.length ? (
-                  <div className="mt-4 overflow-x-auto">
-                    <table className="min-w-full text-left text-sm">
-                      <thead className="text-slate-500">
-                        <tr>
-                          <th className="px-2 py-2">Consumer</th>
-                          <th className="px-2 py-2">Result</th>
-                          <th className="px-2 py-2">Detail</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selected.results.map((result) => (
-                          <tr
-                            key={`${result.customer_id}-${result.consumer_phone_number}`}
-                            className="border-t border-slate-100"
-                          >
-                            <td className="px-2 py-2">
-                              {result.consumer_phone_number}
-                            </td>
-                            <td className="px-2 py-2">
-                              <Badge
-                                className={
-                                  result.success
-                                    ? "bg-emerald-100 text-emerald-800"
-                                    : "bg-red-100 text-red-800"
-                                }
-                              >
-                                {result.success ? "success" : "failed"}
-                              </Badge>
-                            </td>
-                            <td className="px-2 py-2 text-slate-600">
-                              {result.detail}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : null}
+                <Button
+                  variant="secondary"
+                  className="mt-2 w-full"
+                  onClick={() => void loadJobs()}
+                >
+                  <RefreshCw className="h-4 w-4" aria-hidden />
+                  Refresh list
+                </Button>
               </Card>
-            ) : null}
-          </div>
-        </div>
-      )}
-    </AppShell>
+            }
+          >
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent jobs</CardTitle>
+                </CardHeader>
+                {loading && jobs.length === 0 ? (
+                  <div className="flex items-center gap-2 text-sm text-zinc-500">
+                    <Spinner />
+                    Loading jobs…
+                  </div>
+                ) : jobs.length === 0 ? (
+                  <EmptyState message="No call jobs yet." />
+                ) : (
+                  <div className="space-y-2">
+                    {jobs.map((job) => (
+                      <button
+                        key={job.id}
+                        type="button"
+                        onClick={() => void viewJob(job.id)}
+                        className="flex w-full items-center justify-between rounded-lg border border-zinc-100 bg-zinc-50/50 px-4 py-3 text-left transition-colors hover:border-zinc-200 hover:bg-white"
+                      >
+                        <div>
+                          <p className="font-medium text-zinc-900">
+                            {job.client_business_phone_number}
+                          </p>
+                          <p className="mt-0.5 text-xs text-zinc-500">
+                            {formatDate(job.created_at)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <Badge className={statusColor(job.status)}>
+                            {job.status}
+                          </Badge>
+                          <p className="mt-1 text-xs text-zinc-500">
+                            {job.calls_completed}/{job.total_customers} calls
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </Card>
+
+              {selected ? (
+                <Card>
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <CardTitle>Job details</CardTitle>
+                    <Badge className={statusColor(selected.status)}>
+                      {selected.status}
+                    </Badge>
+                  </div>
+                  <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                        Job ID
+                      </dt>
+                      <dd className="mt-1 break-all font-mono text-xs text-zinc-700">
+                        {selected.id}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                        Progress
+                      </dt>
+                      <dd className="mt-1 font-medium text-zinc-900">
+                        {selected.calls_completed} / {selected.total_customers}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                        Started
+                      </dt>
+                      <dd className="mt-1 text-zinc-700">
+                        {formatDate(selected.started_at)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                        Completed
+                      </dt>
+                      <dd className="mt-1 text-zinc-700">
+                        {formatDate(selected.completed_at)}
+                      </dd>
+                    </div>
+                  </dl>
+                  {selected.error_message ? (
+                    <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                      {selected.error_message}
+                    </p>
+                  ) : null}
+                  {selected.results?.length ? (
+                    <div className="mt-4">
+                      <Table>
+                        <TableHead>
+                          <TableHeaderCell>Consumer</TableHeaderCell>
+                          <TableHeaderCell>Result</TableHeaderCell>
+                          <TableHeaderCell>Detail</TableHeaderCell>
+                        </TableHead>
+                        <TableBody>
+                          {selected.results.map((result) => (
+                            <TableRow
+                              key={`${result.customer_id}-${result.consumer_phone_number}`}
+                            >
+                              <TableCell>{result.consumer_phone_number}</TableCell>
+                              <TableCell>
+                                <Badge
+                                  className={
+                                    result.success
+                                      ? "bg-emerald-50 text-emerald-700"
+                                      : "bg-red-50 text-red-700"
+                                  }
+                                >
+                                  {result.success ? "success" : "failed"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-zinc-600">
+                                {result.detail}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : null}
+                </Card>
+              ) : null}
+            </div>
+          </SplitLayout>
+        )}
+      </AppShell>
     </AdminRouteGuard>
   );
 }

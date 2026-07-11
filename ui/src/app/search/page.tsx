@@ -6,11 +6,16 @@ import { AdminRouteGuard } from "@/components/admin-route-guard";
 import {
   Button,
   Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   EmptyState,
   ErrorBanner,
   Input,
   Label,
   PageHeader,
+  Spinner,
+  SplitLayout,
 } from "@/components/ui";
 import { apiFetch } from "@/lib/api-client";
 import { useClientScope } from "@/contexts/client-scope-context";
@@ -53,76 +58,89 @@ export default function SearchPage() {
   return (
     <AdminRouteGuard>
       <AppShell>
-      <PageHeader
-        title="Semantic Search"
-        description="Query the selected client's knowledge base with natural language."
-      />
+        <PageHeader
+          title="Semantic Search"
+          description="Query the selected client's knowledge base with natural language."
+        />
 
-      {error ? <ErrorBanner message={error} /> : null}
+        {error ? <ErrorBanner message={error} /> : null}
 
-      {!clientEmailId ? (
-        <EmptyState message="Select a client in the header to search." />
-      ) : (
-        <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-          <Card>
-            <form className="space-y-3" onSubmit={handleSearch}>
-              <div>
-                <Label htmlFor="query">Search query</Label>
-                <Input
-                  id="query"
-                  required
-                  placeholder="What services do you offer?"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="max">Max results</Label>
-                <Input
-                  id="max"
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={maxResults}
-                  onChange={(e) => setMaxResults(Number(e.target.value))}
-                />
-              </div>
-              <Button type="submit" disabled={loading} className="w-full">
-                <SearchIcon className="h-4 w-4" />
-                {loading ? "Searching…" : "Search"}
-              </Button>
-            </form>
-          </Card>
-
-          <Card>
-            <h2 className="font-semibold text-slate-900">Results</h2>
-            {!results ? (
-              <EmptyState message="Run a search to see matching chunks." />
-            ) : results.count === 0 ? (
-              <EmptyState message="No matches found." />
-            ) : (
-              <div className="mt-4 space-y-3">
-                <p className="text-xs text-slate-500">
-                  Collection: {results.collection}
-                </p>
-                {results.hits.map((hit, index) => (
-                  <div
-                    key={`${hit.source_uri}-${index}`}
-                    className="rounded-xl border border-slate-100 bg-slate-50 p-4"
-                  >
-                    <p className="text-sm text-slate-800">{hit.text}</p>
-                    <p className="mt-2 text-xs text-slate-500">
-                      score {hit.score.toFixed(3)}
-                      {hit.source_uri ? ` · ${hit.source_uri}` : ""}
-                    </p>
+        {!clientEmailId ? (
+          <EmptyState message="Select a client in the header to search." />
+        ) : (
+          <SplitLayout
+            className="lg:grid-cols-[minmax(280px,360px)_1fr]"
+            sidebar={
+              <Card>
+                <CardHeader>
+                  <CardTitle>Search</CardTitle>
+                  <CardDescription>Natural language query over indexed content.</CardDescription>
+                </CardHeader>
+                <form className="space-y-4" onSubmit={handleSearch}>
+                  <div>
+                    <Label htmlFor="query">Search query</Label>
+                    <Input
+                      id="query"
+                      required
+                      placeholder="What services do you offer?"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                    />
                   </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </div>
-      )}
-    </AppShell>
+                  <div>
+                    <Label htmlFor="max">Max results</Label>
+                    <Input
+                      id="max"
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={maxResults}
+                      onChange={(e) => setMaxResults(Number(e.target.value))}
+                    />
+                  </div>
+                  <Button type="submit" disabled={loading} className="w-full">
+                    {loading ? (
+                      <Spinner />
+                    ) : (
+                      <SearchIcon className="h-4 w-4" aria-hidden />
+                    )}
+                    {loading ? "Searching…" : "Search"}
+                  </Button>
+                </form>
+              </Card>
+            }
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle>Results</CardTitle>
+                {results ? (
+                  <CardDescription>Collection: {results.collection}</CardDescription>
+                ) : null}
+              </CardHeader>
+              {!results ? (
+                <EmptyState message="Run a search to see matching chunks." />
+              ) : results.count === 0 ? (
+                <EmptyState message="No matches found." />
+              ) : (
+                <div className="space-y-3">
+                  {results.hits.map((hit, index) => (
+                    <article
+                      key={`${hit.source_uri}-${index}`}
+                      className="rounded-lg border border-zinc-100 bg-zinc-50/60 p-4"
+                    >
+                      <p className="text-sm leading-relaxed text-zinc-800">{hit.text}</p>
+                      <p className="mt-2 text-xs text-zinc-500">
+                        Score {hit.score.toFixed(3)}
+                        {hit.source_uri ? ` · ${hit.source_uri}` : ""}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </SplitLayout>
+        )}
+      </AppShell>
     </AdminRouteGuard>
   );
 }

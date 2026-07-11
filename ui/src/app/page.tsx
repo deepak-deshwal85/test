@@ -3,7 +3,17 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { Badge, Card, PageHeader } from "@/components/ui";
+import {
+  AlertBanner,
+  Badge,
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  PageHeader,
+  PageSection,
+  StatCard,
+} from "@/components/ui";
 import { apiFetch, errorMessageFromUnknown } from "@/lib/api-client";
 import { clientScopeQuery, useClientScope } from "@/contexts/client-scope-context";
 import type {
@@ -11,7 +21,7 @@ import type {
   CustomerListResponse,
   HealthResponse,
 } from "@/lib/types";
-import { BookOpen, PhoneCall, Users } from "lucide-react";
+import { ArrowRight, BookOpen, PhoneCall, Users } from "lucide-react";
 
 export default function DashboardPage() {
   const { clientEmailId, ready } = useClientScope();
@@ -71,114 +81,120 @@ export default function DashboardPage() {
         description="Overview of customers, knowledge bases, and platform health."
       />
 
-      {error ? (
-        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {error}
-        </div>
-      ) : null}
+      {error ? <AlertBanner message={error} /> : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <Card>
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm text-slate-500">API status</p>
-              <p className="mt-2 text-2xl font-semibold capitalize">
-                {health?.status ?? "unknown"}
-              </p>
-            </div>
-            <Badge
-              className={
-                health?.status === "ok"
-                  ? "bg-emerald-100 text-emerald-800"
-                  : "bg-amber-100 text-amber-800"
-              }
-            >
-              live
-            </Badge>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Customers</p>
-              <p className="mt-2 text-2xl font-semibold">
-                {customers?.count ?? 0}
-              </p>
-            </div>
-            <Users className="h-5 w-5 text-brand-600" />
-          </div>
-          <Link
-            href="/customers"
-            className="mt-4 inline-block text-sm font-medium text-brand-600"
-          >
-            Manage customers →
-          </Link>
-        </Card>
-
-        <Card>
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Knowledge collections</p>
-              <p className="mt-2 text-2xl font-semibold">
-                {collections?.count ?? 0}
-              </p>
-            </div>
-            <BookOpen className="h-5 w-5 text-brand-600" />
-          </div>
-          <Link
-            href="/knowledge"
-            className="mt-4 inline-block text-sm font-medium text-brand-600"
-          >
-            Upload documents →
-          </Link>
-        </Card>
-      </div>
-
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <h3 className="font-semibold text-slate-900">Quick actions</h3>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <Link
-              href="/call-jobs"
-              className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium hover:bg-white"
-            >
-              <PhoneCall className="h-4 w-4 text-brand-600" />
-              Trigger outbound calls
-            </Link>
-            <Link
-              href="/search"
-              className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium hover:bg-white"
-            >
-              <BookOpen className="h-4 w-4 text-brand-600" />
-              Search knowledge base
-            </Link>
-          </div>
-        </Card>
-
-        <Card>
-          <h3 className="font-semibold text-slate-900">Recent customers</h3>
-          <ul className="mt-4 space-y-3">
-            {(customers?.customers ?? []).map((customer) => (
-              <li
-                key={customer.id}
-                className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm"
+      <PageSection>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <StatCard
+            label="API status"
+            value={
+              <span className="capitalize">{health?.status ?? "unknown"}</span>
+            }
+            badge={
+              <Badge
+                className={
+                  health?.status === "ok"
+                    ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                    : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                }
               >
-                <div>
-                  <p className="font-medium">{customer.consumer_phone_number}</p>
-                  <p className="text-slate-500">{customer.consumer_email_id}</p>
-                </div>
-                <span className="text-xs text-slate-400">
-                  {customer.is_approved ? "approved" : "pending"}
-                </span>
-              </li>
-            ))}
-            {!customers?.customers?.length ? (
-              <li className="text-sm text-slate-500">No customers yet.</li>
-            ) : null}
-          </ul>
-        </Card>
-      </div>
+                live
+              </Badge>
+            }
+          />
+
+          <StatCard
+            label="Customers"
+            value={customers?.count ?? 0}
+            icon={Users}
+            footer={
+              <Link
+                href="/customers"
+                className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
+              >
+                Manage customers
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </Link>
+            }
+          />
+
+          <StatCard
+            label="Knowledge collections"
+            value={collections?.count ?? 0}
+            icon={BookOpen}
+            footer={
+              <Link
+                href="/knowledge"
+                className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
+              >
+                Upload documents
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </Link>
+            }
+          />
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick actions</CardTitle>
+              <CardDescription>Common workflows for your workspace.</CardDescription>
+            </CardHeader>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Link
+                href="/call-jobs"
+                className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm font-medium text-zinc-800 transition-colors hover:border-zinc-300 hover:bg-white"
+              >
+                <PhoneCall className="h-4 w-4 text-brand-600" aria-hidden />
+                Trigger outbound calls
+              </Link>
+              <Link
+                href="/search"
+                className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm font-medium text-zinc-800 transition-colors hover:border-zinc-300 hover:bg-white"
+              >
+                <BookOpen className="h-4 w-4 text-brand-600" aria-hidden />
+                Search knowledge base
+              </Link>
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent customers</CardTitle>
+              <CardDescription>Latest consumers for the active client.</CardDescription>
+            </CardHeader>
+            <ul className="space-y-2">
+              {(customers?.customers ?? []).map((customer) => (
+                <li
+                  key={customer.id}
+                  className="flex items-center justify-between rounded-lg border border-zinc-100 bg-zinc-50/80 px-3 py-2.5 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-zinc-900">
+                      {customer.consumer_phone_number}
+                    </p>
+                    <p className="truncate text-xs text-zinc-500">
+                      {customer.consumer_email_id}
+                    </p>
+                  </div>
+                  <Badge
+                    className={
+                      customer.is_approved
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-zinc-100 text-zinc-600"
+                    }
+                  >
+                    {customer.is_approved ? "approved" : "pending"}
+                  </Badge>
+                </li>
+              ))}
+              {!customers?.customers?.length ? (
+                <li className="text-sm text-zinc-500">No customers yet.</li>
+              ) : null}
+            </ul>
+          </Card>
+        </div>
+      </PageSection>
     </AppShell>
   );
 }

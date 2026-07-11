@@ -5,17 +5,22 @@ import { AppShell } from "@/components/app-shell";
 import {
   Button,
   Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   EmptyState,
   ErrorBanner,
   Input,
   Label,
   PageHeader,
+  Spinner,
+  SplitLayout,
 } from "@/components/ui";
 import { apiFetch, apiUpload } from "@/lib/api-client";
 import { clientScopeQuery, useClientScope } from "@/contexts/client-scope-context";
 import { usePermissions } from "@/hooks/use-permissions";
 import type { DocumentListResponse, DocumentSummary } from "@/lib/types";
-import { Trash2, Upload } from "lucide-react";
+import { FileText, Trash2, Upload } from "lucide-react";
 
 export default function KnowledgePage() {
   const { canUploadDocuments } = usePermissions();
@@ -93,15 +98,20 @@ export default function KnowledgePage() {
       {!clientEmailId || !collection ? (
         <EmptyState message="Select a client with a business phone in the header." />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-          <Card>
-            <h2 className="font-semibold text-slate-900">Upload</h2>
-            <p className="mt-2 text-xs text-slate-500">
-              Collection: <code>{collection}</code>
-            </p>
-            <div className="mt-4 space-y-3">
+        <SplitLayout
+          sidebar={
+            <Card>
+              <CardHeader>
+                <CardTitle>Upload document</CardTitle>
+                <CardDescription>
+                  Collection{" "}
+                  <code className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-700">
+                    {collection}
+                  </code>
+                </CardDescription>
+              </CardHeader>
               {canUploadDocuments ? (
-                <>
+                <div className="space-y-4">
                   <div>
                     <Label htmlFor="file">Document</Label>
                     <Input
@@ -116,43 +126,61 @@ export default function KnowledgePage() {
                     onClick={() => void handleUpload()}
                     disabled={!file}
                   >
-                    <Upload className="h-4 w-4" />
+                    <Upload className="h-4 w-4" aria-hidden />
                     Upload
                   </Button>
-                </>
+                </div>
               ) : (
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-zinc-500">
                   Your role can view documents but cannot upload or delete them.
                 </p>
               )}
-            </div>
-          </Card>
-
+            </Card>
+          }
+        >
           <Card>
-            <h2 className="font-semibold text-slate-900">Documents</h2>
+            <CardHeader>
+              <CardTitle>Documents</CardTitle>
+              <CardDescription>
+                Indexed chunks available for semantic search.
+              </CardDescription>
+            </CardHeader>
             {loading ? (
-              <p className="mt-4 text-sm text-slate-500">Loading…</p>
+              <div className="flex items-center gap-2 text-sm text-zinc-500">
+                <Spinner />
+                Loading documents…
+              </div>
             ) : documents.length === 0 ? (
               <EmptyState message="No documents in this collection." />
             ) : (
-              <div className="mt-4 space-y-2">
+              <div className="space-y-2">
                 {documents.map((doc) => (
                   <div
                     key={doc.document_id}
-                    className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
+                    className="flex items-center justify-between gap-3 rounded-lg border border-zinc-100 bg-zinc-50/50 px-4 py-3 transition-colors hover:bg-white"
                   >
-                    <div>
-                      <p className="font-medium">{doc.source_uri}</p>
-                      <p className="text-xs text-slate-500">
-                        {doc.chunk_count} chunks · {doc.document_id}
-                      </p>
+                    <div className="flex min-w-0 items-start gap-3">
+                      <FileText
+                        className="mt-0.5 h-4 w-4 shrink-0 text-brand-600"
+                        aria-hidden
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-zinc-900">
+                          {doc.source_uri}
+                        </p>
+                        <p className="mt-0.5 text-xs text-zinc-500">
+                          {doc.chunk_count} chunks · {doc.document_id}
+                        </p>
+                      </div>
                     </div>
                     {canUploadDocuments ? (
                       <Button
                         variant="ghost"
+                        size="icon"
+                        aria-label="Delete document"
                         onClick={() => void handleDelete(doc.document_id)}
                       >
-                        <Trash2 className="h-4 w-4 text-red-600" />
+                        <Trash2 className="h-4 w-4 text-red-600" aria-hidden />
                       </Button>
                     ) : null}
                   </div>
@@ -160,7 +188,7 @@ export default function KnowledgePage() {
               </div>
             )}
           </Card>
-        </div>
+        </SplitLayout>
       )}
     </AppShell>
   );
