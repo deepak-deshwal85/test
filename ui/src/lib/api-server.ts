@@ -39,6 +39,8 @@ export async function serverApiFetch<T>(
   if (sessionRole) {
     headers.set("x-relaydesk-user-role", sessionRole);
   }
+
+  const response = await fetch(`${API_URL}/${path}`, {
     ...init,
     headers,
     cache: "no-store",
