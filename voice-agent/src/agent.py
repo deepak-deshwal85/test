@@ -27,7 +27,12 @@ from dataclasses import replace
 from agent_instructions import build_conversation_flow_instructions
 from client_config import ClientConfig, resolve_client_config
 from rag_client import build_rag_instructions, build_rag_tools
-from call_summary_builder import build_call_summary_from_history
+from call_summary_builder import (
+    CallTranscriptCollector,
+    build_call_transcript_from_collector,
+    setup_call_transcript_collector,
+)
+from call_summary_llm import summarize_call_transcript
 from rag_client.call_summary_client import (
     create_call_summary_client,
     persist_call_summary,
@@ -395,13 +400,16 @@ async def entrypoint(ctx: JobContext) -> None:
 
     call_start_time = datetime.now(UTC)
     call_summary_client = create_call_summary_client(client_config, rag_settings)
+    transcript_collector = CallTranscriptCollector()
+    setup_call_transcript_collector(session, transcript_collector)
+    default_agent = DefaultAgent(
+        client_config=client_config,
+        knowledge_retriever=knowledge_retriever,
+        rag_warmup_task=rag_warmup_task,
+    )
     try:
         await session.start(
-            agent=DefaultAgent(
-                client_config=client_config,
-                knowledge_retriever=knowledge_retriever,
-                rag_warmup_task=rag_warmup_task,
-            ),
+            agent=default_agent,
             room=ctx.room,
             room_options=room_io.RoomOptions(
                 audio_input=room_io.AudioInputOptions(
@@ -417,7 +425,23 @@ async def entrypoint(ctx: JobContext) -> None:
         job_id = ctx.proc.userdata.get("job_id")
         call_outcome = ctx.proc.userdata.get("call_outcome") or {}
         try:
-            summary_text = build_call_summary_from_history(session.history)
+            transcript = build_call_transcript_from_collector(
+                transcript_collector,
+                session.history,
+                default_agent.chat_ctx,
+            )
+            summary_text = await summarize_call_transcript(
+                transcript,
+                client_name=client_config.client_name,
+                meeting_scheduled=bool(call_outcome.get("meeting_scheduled")),
+            )
+            logger.info(
+                "built call summary customer_id=%s lines=%d transcript_chars=%d summary_chars=%d",
+                customer_id,
+                len(transcript_collector.lines),
+                len(transcript),
+                len(summary_text),
+            )
             await persist_call_summary(
                 client=call_summary_client,
                 customer_id=customer_id,

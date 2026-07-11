@@ -1,17 +1,17 @@
-import json
 import sys
-from datetime import UTC, datetime
 from pathlib import Path
-from uuid import UUID
-
-import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from call_summary_builder import build_call_summary_from_history
+from call_summary_builder import (
+    CallTranscriptCollector,
+    build_call_summary_from_collector,
+    build_call_summary_from_history,
+    format_conversation_line,
+    message_text,
+)
 from livekit.agents import llm
 from livekit.agents.llm.chat_context import AgentHandoff
-from rag_client.call_summary_client import CallSummaryApiClient
 
 
 def test_build_call_summary_from_history():
@@ -42,7 +42,55 @@ def test_build_call_summary_skips_agent_handoff_items():
     assert "agent-a" not in summary
 
 
+def test_collector_deduplicates_by_message_id():
+    history = llm.ChatContext()
+    history.add_message(role="user", content="First question")
+    history.add_message(role="assistant", content="First answer")
+
+    collector = CallTranscriptCollector()
+    collector.extend_from_context(history)
+    collector.extend_from_context(history)
+
+    summary = build_call_summary_from_collector(collector)
+    assert summary.count("Caller: First question") == 1
+    assert summary.count("Agent: First answer") == 1
+
+
+def test_message_text_uses_text_content():
+    history = llm.ChatContext()
+    history.add_message(role="user", content="Spoken transcript")
+    message = history.items[0]
+    assert message_text(message) == "Spoken transcript"
+    assert format_conversation_line(message) == "Caller: Spoken transcript"
+
+
+def test_collector_merges_session_and_agent_histories():
+    session_history = llm.ChatContext()
+    session_history.add_message(role="user", content="Question from session")
+
+    agent_history = llm.ChatContext()
+    agent_history.add_message(role="assistant", content="Answer from agent")
+
+    collector = CallTranscriptCollector()
+    summary = build_call_summary_from_collector(
+        collector,
+        session_history,
+        agent_history,
+    )
+    assert "Caller: Question from session" in summary
+    assert "Agent: Answer from agent" in summary
+
+
 def test_call_summary_api_client_posts_record():
+    import asyncio
+    import json
+    from datetime import UTC, datetime
+    from uuid import UUID
+
+    import httpx
+
+    from rag_client.call_summary_client import CallSummaryApiClient
+
     captured: dict[str, object] = {}
     start = datetime(2026, 1, 1, 10, 0, tzinfo=UTC)
     end = datetime(2026, 1, 1, 10, 5, tzinfo=UTC)
@@ -64,15 +112,13 @@ def test_call_summary_api_client_posts_record():
             customer_id=14,
             call_start_time=start,
             call_end_time=end,
-            call_summary="Caller asked about hours.",
+            call_summary="Caller: What are your hours?\nAgent: Nine to five.",
             job_id=UUID("aaaaaaaa-bbbb-cccc-dddd-000000000001"),
         )
         assert captured["path"] == "/v1/call-summaries"
         payload = captured["payload"]
         assert payload["customer_id"] == 14
-        assert payload["call_summary"] == "Caller asked about hours."
+        assert "Caller: What are your hours?" in str(payload["call_summary"])
         await api_client.aclose()
-
-    import asyncio
 
     asyncio.run(_run())
