@@ -172,6 +172,8 @@ export function ClientScopeProvider({ children }: { children: React.ReactNode })
       selectClientByEmail,
     ],
   );
+
+  return (
     <ClientScopeContext.Provider value={value}>
       {children}
     </ClientScopeContext.Provider>

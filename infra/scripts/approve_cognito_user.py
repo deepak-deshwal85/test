@@ -14,7 +14,7 @@ Roles:
   relaydesk-admins   — full console and API access
 
 Usage:
-  python infra/scripts/approve_cognito_user.py --email you@example.com --role relaydesk-admins --business-phone +911171366880
+  python infra/scripts/approve_cognito_user.py --email deepakdeshwal85@gmail.com --role relaydesk-admins --business-phone +911171366880
   python infra/scripts/approve_cognito_user.py --email you@example.com --role approved-clients --business-phone +911171366880
   python infra/scripts/approve_cognito_user.py --email you@example.com --role guest-clients
   python infra/scripts/approve_cognito_user.py --email you@example.com --revoke
@@ -27,6 +27,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import quote_plus, urlparse, urlunparse
 
 RELAYDESK_ROLE_GROUPS = (
     "guest-clients",
@@ -35,6 +36,161 @@ RELAYDESK_ROLE_GROUPS = (
 )
 
 ROLES_REQUIRING_BUSINESS_PHONE = frozenset({"approved-clients", "relaydesk-admins"})
+
+
+def read_database_url_from_env_file(path: Path) -> str | None:
+    if not path.is_file():
+        return None
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("DATABASE_URL="):
+            value = stripped.removeprefix("DATABASE_URL=").strip().strip('"').strip("'")
+            return value or None
+    return None
+
+
+def fetch_database_url_from_ssm(
+    *,
+    profile: str | None,
+    region: str,
+    project: str,
+    environment: str,
+) -> str | None:
+    name = f"/{project}/{environment}/api/DATABASE_URL"
+    cmd = aws_cmd(
+        profile,
+        region,
+        "ssm",
+        "get-parameter",
+        "--name",
+        name,
+        "--with-decryption",
+    )
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        return None
+    payload = json.loads(result.stdout or "{}")
+    value = payload.get("Parameter", {}).get("Value")
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
+def build_tunnel_database_url(
+    *,
+    terraform_dir: Path,
+    password: str,
+    local_port: int = 15432,
+) -> str:
+    result = subprocess.run(
+        ["terraform", "output", "-json"],
+        cwd=str(terraform_dir),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    outputs = json.loads(result.stdout)
+
+    def _value(key: str) -> str:
+        obj = outputs.get(key)
+        if not isinstance(obj, dict):
+            raise RuntimeError(f"Missing terraform output: {key}")
+        raw = obj.get("value")
+        if not raw:
+            raise RuntimeError(f"Terraform output {key} is empty")
+        return str(raw)
+
+    username = _value("rds_master_username")
+    db_name = _value("rds_database_name")
+    encoded_password = quote_plus(password)
+    return (
+        f"postgresql+asyncpg://{username}:{encoded_password}"
+        f"@127.0.0.1:{local_port}/{db_name}"
+    )
+
+
+def rewrite_database_url_for_tunnel(database_url: str, *, local_port: int = 15432) -> str:
+    parsed = urlparse(database_url)
+    if not parsed.scheme or not parsed.path:
+        raise RuntimeError(f"Invalid DATABASE_URL: {database_url!r}")
+    netloc = parsed.netloc
+    if "@" in netloc:
+        auth, _host = netloc.rsplit("@", 1)
+        netloc = f"{auth}@127.0.0.1:{local_port}"
+    else:
+        netloc = f"127.0.0.1:{local_port}"
+    return urlunparse(parsed._replace(netloc=netloc))
+
+
+def resolve_database_url(
+    *,
+    repo_root: Path,
+    profile: str | None,
+    region: str,
+    project: str,
+    environment: str,
+    terraform_dir: Path,
+    explicit_url: str | None,
+    use_tunnel: bool,
+    tunnel_port: int,
+) -> str:
+    candidates: list[tuple[str, str | None]] = []
+
+    if explicit_url:
+        candidates.append(("--database-url", explicit_url.strip()))
+
+    env_url = os.getenv("DATABASE_URL", "").strip()
+    if env_url:
+        candidates.append(("DATABASE_URL env var", env_url))
+
+    for label, path in (
+        ("api/.env.local", repo_root / "api" / ".env.local"),
+        ("api/.env", repo_root / "api" / ".env"),
+    ):
+        file_url = read_database_url_from_env_file(path)
+        if file_url:
+            candidates.append((label, file_url))
+
+    ssm_url = fetch_database_url_from_ssm(
+        profile=profile,
+        region=region,
+        project=project,
+        environment=environment,
+    )
+    if ssm_url:
+        candidates.append((f"SSM /{project}/{environment}/api/DATABASE_URL", ssm_url))
+
+    password = os.getenv("RDS_DB_PASSWORD", "").strip()
+    if use_tunnel and password:
+        try:
+            tunnel_url = build_tunnel_database_url(
+                terraform_dir=terraform_dir,
+                password=password,
+                local_port=tunnel_port,
+            )
+            candidates.insert(0, ("RDS tunnel URL", tunnel_url))
+        except (subprocess.CalledProcessError, RuntimeError, json.JSONDecodeError):
+            pass
+
+    for _source, url in candidates:
+        if not url:
+            continue
+        if use_tunnel and "127.0.0.1" not in url and "localhost" not in url:
+            try:
+                return rewrite_database_url_for_tunnel(url, local_port=tunnel_port)
+            except RuntimeError:
+                continue
+        return url
+
+    raise RuntimeError(
+        "DATABASE_URL is required to store the client business phone number.\n"
+        "Options:\n"
+        "  1. Start the RDS tunnel: .\\infra\\scripts\\rds_tunnel.ps1\n"
+        "  2. Set RDS_DB_PASSWORD and re-run with --use-tunnel\n"
+        "  3. Export DATABASE_URL in your shell\n"
+        "  4. Run infra/scripts/write_local_tunnel_database_url.py (writes api/.env.local)\n"
+        "  5. Run infra/scripts/set_database_url_from_rds.py (SSM; use --use-tunnel from laptop)"
+    )
 
 
 def aws_cmd(profile: str | None, region: str, *args: str) -> list[str]:
@@ -186,14 +342,12 @@ def set_group_membership(
     print(f"Assigned {username!r} to group {group_name!r}")
 
 
-def upsert_client_business_phone(*, email: str, business_phone: str) -> None:
-    database_url = os.getenv("DATABASE_URL", "").strip()
-    if not database_url:
-        raise RuntimeError(
-            "DATABASE_URL is required to store the client business phone number. "
-            "Set it in the environment or use infra/scripts/set_database_url_from_rds.py."
-        )
-
+def upsert_client_business_phone(
+    *,
+    email: str,
+    business_phone: str,
+    database_url: str,
+) -> None:
     repo_root = Path(__file__).resolve().parents[2]
     api_dir = repo_root / "api"
     helper = api_dir / "scripts" / "set_client_business_phone.py"
@@ -257,6 +411,23 @@ def main() -> int:
         help="Path to Terraform directory for default pool ID lookup",
     )
     parser.add_argument(
+        "--database-url",
+        help="PostgreSQL URL (postgresql+asyncpg://...). Overrides env/SSM when set.",
+    )
+    parser.add_argument(
+        "--use-tunnel",
+        action="store_true",
+        help="Use localhost:15432 (RDS SSM tunnel). Requires rds_tunnel.ps1 running.",
+    )
+    parser.add_argument(
+        "--tunnel-port",
+        type=int,
+        default=15432,
+        help="Local RDS tunnel port when --use-tunnel is set (default: 15432)",
+    )
+    parser.add_argument("--project", default="relaydesk")
+    parser.add_argument("--environment", default="prod")
+    parser.add_argument(
         "--revoke",
         action="store_true",
         help="Remove the user from all RelayDesk role groups",
@@ -310,9 +481,22 @@ def main() -> int:
         and not args.dry_run
         and args.role in ROLES_REQUIRING_BUSINESS_PHONE
     ):
+        repo_root = Path(__file__).resolve().parents[2]
+        database_url = resolve_database_url(
+            repo_root=repo_root,
+            profile=args.profile,
+            region=args.region,
+            project=args.project,
+            environment=args.environment,
+            terraform_dir=Path(args.terraform_dir).resolve(),
+            explicit_url=args.database_url,
+            use_tunnel=args.use_tunnel,
+            tunnel_port=args.tunnel_port,
+        )
         upsert_client_business_phone(
             email=email,
             business_phone=args.business_phone.strip(),
+            database_url=database_url,
         )
         print(f"Tell {email} to sign out and sign in again to refresh access.")
     elif not args.revoke and not args.dry_run:
