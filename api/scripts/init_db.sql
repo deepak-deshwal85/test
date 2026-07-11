@@ -1,61 +1,7 @@
--- PostgreSQL schema for RelayDesk API (AWS RDS).
--- The API also applies migrations on startup (see src/app/db/postgres/session.py).
--- Use only for one-time manual RDS setup if Terraform did not create the database.
+-- Deprecated: use `uv run python scripts/init_db.py` instead.
+-- Schema lives in scripts/db/schema.sql; seed data in scripts/db/seed.sql.
+--
+-- Terraform/RDS creates the empty `relaydesk` database. Run init_db.py once
+-- after deploy (or locally through the SSM tunnel) to create tables and seed.
 
-CREATE DATABASE relaydesk
-    WITH ENCODING 'UTF8'
-    LC_COLLATE='en_US.UTF-8'
-    LC_CTYPE='en_US.UTF-8'
-    TEMPLATE template0;
-
-\c relaydesk
-
-CREATE TABLE clients (
-    id SERIAL PRIMARY KEY,
-    client_phone_number VARCHAR(32),
-    client_business_phone_number VARCHAR(32) UNIQUE,
-    client_name VARCHAR(255) NOT NULL DEFAULT '',
-    client_email_id VARCHAR(255) NOT NULL UNIQUE,
-    cognito_sub VARCHAR(255) UNIQUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE customers (
-    id SERIAL PRIMARY KEY,
-    client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL,
-    client_business_phone_number VARCHAR(32) NOT NULL,
-    client_name VARCHAR(255) NOT NULL,
-    client_email_id VARCHAR(255) NOT NULL,
-    consumer_phone_number VARCHAR(32) NOT NULL,
-    consumer_email_id VARCHAR(255) NOT NULL,
-    is_approved BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT uq_customers_client_consumer UNIQUE (
-      client_email_id,
-      consumer_phone_number
-    )
-);
-
-CREATE INDEX idx_customers_client_business_phone ON customers (client_business_phone_number);
-CREATE INDEX idx_customers_client_email ON customers (client_email_id);
-
-CREATE TABLE call_jobs (
-    id UUID PRIMARY KEY,
-    client_business_phone_number VARCHAR(32) NOT NULL,
-    client_email_id VARCHAR(255) NOT NULL,
-    status VARCHAR(32) NOT NULL,
-    total_customers INTEGER NOT NULL DEFAULT 0,
-    calls_completed INTEGER NOT NULL DEFAULT 0,
-    error_message TEXT,
-    started_at TIMESTAMPTZ,
-    completed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_call_jobs_client_business_phone ON call_jobs (client_business_phone_number);
-CREATE INDEX idx_call_jobs_client_email ON call_jobs (client_email_id);
-CREATE INDEX idx_call_jobs_status ON call_jobs (status);
-
-ALTER TABLE call_jobs
-    ADD COLUMN IF NOT EXISTS results_json TEXT;
+\echo 'Run: cd api && uv run python scripts/init_db.py'

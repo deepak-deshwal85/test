@@ -99,6 +99,33 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 
 `write_local_tunnel_database_url.bat` writes `api/.env.local` with `DATABASE_URL` pointing at `127.0.0.1:15432`.
 
+### Initialize database (first time / fresh RDS)
+
+The API **does not** create tables on startup. After RDS exists and `DATABASE_URL` is configured, run once:
+
+```powershell
+$env:RDS_DB_PASSWORD = "YourRdsPassword"
+python infra/scripts/init_database.py --use-tunnel
+```
+
+Or from `api/`:
+
+```bash
+uv run python scripts/init_db.py              # schema + dummy seed
+uv run python scripts/init_db.py --schema-only
+```
+
+Seed includes `acme@example.com`, 3 customers, and 2 call jobs (idempotent).
+
+**Drop and recreate** (destructive — deletes all rows):
+
+```powershell
+$env:RDS_DB_PASSWORD = "YourRdsPassword"
+python infra/scripts/reset_database.py --use-tunnel --yes
+```
+
+Or from `api/`: `uv run python scripts/reset_db.py --yes`
+
 ### Start (Git Bash / macOS / Linux)
 
 ```bash
@@ -177,8 +204,13 @@ All scripts run from the `api/` directory unless noted.
 
 | Script | Purpose | Usage |
 |--------|---------|--------|
-| `scripts/init_db.sql` | Reference DDL for RDS (API migrates on startup) | Manual RDS bootstrap only |
-| `scripts/migrate_call_job_results.sql` | Add `results_json` to `call_jobs` | Legacy DB upgrade |
+| `scripts/init_db.py` | Create tables + optional dummy seed data | `uv run python scripts/init_db.py` |
+| `scripts/reset_db.py` | **Drop all tables**, recreate schema + seed | `uv run python scripts/reset_db.py --yes` |
+| `scripts/db/drop.sql` | Drop `call_jobs`, `customers`, `clients` | Used by `reset_db.py` |
+| `scripts/db/schema.sql` | Idempotent DDL (clients, customers, call_jobs) | Used by `init_db.py` / `reset_db.py` |
+| `scripts/db/seed.sql` | Dummy dev rows (Acme client, 3 customers, 2 call jobs) | Used by `init_db.py` |
+| `scripts/init_db.sql` | Deprecated pointer | Use `init_db.py` instead |
+| `scripts/migrate_call_job_results.sql` | Legacy `results_json` column | Superseded by `schema.sql` |
 | `scripts/upload_document.py` | Upload file to a collection via HTTP | `uv run python scripts/upload_document.py --file doc.pdf --collection phone_911171366880` |
 | `scripts/reset_qdrant_collections.py` | Delete all Qdrant Cloud collections (destructive) | `uv run python scripts/reset_qdrant_collections.py --yes` |
 | `scripts/bench_search.py` | Benchmark search latency | `uv run python scripts/bench_search.py --query "hello"` |

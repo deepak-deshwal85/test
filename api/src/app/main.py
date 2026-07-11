@@ -14,7 +14,6 @@ from app.core.dependencies import (
 )
 from app.core.logging import configure_logging
 from app.db.postgres.session import (
-    bootstrap_database_schema,
     dispose_engine,
     init_engine,
 )
@@ -37,10 +36,8 @@ configure_logging()
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     settings = get_settings()
-    engine = init_engine(settings)
+    init_engine(settings)
     logger.info("database engine initialized")
-    await bootstrap_database_schema(engine)
-    logger.info("database schema ensured")
     get_qdrant_repository(settings)
     logger.info("qdrant client warmed")
     get_embedding_provider_factory(settings).get_provider()

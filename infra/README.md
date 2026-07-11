@@ -198,6 +198,16 @@ python infra/scripts/set_database_url_from_rds.py \
   --profile relaydesk-admin --region ap-south-1
 ```
 
+**Initialize tables** (run once after RDS is created — not during ECS startup):
+
+```powershell
+# With SSM tunnel to RDS
+$env:RDS_DB_PASSWORD = "YourRdsPassword"
+python infra/scripts/init_database.py --use-tunnel
+```
+
+Creates `clients`, `customers`, `call_jobs` and optional dummy dev rows. See [`api/scripts/init_db.py`](../api/scripts/init_db.py).
+
 **Local API against AWS RDS** (SSM tunnel — see [Connect from your laptop](#connect-from-your-laptop-psql--pgadmin)):
 
 ```powershell
@@ -390,6 +400,8 @@ All scripts in `infra/scripts/`. Run from repo root unless noted.
 | **`sync_ssm_parameters.py`** | Push `api/.env`, `voice-agent/.env`, `ui/.env` to SSM | `python infra/scripts/sync_ssm_parameters.py --profile relaydesk-admin --region ap-south-1` |
 | **`sync_ssm_parameters.ps1`** | Windows PowerShell variant of SSM sync | `.\infra\scripts\sync-ssm-parameters.ps1` |
 | **`set_database_url_from_rds.py`** | Write RDS connection string to SSM `DATABASE_URL` | `python infra/scripts/set_database_url_from_rds.py --profile relaydesk-admin` |
+| **`init_database.py`** | Create PostgreSQL tables + optional dummy seed (not on ECS startup) | `python infra/scripts/init_database.py --use-tunnel` |
+| **`reset_database.py`** | Drop all tables and recreate schema + seed | `python infra/scripts/reset_database.py --use-tunnel --yes` |
 | **`approve_cognito_user.py`** | Assign or revoke Cognito role groups by email | `python infra/scripts/approve_cognito_user.py --email u@x.com --role relaydesk-admins` |
 | **`backfill_guest_clients.py`** | Add `guest-clients` group to existing pool users | `python infra/scripts/backfill_guest_clients.py --profile relaydesk-admin` |
 | **`sync_cognito_voice_client_secret.py`** | Refresh M2M client secret in SSM from Cognito | `python infra/scripts/sync_cognito_voice_client_secret.py --profile relaydesk-admin` |
