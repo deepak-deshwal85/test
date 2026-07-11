@@ -42,6 +42,12 @@ DEPLOY_TARGETS: dict[str, DeployTarget] = {
     ),
 }
 
+DEFAULT_IMAGE_TAGS: dict[str, str] = {
+    "api": "latest",
+    "ui": "latest",
+    "voice-agent": "v1",
+}
+
 
 def repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -101,8 +107,8 @@ def add_deploy_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--region", default="ap-south-1")
     parser.add_argument(
         "--image-tag",
-        default="latest",
-        help="ECR image tag (match terraform.tfvars ecr_*_image_tag)",
+        default=None,
+        help="ECR image tag (default: latest for api/ui, v1 for voice-agent)",
     )
     parser.add_argument(
         "--terraform-dir",
@@ -124,12 +130,119 @@ def add_deploy_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Build and push to ECR but do not force ECS redeployment",
     )
+    parser.add_argument(
+        "--fast",
+        action="store_true",
+        help=(
+            "Fast dev deploy (downtime OK): BuildKit cache, single ECR push, "
+            "stop running tasks before redeploy"
+        ),
+    )
 
 
 def resolve_profile(explicit: str | None) -> str:
     import os
 
     return explicit or os.getenv("AWS_PROFILE") or os.getenv("PROFILE_NAME") or "relaydesk-admin"
+
+
+def resolve_image_tag(service_key: str, explicit: str | None) -> str:
+    if explicit:
+        return explicit
+    return DEFAULT_IMAGE_TAGS.get(service_key, "latest")
+
+
+def docker_build_env(*, fast: bool) -> dict[str, str]:
+    import os
+
+    env = os.environ.copy()
+    if fast:
+        env["DOCKER_BUILDKIT"] = "1"
+    return env
+
+
+def list_running_task_arns(
+    *,
+    cluster: str,
+    service: str,
+    profile: str,
+    region: str,
+    dry_run: bool,
+) -> list[str]:
+    if dry_run:
+        return []
+    result = subprocess.run(
+        [
+            "aws",
+            "ecs",
+            "list-tasks",
+            "--cluster",
+            cluster,
+            "--service-name",
+            service,
+            "--desired-status",
+            "RUNNING",
+            "--profile",
+            profile,
+            "--region",
+            region,
+            "--no-cli-pager",
+            "--output",
+            "json",
+            "--query",
+            "taskArns",
+        ],
+        capture_output=True,
+        text=True,
+        env=aws_env(),
+        check=True,
+    )
+    import json
+
+    task_arns = json.loads(result.stdout or "[]")
+    return [str(arn) for arn in task_arns if arn]
+
+
+def stop_running_tasks(
+    *,
+    cluster: str,
+    service: str,
+    profile: str,
+    region: str,
+    dry_run: bool,
+) -> None:
+    task_arns = list_running_task_arns(
+        cluster=cluster,
+        service=service,
+        profile=profile,
+        region=region,
+        dry_run=dry_run,
+    )
+    if not task_arns:
+        print(f"  no running tasks for {service}")
+        return
+    print(f"  stopping {len(task_arns)} running task(s) for {service}")
+    for task_arn in task_arns:
+        run_step(
+            [
+                "aws",
+                "ecs",
+                "stop-task",
+                "--cluster",
+                cluster,
+                "--task",
+                task_arn,
+                "--reason",
+                "fast deploy",
+                "--profile",
+                profile,
+                "--region",
+                region,
+                "--no-cli-pager",
+            ],
+            dry_run=dry_run,
+            env=aws_env(),
+        )
 
 
 def deploy_service(
@@ -142,6 +255,7 @@ def deploy_service(
     dry_run: bool = False,
     build_only: bool = False,
     skip_deploy: bool = False,
+    fast: bool = False,
 ) -> None:
     root = repo_root()
     context_path = root / target.docker_context
@@ -156,6 +270,8 @@ def deploy_service(
     print(f"  profile:       {profile}")
     print(f"  region:        {region}")
     print(f"  image tag:     {image_tag}")
+    if fast:
+        print("  mode:          fast (downtime OK)")
 
     account_id = terraform_output(tf_dir, "aws_account_id")
     ecr_url = terraform_output(tf_dir, target.ecr_output)
@@ -171,6 +287,7 @@ def deploy_service(
         ["docker", "build", "-t", target.local_image, str(context_path)],
         cwd=root,
         dry_run=dry_run,
+        env=docker_build_env(fast=fast),
     )
 
     if build_only:
@@ -216,13 +333,24 @@ def deploy_service(
     tagged = f"{ecr_url}:{image_tag}"
     latest = f"{ecr_url}:latest"
     run_step(["docker", "tag", target.local_image, tagged], dry_run=dry_run)
-    run_step(["docker", "tag", target.local_image, latest], dry_run=dry_run)
     run_step(["docker", "push", tagged], dry_run=dry_run)
-    run_step(["docker", "push", latest], dry_run=dry_run)
+    if not fast and image_tag != "latest":
+        run_step(["docker", "tag", target.local_image, latest], dry_run=dry_run)
+        run_step(["docker", "push", latest], dry_run=dry_run)
 
     if skip_deploy:
         print(f"\n✓ {target.name} pushed to ECR (ECS deploy skipped)")
         return
+
+    if fast:
+        print(f"\n→ Fast deploy: stopping old {target.name} tasks")
+        stop_running_tasks(
+            cluster=cluster,
+            service=service,
+            profile=profile,
+            region=region,
+            dry_run=dry_run,
+        )
 
     run_step(
         [
@@ -261,11 +389,12 @@ def main_for_service(service_key: str, description: str) -> int:
             target,
             profile=resolve_profile(args.profile),
             region=args.region,
-            image_tag=args.image_tag,
+            image_tag=resolve_image_tag(service_key, args.image_tag),
             terraform_dir=Path(args.terraform_dir),
             dry_run=args.dry_run,
             build_only=args.build_only,
             skip_deploy=args.skip_deploy,
+            fast=args.fast,
         )
     except (RuntimeError, subprocess.CalledProcessError) as exc:
         print(str(exc), file=sys.stderr)

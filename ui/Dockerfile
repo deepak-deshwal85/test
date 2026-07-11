@@ -3,7 +3,8 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN --mount=type=cache,target=/root/.npm \
+    npm install
 
 FROM node:22-alpine AS builder
 WORKDIR /app

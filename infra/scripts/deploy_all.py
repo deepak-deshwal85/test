@@ -117,7 +117,16 @@ def main() -> int:
     )
     parser.add_argument("--profile", default=None)
     parser.add_argument("--region", default="ap-south-1")
-    parser.add_argument("--image-tag", default="latest")
+    parser.add_argument(
+        "--image-tag",
+        default=None,
+        help="ECR tag for all services (default: api/ui=latest, voice-agent=v1)",
+    )
+    parser.add_argument(
+        "--fast",
+        action="store_true",
+        help="Fast dev deploy (downtime OK): stop tasks, single push, BuildKit",
+    )
     parser.add_argument("--terraform-dir", default="infra/terraform")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--build-only", action="store_true")
@@ -138,7 +147,8 @@ def main() -> int:
     if args.profile:
         shared_args.extend(["--profile", args.profile])
     shared_args.extend(["--region", args.region])
-    shared_args.extend(["--image-tag", args.image_tag])
+    if args.image_tag:
+        shared_args.extend(["--image-tag", args.image_tag])
     shared_args.extend(["--terraform-dir", args.terraform_dir])
     if args.dry_run:
         shared_args.append("--dry-run")
@@ -146,6 +156,8 @@ def main() -> int:
         shared_args.append("--build-only")
     if args.skip_deploy:
         shared_args.append("--skip-deploy")
+    if args.fast:
+        shared_args.append("--fast")
 
     if args.sequential:
         code = _deploy_sequential(services, shared_args)
