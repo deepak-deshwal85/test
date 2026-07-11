@@ -63,9 +63,7 @@ def test_warmup_knowledge_retriever_runs_searches():
     config = ClientConfig(
         phone_number="911171366880",
         client_name="Test Client",
-        xai_collection_id="phone_911171366880",
         client_email_id="client@example.com",
-        rag_backend="qdrant",
     )
 
     asyncio.run(
@@ -106,25 +104,13 @@ def test_filter_relevant_hits_drops_weak_matches():
     assert filtered[0].text == "strong"
 
 
-def test_requires_sync_turn_completion_when_qdrant_backend():
+def test_requires_sync_turn_completion():
     config = ClientConfig(
         phone_number="911171366880",
         client_name="Test Client",
-        xai_collection_id="phone_911171366880",
         client_email_id="client@example.com",
-        rag_backend="qdrant",
     )
     assert requires_sync_turn_completion(config) is True
-
-
-def test_requires_sync_turn_completion_false_without_qdrant():
-    config = ClientConfig(
-        phone_number="911171366880",
-        client_name="Test Client",
-        xai_collection_id="collection-1",
-        rag_backend="xai",
-    )
-    assert requires_sync_turn_completion(config) is False
 
 
 def test_build_prefetched_context_message_includes_excerpts():

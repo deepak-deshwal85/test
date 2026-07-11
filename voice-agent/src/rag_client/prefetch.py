@@ -10,7 +10,7 @@ from collections.abc import Coroutine
 
 from client_config import ClientConfig
 from rag_client.api_retriever import create_api_rag_retriever
-from rag_client.config import RagClientSettings, load_rag_settings, resolve_rag_backend
+from rag_client.config import RagClientSettings, load_rag_settings
 from rag_client.models import RagSearchHit, filter_relevant_hits, format_search_hits
 
 logger = logging.getLogger("relaydesk-agent")
@@ -110,10 +110,6 @@ def create_knowledge_retriever(
     settings: RagClientSettings | None = None,
 ):
     rag_settings = settings or load_rag_settings()
-    backend = resolve_rag_backend(client_config, rag_settings)
-    if backend != "qdrant":
-        return None
-
     return create_api_rag_retriever(
         client_config=client_config,
         settings=rag_settings,

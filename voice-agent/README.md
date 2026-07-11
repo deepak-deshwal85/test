@@ -15,7 +15,6 @@ LiveKit voice agent for inbound/outbound phone calls. Runs an STT → LLM → TT
 - Loads per-phone config from `config/phone_number_<digits>.json`.
 - Calls the **RAG API** (`POST /v1/search`) with Cognito M2M OAuth in production.
 - Optional **Cal.com** tools for meeting scheduling.
-- Fallback: **xAI FileSearch** when `RAG_BACKEND=xai`.
 
 ### Project structure
 
@@ -63,8 +62,8 @@ cp .env.example .env
 | `CALCOM_API_KEY` | Scheduling | Cal.com API key |
 | `AGENT_NAME` | Yes | Must match LiveKit agent registration |
 | `CLIENT_PHONE_OVERRIDE` | Local | e.g. `+911171366880` — simulates caller phone |
-| `RAG_BACKEND` | RAG | `qdrant` (API) or `xai` (FileSearch) |
-| `RAG_API_BASE_URL` | qdrant | `http://127.0.0.1:8090` locally |
+| `RAG_BACKEND` | RAG | Must be `qdrant` (RelayDesk RAG API) |
+| `RAG_API_BASE_URL` | Yes | `http://127.0.0.1:8090` locally |
 | `COGNITO_TOKEN_URL` | Production | Cognito OAuth token endpoint |
 | `COGNITO_CLIENT_ID` | Production | M2M client ID |
 | `COGNITO_CLIENT_SECRET` | Production | M2M client secret |
@@ -82,7 +81,6 @@ Create `config/phone_number_<digits>.json`:
   "calcom_username": "your-calcom-username",
   "calcom_event_type_slug": "30min",
   "calcom_event_type_id": 1234567,
-  "rag_backend": "qdrant",
   "rag_api_url": "http://127.0.0.1:8090"
 }
 ```

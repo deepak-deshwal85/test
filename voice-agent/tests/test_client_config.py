@@ -10,10 +10,6 @@ def test_load_client_config_for_phone_911171366880():
     config = load_client_config("911171366880")
     assert config.phone_number == "911171366880"
     assert config.client_name == "Deepak Kumar"
-    assert (
-        config.xai_collection_id
-        == "collection_b538deab-ad22-4dac-8752-96007d636be8"
-    )
     assert config.calcom is not None
     assert config.calcom.username == "deepak-kumar-a7vq7q"
     assert config.calcom.event_type_slug == "30min"
@@ -22,7 +18,6 @@ def test_load_client_config_for_phone_911171366880():
 def test_load_client_config_for_phone_6789():
     config = load_client_config("6789")
     assert config.client_name == "Bob Smith"
-    assert config.xai_collection_id.startswith("collection_")
 
 
 def test_resolve_client_config_matches_full_number():

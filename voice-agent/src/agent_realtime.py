@@ -78,12 +78,6 @@ async def entrypoint(ctx: JobContext):
             voice="Ara",
             turn_detection=REALTIME_TURN_DETECTION,
         ),
-        tools=[
-            xai.FileSearch(
-                vector_store_ids=["collection_b538deab-ad22-4dac-8752-96007d636be8"],
-                max_num_results=5,
-            )
-        ],
     )
 
     await session.start(

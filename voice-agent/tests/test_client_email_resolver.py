@@ -73,7 +73,6 @@ def test_resolve_client_email_by_phone_calls_api():
 
 def test_resolve_client_email_uses_api_when_no_metadata_or_config():
     settings = RagClientSettings(
-        backend="qdrant",
         max_results=3,
         rag_api_base_url="http://rag.test",
         min_score=0.3,

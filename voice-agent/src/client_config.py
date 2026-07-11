@@ -23,10 +23,8 @@ class CalComConfig:
 class ClientConfig:
     phone_number: str
     client_name: str
-    xai_collection_id: str
     client_email_id: str | None = None
     calcom: CalComConfig | None = None
-    rag_backend: str | None = None
     qdrant_collection: str | None = None
     rag_api_url: str | None = None
     knowledge_base_topic: str | None = None
@@ -63,10 +61,8 @@ def load_client_config(phone_number: str) -> ClientConfig:
     return ClientConfig(
         phone_number=data["phone_number"],
         client_name=data["client_name"],
-        xai_collection_id=data["xai_collection_id"],
         client_email_id=(data.get("client_email_id") or "").strip().lower() or None,
         calcom=calcom,
-        rag_backend=data.get("rag_backend"),
         qdrant_collection=data.get("qdrant_collection"),
         rag_api_url=data.get("rag_api_url"),
         knowledge_base_topic=data.get("knowledge_base_topic"),

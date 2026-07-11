@@ -27,7 +27,7 @@ from dataclasses import replace
 from agent_instructions import build_conversation_flow_instructions
 from client_config import ClientConfig, resolve_client_config
 from client_email_resolver import resolve_client_email
-from rag_client import build_rag_instructions, build_rag_tools, resolve_rag_backend
+from rag_client import build_rag_instructions, build_rag_tools
 from call_summary_builder import build_call_summary_from_history
 from rag_client.call_summary_client import (
     create_call_summary_client,
@@ -91,9 +91,7 @@ def build_turn_handling_options(client_config: ClientConfig) -> TurnHandlingOpti
 
 def build_agent_instructions(client_config: ClientConfig) -> str:
     client_name = client_config.client_name
-    rag_settings = load_rag_settings()
-    rag_backend = resolve_rag_backend(client_config, rag_settings)
-    knowledge_search_tool = knowledge_search_tool_label(rag_backend)
+    knowledge_search_tool = knowledge_search_tool_label()
     return f"""You are a friendly voice assistant for {client_name}.
 
 # Output rules
@@ -117,7 +115,7 @@ You are on a phone call. Follow these rules for natural speech:
     knowledge_search_tool=knowledge_search_tool,
 )}
 
-{build_rag_instructions(rag_backend)}
+{build_rag_instructions()}
 
 {build_meeting_scheduling_instructions(client_name)}
 
@@ -302,12 +300,11 @@ async def _resolve_session_client(ctx: JobContext) -> ClientConfig:
             f"{client_config.calcom.username}/{client_config.calcom.event_type_slug}"
         )
     logger.info(
-        "loaded client %s for phone %s email %s (rag=%s, collection %s, calcom=%s)",
+        "loaded client %s for phone %s email %s (rag=qdrant, api=%s, calcom=%s)",
         client_config.client_name,
         client_config.phone_number,
         client_email_id,
-        resolve_rag_backend(client_config),
-        client_config.xai_collection_id,
+        client_config.rag_api_url or load_rag_settings().rag_api_base_url,
         calcom_label,
     )
     return client_config

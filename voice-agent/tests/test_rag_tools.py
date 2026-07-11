@@ -7,6 +7,7 @@ from client_config import ClientConfig
 from rag_client.config import RagClientSettings
 from rag_client.models import RagSearchHit, format_search_hits
 from rag_client.tools import (
+    KNOWLEDGE_SEARCH_TOOL_NAME,
     build_rag_instructions,
     build_rag_tools,
     knowledge_search_tool_label,
@@ -24,14 +25,13 @@ class FakeApiRetriever:
         ]
 
 
-def test_knowledge_search_tool_label_switches_by_backend():
-    assert knowledge_search_tool_label("xai") == "file search"
-    assert knowledge_search_tool_label("qdrant") == "search_knowledge_base"
+def test_knowledge_search_tool_label():
+    assert knowledge_search_tool_label() == KNOWLEDGE_SEARCH_TOOL_NAME
 
 
 def test_build_rag_instructions_mentions_tool_name():
-    instructions = build_rag_instructions("qdrant")
-    assert "search_knowledge_base" in instructions
+    instructions = build_rag_instructions()
+    assert KNOWLEDGE_SEARCH_TOOL_NAME in instructions
     assert "uploaded documents" in instructions.lower()
 
 
@@ -39,12 +39,9 @@ def test_build_rag_tools_uses_qdrant_function_tool():
     client = ClientConfig(
         phone_number="911171366880",
         client_name="Deepak Kumar",
-        xai_collection_id="collection_test",
         client_email_id="client@example.com",
-        rag_backend="qdrant",
     )
     settings = RagClientSettings(
-        backend="qdrant",
         max_results=3,
         rag_api_base_url="http://127.0.0.1:8090",
         min_score=0.3,
@@ -56,7 +53,7 @@ def test_build_rag_tools_uses_qdrant_function_tool():
 
     tools = build_rag_tools(client, settings=settings, api_retriever_factory=factory)
     assert len(tools) == 1
-    assert tools[0].id == "search_knowledge_base"
+    assert tools[0].id == KNOWLEDGE_SEARCH_TOOL_NAME
 
 
 def test_format_search_hits_returns_plain_language():
