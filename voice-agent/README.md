@@ -158,8 +158,7 @@ Run from `voice-agent/` unless noted.
 
 | Script | Purpose |
 |--------|---------|
-| [`../infra/scripts/sync_ssm_parameters.py`](../infra/scripts/sync_ssm_parameters.py) | Sync `voice-agent/.env` → SSM |
-| [`../infra/scripts/sync_cognito_voice_client_secret.py`](../infra/scripts/sync_cognito_voice_client_secret.py) | Fix M2M client secret drift |
+| [`../infra/scripts/sync_ssm_parameters.py`](../infra/scripts/sync_ssm_parameters.py) | Sync `voice-agent/.env` → SSM (`--only KEY` for one parameter) |
 
 ---
 

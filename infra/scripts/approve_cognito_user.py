@@ -185,11 +185,11 @@ def resolve_database_url(
     raise RuntimeError(
         "DATABASE_URL is required to store the client business phone number.\n"
         "Options:\n"
-        "  1. Start the RDS tunnel: .\\infra\\scripts\\rds_tunnel.ps1\n"
+        "  1. Start the RDS tunnel: python infra/scripts/rds_tunnel.py start\n"
         "  2. Set RDS_DB_PASSWORD and re-run with --use-tunnel\n"
         "  3. Export DATABASE_URL in your shell\n"
-        "  4. Run infra/scripts/write_local_tunnel_database_url.py (writes api/.env.local)\n"
-        "  5. Run infra/scripts/set_database_url_from_rds.py (SSM; use --use-tunnel from laptop)"
+        "  4. Run: python infra/scripts/rds_tunnel.py write-env --password <RDS_PASSWORD>\n"
+        "  5. For SSM: python infra/scripts/sync_ssm_parameters.py --only DATABASE_URL --from-rds"
     )
 
 
@@ -350,23 +350,42 @@ def upsert_client_business_phone(
 ) -> None:
     repo_root = Path(__file__).resolve().parents[2]
     api_dir = repo_root / "api"
-    helper = Path(__file__).resolve().parent / "set_client_business_phone.py"
-    if not helper.is_file():
-        raise RuntimeError(f"Missing helper script: {helper}")
+    script = f"""
+import asyncio
+import sys
 
+sys.path.insert(0, "src")
+
+from app.core.config import Settings
+from app.db.postgres.client_repository import ClientRepository
+from app.db.postgres.session import dispose_engine, get_session_factory, init_engine
+
+
+async def _run() -> None:
+    settings = Settings(database_url={database_url!r})
+    init_engine(settings)
+    session_factory = get_session_factory()
+    try:
+        async with session_factory() as session:
+            repository = ClientRepository(session)
+            client = await repository.set_business_phone(
+                client_email_id={email!r},
+                client_business_phone_number={business_phone!r},
+            )
+            print(
+                f"Stored business phone {{client.client_business_phone_number!r}} "
+                f"for client {{client.client_email_id!r}}"
+            )
+    finally:
+        await dispose_engine()
+
+
+asyncio.run(_run())
+"""
     env = os.environ.copy()
     env["DATABASE_URL"] = database_url
     result = subprocess.run(
-        [
-            "uv",
-            "run",
-            "python",
-            str(helper),
-            "--email",
-            email,
-            "--business-phone",
-            business_phone,
-        ],
+        ["uv", "run", "python", "-c", script],
         cwd=str(api_dir),
         env=env,
         capture_output=True,
@@ -417,7 +436,7 @@ def main() -> int:
     parser.add_argument(
         "--use-tunnel",
         action="store_true",
-        help="Use localhost:15432 (RDS SSM tunnel). Requires rds_tunnel.ps1 running.",
+        help="Use localhost:15432 (RDS SSM tunnel). Requires rds_tunnel.py start.",
     )
     parser.add_argument(
         "--tunnel-port",

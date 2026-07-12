@@ -180,6 +180,11 @@ python infra/scripts/sync_ssm_parameters.py \
   --region ap-south-1 \
   --profile relaydesk-admin
 
+# Upload a single parameter:
+python infra/scripts/sync_ssm_parameters.py --only OPENAI_API_KEY
+python infra/scripts/sync_ssm_parameters.py --only DATABASE_URL --from-rds --password "$RDS_DB_PASSWORD"
+python infra/scripts/sync_ssm_parameters.py --only COGNITO_CLIENT_SECRET --from-terraform
+
 # Also write combined infra/scripts/env.properties (gitignored)
 python infra/scripts/sync_ssm_parameters.py --write-env-properties
 ```
@@ -189,12 +194,14 @@ python infra/scripts/sync_ssm_parameters.py --write-env-properties
 If API logs show connection to `127.0.0.1:5432`, sync overwrote with local `.env`:
 
 ```bash
-export RDS_DB_PASSWORD='RelayDesk2026!'
+export RDS_DB_PASSWORD='YourRdsPassword'
 
-python infra/scripts/set_database_url_from_rds.py \
+python infra/scripts/sync_ssm_parameters.py \
+  --only DATABASE_URL --from-rds \
   --profile relaydesk-admin --region ap-south-1 --dry-run
 
-python infra/scripts/set_database_url_from_rds.py \
+python infra/scripts/sync_ssm_parameters.py \
+  --only DATABASE_URL --from-rds \
   --profile relaydesk-admin --region ap-south-1
 ```
 
@@ -212,11 +219,11 @@ Drops all tables, recreates schema, and loads Deepak seed data. See [`api/script
 
 ```powershell
 # Terminal 1 — leave open
-.\infra\scripts\rds_tunnel.ps1
+python infra/scripts/rds_tunnel.py start
 
 # Terminal 2 — write api/.env.local and start API
 $env:RDS_DB_PASSWORD = "YourRdsPassword"
-.\infra\scripts\write_local_tunnel_database_url.bat
+python infra/scripts/rds_tunnel.py write-env --password $env:RDS_DB_PASSWORD
 cd api
 uv sync
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
@@ -238,15 +245,11 @@ RDS is **private** (`publicly_accessible = false`) in **private subnets**. Conne
 2. Start the tunnel (**leave this terminal open**):
 
 ```powershell
-# PowerShell
-.\infra\scripts\rds_tunnel.ps1
-# or
-.\infra\scripts\rds_tunnel.bat
+python infra/scripts/rds_tunnel.py start
 ```
 
 ```bash
-# Git Bash
-./infra/scripts/rds_tunnel.sh
+python infra/scripts/rds_tunnel.py start
 ```
 
 3. Point tools at **localhost:15432**:
@@ -263,12 +266,12 @@ RDS is **private** (`publicly_accessible = false`) in **private subnets**. Conne
 
 ```powershell
 $env:RDS_DB_PASSWORD = "YourRdsPassword"
-.\infra\scripts\write_local_tunnel_database_url.bat
+python infra/scripts/rds_tunnel.py write-env --password $env:RDS_DB_PASSWORD
 ```
 
 ```bash
 export RDS_DB_PASSWORD='...'
-python infra/scripts/write_local_tunnel_database_url.py --password "$RDS_DB_PASSWORD"
+python infra/scripts/rds_tunnel.py write-env --password "$RDS_DB_PASSWORD"
 ```
 
 ```bash
@@ -366,10 +369,6 @@ Workflow: `.github/workflows/deploy-ecs.yml`
 Voice-agent M2M tokens bypass role checks.
 
 ```bash
-# Backfill users who signed up before the Lambda existed
-python infra/scripts/backfill_guest_clients.py \
-  --profile relaydesk-admin --region ap-south-1
-
 # Promote a user (business phone is stored in PostgreSQL; requires DATABASE_URL)
 python infra/scripts/approve_cognito_user.py \
   --email user@example.com --role approved-clients \
@@ -397,15 +396,31 @@ All scripts in `infra/scripts/`. Run from repo root unless noted.
 
 | Script | Purpose | Example |
 |--------|---------|---------|
-| **`sync_ssm_parameters.py`** | Push `api/.env`, `voice-agent/.env`, `ui/.env` to SSM | `python infra/scripts/sync_ssm_parameters.py --profile relaydesk-admin --region ap-south-1` |
-| **`sync_ssm_parameters.ps1`** | Windows PowerShell variant of SSM sync | `.\infra\scripts\sync-ssm-parameters.ps1` |
-| **`set_database_url_from_rds.py`** | Write RDS connection string to SSM `DATABASE_URL` | `python infra/scripts/set_database_url_from_rds.py --profile relaydesk-admin` |
-| **`bootstrap_database.py`** | Drop, recreate, and seed PostgreSQL (Deepak bootstrap) | `python infra/scripts/bootstrap_database.py --use-tunnel --yes` |
-| **`approve_cognito_user.py`** | Assign or revoke Cognito role groups by email | `python infra/scripts/approve_cognito_user.py --email u@x.com --role relaydesk-admins` |
-| **`backfill_guest_clients.py`** | Add `guest-clients` group to existing pool users | `python infra/scripts/backfill_guest_clients.py --profile relaydesk-admin` |
-| **`sync_cognito_voice_client_secret.py`** | Refresh M2M client secret in SSM from Cognito | `python infra/scripts/sync_cognito_voice_client_secret.py --profile relaydesk-admin` |
-| **`cost_control.py`** | Stop/start ECS + ASG (+ optional RDS) to save idle cost | `python infra/scripts/cost_control.py status` · `stop` · `start` |
-| **`asg-instance-refresh-prefs.json`** | JSON preferences for ASG instance refresh (not executed directly) | Used with `aws autoscaling start-instance-refresh` |
+| **`deploy_api.py`** | Build, push, deploy API | `python infra/scripts/deploy_api.py` |
+| **`deploy_ui.py`** | Build, push, deploy UI | `python infra/scripts/deploy_ui.py` |
+| **`deploy_voice_agent.py`** | Build, push, deploy voice-agent | `python infra/scripts/deploy_voice_agent.py` |
+| **`deploy_all.py`** | Deploy all services (parallel by default) | `python infra/scripts/deploy_all.py` |
+| **`rds_tunnel.py`** | RDS SSM tunnel + local `DATABASE_URL` | `python infra/scripts/rds_tunnel.py start` |
+| **`sync_ssm_parameters.py`** | Push secrets to SSM (all or `--only KEY`) | `python infra/scripts/sync_ssm_parameters.py --profile relaydesk-admin` |
+| **`bootstrap_database.py`** | Drop, recreate, seed PostgreSQL | `python infra/scripts/bootstrap_database.py --use-tunnel --yes` |
+| **`approve_cognito_user.py`** | Assign or revoke Cognito roles | `python infra/scripts/approve_cognito_user.py --email u@x.com --role relaydesk-admins` |
+| **`cost_control.py`** | Stop/start ECS + ASG (+ optional RDS) | `python infra/scripts/cost_control.py status` |
+| **`asg-instance-refresh-prefs.json`** | ASG instance refresh preferences | Used with `aws autoscaling start-instance-refresh` |
+
+`deploy_common.py` is a shared library used by the deploy scripts — not run directly.
+
+### `sync_ssm_parameters.py` (single key)
+
+```bash
+# One parameter from local .env files:
+python infra/scripts/sync_ssm_parameters.py --only OPENAI_API_KEY
+
+# RDS DATABASE_URL for production SSM:
+python infra/scripts/sync_ssm_parameters.py --only DATABASE_URL --from-rds --password "$RDS_DB_PASSWORD"
+
+# Voice-agent Cognito M2M secret from Terraform state:
+python infra/scripts/sync_ssm_parameters.py --only COGNITO_CLIENT_SECRET --from-terraform
+```
 
 ### `cost_control.py`
 
@@ -483,9 +498,9 @@ Enable billing alerts in AWS Console → Billing preferences if the dashboard is
 
 | Symptom | Fix |
 |---------|-----|
-| Cannot connect to RDS from laptop | Start `.\infra\scripts\rds_tunnel.ps1` (or `.bat`), connect to `localhost:15432`, and set `DATABASE_URL` to `127.0.0.1:15432` in `api/.env.local` |
+| Cannot connect to RDS from laptop | `python infra/scripts/rds_tunnel.py start`, then `python infra/scripts/rds_tunnel.py write-env --password <RDS_PASSWORD>` |
 | `SessionManagerPlugin is not found` | `winget install Amazon.SessionManagerPlugin` and restart terminal |
-| Voice agent RAG `401` | Run `sync_cognito_voice_client_secret.py`, redeploy voice-agent |
+| Voice agent RAG `401` | `python infra/scripts/sync_ssm_parameters.py --only COGNITO_CLIENT_SECRET --from-terraform`, redeploy voice-agent |
 | UI shows old code after push | Verify `docker build` succeeded; force ECS deployment |
 | `client_email_id` errors in UI | Redeploy UI + API; sign out/in; complete profile on `/login` |
 | Cognito callback mismatch | `terraform output cognito_callback_urls` must match UI `AUTH_URL` |

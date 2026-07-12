@@ -77,27 +77,18 @@ cp .env.example .env
 **Terminal 1 — RDS tunnel** (leave open):
 
 ```powershell
-.\infra\scripts\rds_tunnel.ps1
+python infra/scripts/rds_tunnel.py start
 ```
 
 **Terminal 2 — API**:
 
 ```powershell
 $env:RDS_DB_PASSWORD = "YourRdsPassword"
-.\infra\scripts\start_local_api.bat
-```
-
-Or manually:
-
-```powershell
-$env:RDS_DB_PASSWORD = "YourRdsPassword"
-.\infra\scripts\write_local_tunnel_database_url.bat
+python infra/scripts/rds_tunnel.py write-env --password $env:RDS_DB_PASSWORD
 cd api
 uv sync
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
-
-`write_local_tunnel_database_url.bat` writes `api/.env.local` with `DATABASE_URL` pointing at `127.0.0.1:15432`.
 
 ### Initialize database (first time / fresh RDS)
 
@@ -120,11 +111,11 @@ Seed includes two Deepak clients (`deepakdeshwal85@gmail.com`, `deepakdeshwal85@
 
 ```bash
 # Terminal 1
-./infra/scripts/rds_tunnel.sh
+python infra/scripts/rds_tunnel.py start
 
 # Terminal 2
 export RDS_DB_PASSWORD='YourRdsPassword'
-python infra/scripts/write_local_tunnel_database_url.py --password "$RDS_DB_PASSWORD"
+python infra/scripts/rds_tunnel.py write-env --password "$RDS_DB_PASSWORD"
 cd api && uv sync
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
@@ -138,9 +129,17 @@ Use the **Knowledge** page in the UI, or Swagger `POST /v1/collections/{collecti
 
 ---
 
-## 3. Docker build, push to ECR, update ECS
+## 3. Deploy to ECS
 
-Run from **repo root** in one shell session (Git Bash). **Wait for `docker build` to finish successfully** before pushing.
+From repo root:
+
+```bash
+python infra/scripts/deploy_api.py
+python infra/scripts/deploy_api.py --dry-run
+python infra/scripts/deploy_api.py --safe
+```
+
+Manual Docker/ECR steps (if you prefer):
 
 ```bash
 export PROFILE_NAME="relaydesk-admin"
@@ -202,9 +201,8 @@ Document upload, search, and collection management are available via the UI and 
 | Script | Purpose |
 |--------|---------|
 | [`../infra/scripts/bootstrap_database.py`](../infra/scripts/bootstrap_database.py) | Drop, recreate, and seed PostgreSQL via RDS tunnel |
-| [`../infra/scripts/rds_tunnel.ps1`](../infra/scripts/rds_tunnel.ps1) | SSM port-forward to RDS on `localhost:15432` |
-| [`../infra/scripts/write_local_tunnel_database_url.bat`](../infra/scripts/write_local_tunnel_database_url.bat) | Write `api/.env.local` with tunnel `DATABASE_URL` |
-| [`../infra/scripts/start_local_api.bat`](../infra/scripts/start_local_api.bat) | Tunnel env + start API |
+| [`../infra/scripts/rds_tunnel.py`](../infra/scripts/rds_tunnel.py) | RDS SSM tunnel and `api/.env.local` setup |
+| [`../infra/scripts/deploy_api.py`](../infra/scripts/deploy_api.py) | Build, push, and deploy API to ECS |
 
 ---
 

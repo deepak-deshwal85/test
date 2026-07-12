@@ -68,9 +68,13 @@ npm install
 npm run dev
 ```
 
-From repo root (Windows): `infra\scripts\start_local_ui.bat`
-
 Open http://localhost:3000
+
+### Deploy to ECS
+
+```bash
+python infra/scripts/deploy_ui.py
+```
 
 ### Production build (verify before Docker)
 
@@ -142,7 +146,6 @@ This project has no `scripts/` folder. Use these **npm** commands from `ui/`:
 |--------|---------|
 | [`../infra/scripts/sync_ssm_parameters.py`](../infra/scripts/sync_ssm_parameters.py) | Push `ui/.env` values to SSM |
 | [`../infra/scripts/approve_cognito_user.py`](../infra/scripts/approve_cognito_user.py) | Promote user to `approved-clients` or `relaydesk-admins` |
-| [`../infra/scripts/backfill_guest_clients.py`](../infra/scripts/backfill_guest_clients.py) | Add `guest-clients` group to existing users |
 
 ---
 

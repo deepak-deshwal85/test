@@ -44,7 +44,7 @@ Local development uses **AWS RDS** (SSM tunnel) and **Qdrant Cloud** — same ma
 ### 1. RDS tunnel (leave open)
 
 ```powershell
-.\infra\scripts\rds_tunnel.ps1
+python infra/scripts/rds_tunnel.py start
 ```
 
 ### 2. API
@@ -53,7 +53,9 @@ Local development uses **AWS RDS** (SSM tunnel) and **Qdrant Cloud** — same ma
 cd api
 cp .env.example .env   # set OPENAI_API_KEY, QDRANT_CLUSTER_ENDPOINT, QDRANT_API_KEY, OAUTH_DISABLED=true
 $env:RDS_DB_PASSWORD = "YourRdsPassword"
-..\infra\scripts\start_local_api.bat
+python ../infra/scripts/rds_tunnel.py write-env --password $env:RDS_DB_PASSWORD
+uv sync
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 ```
 
 Swagger: http://127.0.0.1:8090/docs
@@ -63,7 +65,8 @@ Swagger: http://127.0.0.1:8090/docs
 ```powershell
 cd ui
 cp .env.example .env   # set AUTH_DISABLE_SSO=true, AUTH_SECRET, AUTH_URL=http://localhost:3000
-..\infra\scripts\start_local_ui.bat
+npm install
+npm run dev
 ```
 
 Open http://localhost:3000 → **Continue in local mode**.
