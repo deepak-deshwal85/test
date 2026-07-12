@@ -1,4 +1,4 @@
-"""Shared helpers for api/scripts/init_db.py and reset_db.py."""
+"""Shared helpers for api/scripts/bootstrap_db.py."""
 
 from __future__ import annotations
 
@@ -130,9 +130,3 @@ async def apply_schema(connection: asyncpg.Connection) -> int:
     print(f"Applied schema ({count} statements) from {path.name}")
     return count
 
-
-async def apply_seed(connection: asyncpg.Connection) -> int:
-    path = DB_DIR / "seed.sql"
-    count = await run_sql_file(connection, path)
-    print(f"Applied seed data ({count} statements) from {path.name}")
-    return count

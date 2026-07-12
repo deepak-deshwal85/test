@@ -101,30 +101,20 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 
 ### Initialize database (first time / fresh RDS)
 
-The API **does not** create tables on startup. After RDS exists and `DATABASE_URL` is configured, run once:
+The API **does not** create tables on startup. After RDS exists and `DATABASE_URL` is configured, bootstrap once (destructive — drops all tables, recreates schema, loads Deepak seed data):
 
 ```powershell
 $env:RDS_DB_PASSWORD = "YourRdsPassword"
-python infra/scripts/init_database.py --use-tunnel
+python infra/scripts/bootstrap_database.py --use-tunnel --yes
 ```
 
 Or from `api/`:
 
 ```bash
-uv run python scripts/init_db.py              # schema + dummy seed
-uv run python scripts/init_db.py --schema-only
+uv run python scripts/bootstrap_db.py --yes
 ```
 
-Seed includes `acme@example.com`, 3 consumers, and 2 call jobs (idempotent).
-
-**Drop and recreate** (destructive — deletes all rows):
-
-```powershell
-$env:RDS_DB_PASSWORD = "YourRdsPassword"
-python infra/scripts/reset_database.py --use-tunnel --yes
-```
-
-Or from `api/`: `uv run python scripts/reset_db.py --yes`
+Seed includes two Deepak clients (`deepakdeshwal85@gmail.com`, `deepakdeshwal85@yahoo.com`), voice agent configs, consumers, call jobs, and call summaries.
 
 ### Start (Git Bash / macOS / Linux)
 
@@ -204,14 +194,11 @@ All scripts run from the `api/` directory unless noted.
 
 | Script | Purpose | Usage |
 |--------|---------|--------|
-| `scripts/init_db.py` | Create tables + optional dummy seed data | `uv run python scripts/init_db.py` |
-| `scripts/reset_db.py` | **Drop all tables**, recreate schema + seed | `uv run python scripts/reset_db.py --yes` |
-| `scripts/db/drop.sql` | Drop `call_jobs`, `consumers`, `clients` | Used by `reset_db.py` |
-| `scripts/db/schema.sql` | Idempotent DDL (clients, consumers, call_jobs) | Used by `init_db.py` / `reset_db.py` |
-| `scripts/db/seed.sql` | Dummy dev rows (Acme client, 3 consumers, 2 call jobs) | Used by `init_db.py` |
-| `scripts/init_db.sql` | Deprecated pointer | Use `init_db.py` instead |
-| `scripts/migrate_db.py` | Apply SQL migrations to existing DB | `uv run python scripts/migrate_db.py` |
-| `scripts/db/migrate_consumer_campaign.sql` | Add `call_schedule` + `status` columns | Used by `migrate_db.py` |
+| `scripts/bootstrap_db.py` | **Drop all tables**, recreate schema + Deepak seed | `uv run python scripts/bootstrap_db.py --yes` |
+| `scripts/db_runner.py` | Shared SQL helpers for bootstrap | Used by `bootstrap_db.py` |
+| `scripts/db/drop.sql` | Drop all application tables | Used by `bootstrap_db.py` |
+| `scripts/db/schema.sql` | DDL (clients, consumers, call_jobs, etc.) | Used by `bootstrap_db.py` |
+| `scripts/db/seed_deepak.sql` | Deepak dev seed data | Used by `bootstrap_db.py` |
 | `scripts/upload_document.py` | Upload file to a collection via HTTP | `uv run python scripts/upload_document.py --file doc.pdf --collection phone_911171366880` |
 | `scripts/reset_qdrant_collections.py` | Delete all Qdrant Cloud collections (destructive) | `uv run python scripts/reset_qdrant_collections.py --yes` |
 | `scripts/bench_search.py` | Benchmark search latency | `uv run python scripts/bench_search.py --query "hello"` |
@@ -220,6 +207,7 @@ All scripts run from the `api/` directory unless noted.
 
 | Script | Purpose |
 |--------|---------|
+| [`../infra/scripts/bootstrap_database.py`](../infra/scripts/bootstrap_database.py) | Drop, recreate, and seed PostgreSQL via RDS tunnel |
 | [`../infra/scripts/rds_tunnel.ps1`](../infra/scripts/rds_tunnel.ps1) | SSM port-forward to RDS on `localhost:15432` |
 | [`../infra/scripts/write_local_tunnel_database_url.bat`](../infra/scripts/write_local_tunnel_database_url.bat) | Write `api/.env.local` with tunnel `DATABASE_URL` |
 | [`../infra/scripts/start_local_api.bat`](../infra/scripts/start_local_api.bat) | Tunnel env + start API |

@@ -1,6 +1,6 @@
 -- RelayDesk PostgreSQL schema (idempotent).
 -- Run manually after RDS/database exists — not during API container startup.
--- Usage: uv run python scripts/init_db.py
+-- Usage: uv run python scripts/bootstrap_db.py --yes
 
 CREATE TABLE IF NOT EXISTS clients (
     id SERIAL PRIMARY KEY,
