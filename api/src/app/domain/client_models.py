@@ -11,5 +11,4 @@ class Client:
     client_business_phone_number: str | None
     client_name: str
     client_email_id: str
-    cognito_sub: str | None
     created_at: datetime

@@ -37,7 +37,6 @@ def mock_repository() -> AsyncMock:
         client_business_phone_number="91911171366880",
         client_name="Acme",
         client_email_id="client@example.com",
-        cognito_sub="sub-1",
         created_at=datetime.now(UTC),
     )
     return repository

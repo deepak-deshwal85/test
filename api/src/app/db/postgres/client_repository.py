@@ -20,7 +20,6 @@ class ClientRepository:
             client_business_phone_number=row.client_business_phone_number,
             client_name=row.client_name,
             client_email_id=row.client_email_id,
-            cognito_sub=row.cognito_sub,
             created_at=row.created_at,
         )
 
@@ -49,19 +48,10 @@ class ClientRepository:
         row = await self._session.get(ClientRow, client_id)
         return self._to_domain(row) if row else None
 
-    async def get_by_cognito_sub(self, cognito_sub: str) -> Client | None:
-        row = (
-            await self._session.execute(
-                select(ClientRow).where(ClientRow.cognito_sub == cognito_sub)
-            )
-        ).scalar_one_or_none()
-        return self._to_domain(row) if row else None
-
     async def ensure_on_sign_in(
         self,
         *,
         client_email_id: str,
-        cognito_sub: str,
     ) -> Client:
         normalized_email = normalize_email(client_email_id)
         row = (
@@ -76,15 +66,8 @@ class ClientRepository:
                 client_business_phone_number=None,
                 client_name="",
                 client_email_id=normalized_email,
-                cognito_sub=cognito_sub,
             )
             self._session.add(row)
-            await self._session.commit()
-            await self._session.refresh(row)
-            return self._to_domain(row)
-
-        if cognito_sub and row.cognito_sub != cognito_sub:
-            row.cognito_sub = cognito_sub
             await self._session.commit()
             await self._session.refresh(row)
         return self._to_domain(row)
@@ -95,7 +78,6 @@ class ClientRepository:
         client_name: str,
         client_phone_number: str | None,
         client_email_id: str,
-        cognito_sub: str | None = None,
     ) -> Client:
         normalized_email = normalize_email(client_email_id)
         normalized_personal_phone = (
@@ -119,14 +101,11 @@ class ClientRepository:
                 client_business_phone_number=None,
                 client_name=name,
                 client_email_id=normalized_email,
-                cognito_sub=cognito_sub,
             )
             self._session.add(row)
         else:
             row.client_name = name
             row.client_phone_number = normalized_personal_phone
-            if cognito_sub:
-                row.cognito_sub = cognito_sub
 
         await self._session.commit()
         await self._session.refresh(row)

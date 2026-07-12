@@ -45,7 +45,6 @@ def _client() -> Client:
         client_business_phone_number="91911171366880",
         client_name="Acme",
         client_email_id="client@example.com",
-        cognito_sub="sub-1",
         created_at=datetime.now(UTC),
     )
 
@@ -175,7 +174,6 @@ async def test_client_profile_upsert_requires_ui_user() -> None:
     now = datetime.now(UTC)
     mock_service = AsyncMock()
     mock_repository = AsyncMock()
-    mock_repository.get_by_cognito_sub.return_value = None
     mock_service.upsert_profile.return_value = ClientProfileResponse(
         id=1,
         client_phone_number="9876543210",

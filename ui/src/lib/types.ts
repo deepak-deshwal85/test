@@ -24,7 +24,6 @@ export interface ClientProfile {
 
 export interface ClientAdminProfile extends ClientProfile {
   is_approved: boolean;
-  cognito_sub: string | null;
 }
 
 export interface ClientListResponse {

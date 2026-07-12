@@ -49,47 +49,12 @@ async def verify_client_email_scope(
         return normalized
 
     token_email = principal_email(principal)
-    if token_email and token_email != normalized:
+    if not token_email or token_email != normalized:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Client email scope mismatch",
         )
-
-    client_by_email = await repository.get_by_email(normalized)
-    client_by_sub = await repository.get_by_cognito_sub(principal.subject)
-
-    if (
-        client_by_email is not None
-        and client_by_email.cognito_sub
-        and client_by_email.cognito_sub != principal.subject
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Client email scope mismatch",
-        )
-
-    if (
-        client_by_sub is not None
-        and client_by_sub.client_email_id != normalized
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Client email scope mismatch",
-        )
-
-    if token_email == normalized:
-        return normalized
-    if client_by_email is not None and client_by_email.cognito_sub == principal.subject:
-        return normalized
-    if client_by_sub is not None and client_by_sub.client_email_id == normalized:
-        return normalized
-    if client_by_email is None and client_by_sub is None:
-        return normalized
-
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Client email scope mismatch",
-    )
+    return normalized
 
 
 def ensure_client_email_scope(

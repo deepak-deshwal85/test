@@ -17,10 +17,8 @@ def mock_client_repository():
         client_business_phone_number="911171366880",
         client_name="Test Client",
         client_email_id="user@example.com",
-        cognito_sub="user-123",
         created_at=datetime.now(UTC),
     )
-    repository.get_by_cognito_sub.return_value = None
     repository.get_by_business_phone.return_value = repository.get_by_email.return_value
     return repository
 
@@ -394,11 +392,10 @@ def test_clients_me_uses_session_email_when_token_has_no_email(
     assert response.json()["client_email_id"] == "user@example.com"
     mock_service.ensure_on_sign_in.assert_awaited_once_with(
         client_email_id="user@example.com",
-        cognito_sub="user-123",
     )
 
 
-def test_clients_me_returns_profile_by_cognito_sub(
+def test_clients_me_returns_existing_profile(
     monkeypatch: pytest.MonkeyPatch, rsa_keys
 ) -> None:
     from datetime import UTC, datetime

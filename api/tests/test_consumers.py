@@ -49,12 +49,10 @@ def test_create_consumer(client: TestClient) -> None:
         client_business_phone_number="911171366880",
         client_name="Acme Corp",
         client_email_id="acme@example.com",
-        cognito_sub=None,
         created_at=now,
     )
     mock_repository = AsyncMock()
     mock_repository.get_by_email.return_value = mock_client
-    mock_repository.get_by_cognito_sub.return_value = None
 
     app = create_app()
     app.dependency_overrides[get_consumer_service] = lambda: mock_service
@@ -97,12 +95,10 @@ def test_trigger_call_job(client: TestClient) -> None:
         client_business_phone_number="911171366880",
         client_name="Acme Corp",
         client_email_id="acme@example.com",
-        cognito_sub=None,
         created_at=now,
     )
     mock_repository = AsyncMock()
     mock_repository.get_by_email.return_value = mock_client
-    mock_repository.get_by_cognito_sub.return_value = None
 
     app = create_app()
     app.dependency_overrides[get_call_job_service] = lambda: mock_service
@@ -168,12 +164,10 @@ def test_create_consumer_rejects_duplicate(client: TestClient) -> None:
         client_business_phone_number="911171366880",
         client_name="Acme Corp",
         client_email_id="acme@example.com",
-        cognito_sub=None,
         created_at=now,
     )
     mock_repository = AsyncMock()
     mock_repository.get_by_email.return_value = mock_client
-    mock_repository.get_by_cognito_sub.return_value = None
 
     app = create_app()
     app.dependency_overrides[get_consumer_service] = lambda: mock_service
@@ -210,12 +204,10 @@ def test_create_consumer_rejects_consumer_matching_business_phone(
         client_business_phone_number="911171366880",
         client_name="Acme Corp",
         client_email_id="acme@example.com",
-        cognito_sub=None,
         created_at=now,
     )
     mock_repository = AsyncMock()
     mock_repository.get_by_email.return_value = mock_client
-    mock_repository.get_by_cognito_sub.return_value = None
 
     app = create_app()
     app.dependency_overrides[get_consumer_service] = lambda: mock_service

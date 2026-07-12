@@ -8,7 +8,6 @@ CREATE TABLE IF NOT EXISTS clients (
     client_business_phone_number VARCHAR(32) UNIQUE,
     client_name VARCHAR(255) NOT NULL DEFAULT '',
     client_email_id VARCHAR(255) NOT NULL UNIQUE,
-    cognito_sub VARCHAR(255) UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

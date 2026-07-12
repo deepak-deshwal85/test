@@ -16,7 +16,6 @@ class ClientProfileResponse(BaseModel):
 
 class ClientAdminProfileResponse(ClientProfileResponse):
     is_approved: bool
-    cognito_sub: str | None = None
 
 
 class ClientProfileUpsertRequest(BaseModel):

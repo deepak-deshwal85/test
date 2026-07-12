@@ -101,7 +101,6 @@ def test_list_clients_admin_includes_approval_flag(
                 client_email_id="pending@example.com",
                 created_at=now,
                 is_approved=False,
-                cognito_sub="sub-1",
             )
         ],
         count=1,
@@ -173,7 +172,6 @@ def test_approve_client_admin_only(
         client_email_id="pending@example.com",
         created_at=now,
         is_approved=True,
-        cognito_sub="sub-1",
     )
 
     app = create_app()

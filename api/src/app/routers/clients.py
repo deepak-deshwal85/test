@@ -55,14 +55,12 @@ async def get_my_client_profile(
     resolved_email = resolve_user_email(principal, session_email)
 
     existing = await service.get_profile_for_principal(
-        cognito_sub=principal.subject,
         client_email_id=resolved_email,
     )
     if existing is not None:
         if resolved_email:
             return await service.ensure_on_sign_in(
                 client_email_id=resolved_email,
-                cognito_sub=principal.subject,
             )
         return existing
 
@@ -73,7 +71,6 @@ async def get_my_client_profile(
         )
     return await service.ensure_on_sign_in(
         client_email_id=resolved_email,
-        cognito_sub=principal.subject,
     )
 
 
@@ -188,7 +185,6 @@ async def upsert_client_profile(
         return await service.upsert_profile(
             body,
             client_email_id=token_email,
-            cognito_sub=principal.subject,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
