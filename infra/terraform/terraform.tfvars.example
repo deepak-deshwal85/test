@@ -64,3 +64,7 @@ rds_master_username = "relaydesk_admin"
 enable_cost_monitoring = true
 monthly_budget_usd     = 75
 # budget_alert_emails  = ["you@example.com"]
+
+# CloudWatch custom metrics (MetricMonitorUsage) — keep false to stay in free tier
+enable_container_insights      = false
+enable_ec2_detailed_monitoring = false

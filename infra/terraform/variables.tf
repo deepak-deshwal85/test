@@ -272,6 +272,22 @@ variable "log_retention_days" {
   default = 7
 }
 
+variable "enable_container_insights" {
+  description = <<-EOT
+    ECS Container Insights publishes many custom CloudWatch metrics (~20+ per cluster)
+    and quickly exceeds the 10-metric free tier (MetricMonitorUsage). Leave false
+    for dev/small prod; use ECS service metrics and log groups instead.
+  EOT
+  type    = bool
+  default = false
+}
+
+variable "enable_ec2_detailed_monitoring" {
+  description = "1-minute EC2 metrics (~$2.10/instance/month). Basic 5-minute metrics are free."
+  type        = bool
+  default     = false
+}
+
 variable "enable_cost_monitoring" {
   description = "Create monthly AWS Budget, cost allocation tags, and CloudWatch billing dashboard."
   type        = bool

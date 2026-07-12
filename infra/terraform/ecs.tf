@@ -25,7 +25,7 @@ resource "aws_ecs_cluster" "main" {
 
   setting {
     name  = "containerInsights"
-    value = "enabled"
+    value = var.enable_container_insights ? "enabled" : "disabled"
   }
 }
 
@@ -60,7 +60,7 @@ resource "aws_launch_template" "ecs" {
   )
 
   monitoring {
-    enabled = true
+    enabled = var.enable_ec2_detailed_monitoring
   }
 
   tag_specifications {
