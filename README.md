@@ -1,6 +1,6 @@
 # RelayDesk
 
-RelayDesk is a voice-AI operations platform: a **LiveKit voice agent** handles phone calls, a **RAG REST API** stores and searches knowledge bases, and a **Next.js console** lets operators manage customers, documents, and outbound campaigns.
+RelayDesk is a voice-AI operations platform: a **LiveKit voice agent** handles phone calls, a **RAG REST API** stores and searches knowledge bases, and a **Next.js console** lets operators manage consumers, documents, and outbound campaigns.
 
 > **Shell:** Command examples use **bash** (macOS, Linux, or **Git Bash** on Windows).
 
@@ -8,7 +8,7 @@ RelayDesk is a voice-AI operations platform: a **LiveKit voice agent** handles p
 
 | Component | Path | One-line summary |
 |-----------|------|------------------|
-| **API** | [`api/`](api/) | FastAPI service — RAG (Qdrant), PostgreSQL customers/call jobs, Cognito JWT auth |
+| **API** | [`api/`](api/) | FastAPI service — RAG (Qdrant), PostgreSQL consumers/call jobs, Cognito JWT auth |
 | **UI** | [`ui/`](ui/) | Next.js operations console — SSO login, knowledge upload, search, call jobs |
 | **Voice agent** | [`voice-agent/`](voice-agent/) | LiveKit agent — STT/LLM/TTS, Cal.com scheduling, RAG search on every turn |
 | **Infrastructure** | [`infra/`](infra/) | Terraform — VPC, ECS on EC2, ALB, Cognito, RDS, ECR, SSM secrets |
@@ -31,7 +31,7 @@ Voice agent (LiveKit) ──M2M OAuth────────┘
 
 | Topic | Read |
 |-------|------|
-| API — local run, env vars, RAG/customer APIs, scripts | [`api/README.md`](api/README.md) |
+| API — local run, env vars, RAG/consumer APIs, scripts | [`api/README.md`](api/README.md) |
 | UI — Cognito/NextAuth, local dev, Docker/ECR deploy | [`ui/README.md`](ui/README.md) |
 | Voice agent — LiveKit, phone configs, RAG client | [`voice-agent/README.md`](voice-agent/README.md) |
 | AWS — Terraform bootstrap, SSM, ECS, Cognito roles, ops scripts | [`infra/README.md`](infra/README.md) |
@@ -84,7 +84,7 @@ Set `RAG_API_BASE_URL=http://127.0.0.1:8090` in `voice-agent/.env`.
 
 ```
 telephone-agent/
-├── api/              # FastAPI RAG + customer + call-job API
+├── api/              # FastAPI RAG + consumer + call-job API
 ├── ui/               # Next.js operations console
 ├── voice-agent/      # LiveKit voice agent
 ├── infra/            # Terraform + operational scripts

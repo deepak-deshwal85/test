@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.domain.customer_models import normalize_email
+from app.domain.consumer_models import normalize_email
 
 
 def collection_from_email(client_email_id: str) -> str:

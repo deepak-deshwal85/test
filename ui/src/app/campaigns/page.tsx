@@ -29,46 +29,46 @@ import type {
   CallJob,
   CallJobListResponse,
   CallScheduleValue,
-  Customer,
-  CustomerListResponse,
-  CustomerStatusValue,
+  Consumer,
+  ConsumerListResponse,
+  ConsumerStatusValue,
 } from "@/lib/types";
 import { formatDate, statusColor } from "@/lib/utils";
 import { Megaphone, RefreshCw } from "lucide-react";
 
 export default function CampaignsPage() {
-  const { canManageOwnCustomers } = usePermissions();
+  const { canManageOwnConsumers } = usePermissions();
   const { clientEmailId, clientBusinessPhoneNumber, ready } = useClientScope();
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [consumers, setConsumers] = useState<Consumer[]>([]);
   const [jobs, setJobs] = useState<CallJob[]>([]);
   const [selectedJob, setSelectedJob] = useState<CallJob | null>(null);
-  const [loadingCustomers, setLoadingCustomers] = useState(true);
+  const [loadingConsumers, setLoadingConsumers] = useState(true);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [triggering, setTriggering] = useState(false);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const scheduledCount = customers.filter(
+  const scheduledCount = consumers.filter(
     (c) => c.call_schedule === "yes" && c.status === "READY",
   ).length;
 
-  async function loadCustomers() {
+  async function loadConsumers() {
     if (!ready || !clientEmailId) {
-      setCustomers([]);
-      setLoadingCustomers(false);
+      setConsumers([]);
+      setLoadingConsumers(false);
       return;
     }
-    setLoadingCustomers(true);
+    setLoadingConsumers(true);
     setError(null);
     try {
       const scope = clientScopeQuery(clientEmailId);
-      const data = await apiFetch<CustomerListResponse>(`v1/customers?${scope}`);
-      setCustomers(data.customers);
+      const data = await apiFetch<ConsumerListResponse>(`v1/consumers?${scope}`);
+      setConsumers(data.consumers);
     } catch (e) {
-      setError(errorMessageFromUnknown(e, "Failed to load customers"));
+      setError(errorMessageFromUnknown(e, "Failed to load consumers"));
     } finally {
-      setLoadingCustomers(false);
+      setLoadingConsumers(false);
     }
   }
 
@@ -96,35 +96,35 @@ export default function CampaignsPage() {
   }
 
   useEffect(() => {
-    void loadCustomers();
+    void loadConsumers();
     void loadJobs();
     const timer = setInterval(() => void loadJobs(), 5000);
     return () => clearInterval(timer);
   }, [clientEmailId, clientBusinessPhoneNumber, ready]);
 
-  async function updateCustomerField(
-    customer: Customer,
-    patch: { call_schedule?: CallScheduleValue; status?: CustomerStatusValue },
+  async function updateConsumerField(
+    consumer: Consumer,
+    patch: { call_schedule?: CallScheduleValue; status?: ConsumerStatusValue },
   ) {
     if (!clientEmailId) return;
-    setUpdatingId(customer.id);
+    setUpdatingId(consumer.id);
     setError(null);
     setSuccess(null);
     try {
       const scope = clientScopeQuery(clientEmailId);
-      const updated = await apiFetch<Customer>(
-        `v1/customers/${customer.id}?${scope}`,
+      const updated = await apiFetch<Consumer>(
+        `v1/consumers/${consumer.id}?${scope}`,
         {
           method: "PUT",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(patch),
         },
       );
-      setCustomers((current) =>
+      setConsumers((current) =>
         current.map((row) => (row.id === updated.id ? updated : row)),
       );
     } catch (e) {
-      setError(errorMessageFromUnknown(e, "Failed to update customer"));
+      setError(errorMessageFromUnknown(e, "Failed to update consumer"));
     } finally {
       setUpdatingId(null);
     }
@@ -138,7 +138,7 @@ export default function CampaignsPage() {
     if (!clientEmailId) return;
     if (scheduledCount === 0) {
       setError(
-        "Set call schedule to Yes and status to Ready for at least one customer.",
+        "Set call schedule to Yes and status to Ready for at least one consumer.",
       );
       return;
     }
@@ -158,7 +158,7 @@ export default function CampaignsPage() {
       const job = await apiFetch<CallJob>(`v1/call-jobs/${result.job_id}?${scope}`);
       setSelectedJob(job);
       setSuccess(
-        `Campaign started — ${scheduledCount} customer${scheduledCount === 1 ? "" : "s"} queued.`,
+        `Campaign started — ${scheduledCount} consumer${scheduledCount === 1 ? "" : "s"} queued.`,
       );
       await loadJobs();
     } catch (e) {
@@ -183,9 +183,9 @@ export default function CampaignsPage() {
     <AppShell>
       <PageHeader
         title="Campaign"
-        description="Choose customers to call, then trigger an outbound voice campaign from the business phone."
+        description="Choose consumers to call, then trigger an outbound voice campaign from the business phone."
         action={
-          <Button variant="secondary" onClick={() => { void loadCustomers(); void loadJobs(); }}>
+          <Button variant="secondary" onClick={() => { void loadConsumers(); void loadJobs(); }}>
             <RefreshCw className="h-4 w-4" aria-hidden />
             Refresh
           </Button>
@@ -203,12 +203,12 @@ export default function CampaignsPage() {
             <CardHeader>
               <CardTitle>Trigger campaign</CardTitle>
               <CardDescription>
-                Calls customers with call schedule <strong>Yes</strong> and status{" "}
+                Calls consumers with call schedule <strong>Yes</strong> and status{" "}
                 <strong>Ready</strong> using business phone{" "}
                 {clientBusinessPhoneNumber ?? "—"}.
               </CardDescription>
             </CardHeader>
-            {canManageOwnCustomers ? (
+            {canManageOwnConsumers ? (
               <Button
                 onClick={() => void triggerCampaign()}
                 disabled={triggering || !clientBusinessPhoneNumber || scheduledCount === 0}
@@ -225,21 +225,21 @@ export default function CampaignsPage() {
 
           <Card padding={false}>
             <div className="border-b border-border px-5 py-4 sm:px-6">
-              <CardTitle>Customers</CardTitle>
+              <CardTitle>Consumers</CardTitle>
               <CardDescription className="mt-1">
-                Set call schedule to Yes to include a customer in the next campaign.
-                Status starts as Ready for new customers; after a call it becomes
+                Set call schedule to Yes to include a consumer in the next campaign.
+                Status starts as Ready for new consumers; after a call it becomes
                 Meeting scheduled or No meeting automatically.
               </CardDescription>
             </div>
             <div className="p-2 sm:p-4">
-              {loadingCustomers ? (
+              {loadingConsumers ? (
                 <div className="flex items-center gap-2 px-3 py-8 text-sm text-muted-foreground">
                   <Spinner />
-                  Loading customers…
+                  Loading consumers…
                 </div>
-              ) : customers.length === 0 ? (
-                <EmptyState message="No customers yet. Add consumers on the Customers page." />
+              ) : consumers.length === 0 ? (
+                <EmptyState message="No consumers yet. Add consumers on the Consumers page." />
               ) : (
                 <Table>
                   <TableHead>
@@ -249,19 +249,19 @@ export default function CampaignsPage() {
                     <TableHeaderCell>Status</TableHeaderCell>
                   </TableHead>
                   <TableBody>
-                    {customers.map((customer) => (
-                      <TableRow key={customer.id}>
+                    {consumers.map((consumer) => (
+                      <TableRow key={consumer.id}>
                         <TableCell className="font-medium">
-                          {customer.consumer_phone_number}
+                          {consumer.consumer_phone_number}
                         </TableCell>
-                        <TableCell>{customer.consumer_email_id}</TableCell>
+                        <TableCell>{consumer.consumer_email_id}</TableCell>
                         <TableCell>
                           <Select
-                            aria-label={`Call schedule for ${customer.consumer_phone_number}`}
-                            value={customer.call_schedule}
-                            disabled={!canManageOwnCustomers || updatingId === customer.id}
+                            aria-label={`Call schedule for ${consumer.consumer_phone_number}`}
+                            value={consumer.call_schedule}
+                            disabled={!canManageOwnConsumers || updatingId === consumer.id}
                             onChange={(e) =>
-                              void updateCustomerField(customer, {
+                              void updateConsumerField(consumer, {
                                 call_schedule: e.target.value as CallScheduleValue,
                               })
                             }
@@ -272,12 +272,12 @@ export default function CampaignsPage() {
                         </TableCell>
                         <TableCell>
                           <Select
-                            aria-label={`Status for ${customer.consumer_phone_number}`}
-                            value={customer.status}
-                            disabled={!canManageOwnCustomers || updatingId === customer.id}
+                            aria-label={`Status for ${consumer.consumer_phone_number}`}
+                            value={consumer.status}
+                            disabled={!canManageOwnConsumers || updatingId === consumer.id}
                             onChange={(e) =>
-                              void updateCustomerField(customer, {
-                                status: e.target.value as CustomerStatusValue,
+                              void updateConsumerField(consumer, {
+                                status: e.target.value as ConsumerStatusValue,
                               })
                             }
                           >
@@ -324,7 +324,7 @@ export default function CampaignsPage() {
                       <div className="text-right">
                         <Badge className={statusColor(job.status)}>{job.status}</Badge>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {job.calls_completed}/{job.total_customers} calls
+                          {job.calls_completed}/{job.total_consumers} calls
                         </p>
                       </div>
                     </button>
@@ -348,7 +348,7 @@ export default function CampaignsPage() {
                     Progress
                   </dt>
                   <dd className="mt-1 font-medium">
-                    {selectedJob.calls_completed} / {selectedJob.total_customers}
+                    {selectedJob.calls_completed} / {selectedJob.total_consumers}
                   </dd>
                 </div>
                 <div>
@@ -369,7 +369,7 @@ export default function CampaignsPage() {
                     <TableBody>
                       {selectedJob.results.map((result) => (
                         <TableRow
-                          key={`${result.customer_id}-${result.consumer_phone_number}`}
+                          key={`${result.consumer_id}-${result.consumer_phone_number}`}
                         >
                           <TableCell>{result.consumer_phone_number}</TableCell>
                           <TableCell>

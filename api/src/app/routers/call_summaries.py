@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.core.dependencies import (
     get_call_summary_service,
     get_client_repository,
-    get_customer_service,
+    get_consumer_service,
     require_permission,
     verify_access_token,
 )
@@ -22,7 +22,7 @@ from app.schemas.call_summaries import (
     CallSummaryUpdateRequest,
 )
 from app.services.call_summary_service import CallSummaryService
-from app.services.customer_service import CustomerService
+from app.services.consumer_service import ConsumerService
 
 router = APIRouter(
     prefix="/v1/call-summaries",
@@ -35,40 +35,40 @@ async def _resolve_client_email_for_create(
     *,
     principal: AuthenticatedPrincipal,
     body: CallSummaryCreateRequest,
-    customer_service: CustomerService,
+    consumer_service: ConsumerService,
     repository: ClientRepository,
     client_email_id: str | None,
 ) -> str:
     if principal.is_m2m:
-        customer = await customer_service.get_by_id(body.customer_id)
-        if customer is None:
+        consumer = await consumer_service.get_by_id(body.consumer_id)
+        if consumer is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Customer not found",
+                detail="Consumer not found",
             )
         if client_email_id:
             scoped = await verify_client_email_scope(
                 principal, client_email_id, repository
             )
-            if customer.client_email_id != scoped:
+            if consumer.client_email_id != scoped:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Customer not found",
+                    detail="Consumer not found",
                 )
-        return customer.client_email_id
+        return consumer.client_email_id
 
     if not client_email_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="client_email_id is required",
         )
-    customer = await customer_service.get(
-        body.customer_id, client_email_id=client_email_id
+    consumer = await consumer_service.get(
+        body.consumer_id, client_email_id=client_email_id
     )
-    if customer is None:
+    if consumer is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Customer not found",
+            detail="Consumer not found",
         )
     return await verify_client_email_scope(principal, client_email_id, repository)
 
@@ -79,7 +79,7 @@ async def _resolve_client_email_for_create(
 async def create_call_summary(
     body: CallSummaryCreateRequest,
     service: Annotated[CallSummaryService, Depends(get_call_summary_service)],
-    customer_service: Annotated[CustomerService, Depends(get_customer_service)],
+    consumer_service: Annotated[ConsumerService, Depends(get_consumer_service)],
     repository: Annotated[ClientRepository, Depends(get_client_repository)],
     principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
     client_email_id: Annotated[str | None, Query(min_length=3)] = None,
@@ -93,7 +93,7 @@ async def create_call_summary(
     scoped_email = await _resolve_client_email_for_create(
         principal=principal,
         body=body,
-        customer_service=customer_service,
+        consumer_service=consumer_service,
         repository=repository,
         client_email_id=client_email_id,
     )
@@ -110,7 +110,7 @@ async def list_call_summaries(
     principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
     repository: Annotated[ClientRepository, Depends(get_client_repository)],
     client_email_id: Annotated[str | None, Query(min_length=3)] = None,
-    customer_id: Annotated[int | None, Query(ge=1)] = None,
+    consumer_id: Annotated[int | None, Query(ge=1)] = None,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> CallSummaryListResponse:
@@ -126,7 +126,7 @@ async def list_call_summaries(
     )
     summaries = await service.list(
         client_email_id=scoped_email,
-        customer_id=customer_id,
+        consumer_id=consumer_id,
         skip=skip,
         limit=limit,
     )

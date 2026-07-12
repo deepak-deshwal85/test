@@ -8,7 +8,7 @@ from datetime import datetime
 @dataclass(frozen=True)
 class CallSummary:
     id: int
-    customer_id: int
+    consumer_id: int
     client_email_id: str
     call_start_time: datetime
     call_end_time: datetime | None

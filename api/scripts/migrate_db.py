@@ -28,7 +28,7 @@ from db_runner import (
     to_asyncpg_dsn,
 )
 
-DEFAULT_MIGRATION = "migrate_customer_campaign.sql"
+DEFAULT_MIGRATION = "migrate_consumer_campaign.sql"
 
 
 async def _run(*, database_url: str, migration_files: list[str]) -> None:

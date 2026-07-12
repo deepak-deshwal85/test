@@ -1,6 +1,6 @@
 # RelayDesk UI
 
-Next.js 15 operations console for RelayDesk: dashboard, customers, call jobs, knowledge-base upload, semantic search, and collection management. Authenticates users via **AWS Cognito** (NextAuth.js) and proxies API calls with OAuth access tokens.
+Next.js 15 operations console for RelayDesk: dashboard, consumers, call jobs, knowledge-base upload, semantic search, and collection management. Authenticates users via **AWS Cognito** (NextAuth.js) and proxies API calls with OAuth access tokens.
 
 [← Back to monorepo](../README.md) · **Infrastructure:** [`../infra/README.md`](../infra/README.md)
 
@@ -10,9 +10,9 @@ Next.js 15 operations console for RelayDesk: dashboard, customers, call jobs, kn
 
 ### What it does
 
-- **Dashboard** — API health, customer/collection counts (scoped by tenant).
+- **Dashboard** — API health, consumer/collection counts (scoped by tenant).
 - **Login** — Cognito SSO via `/login`.
-- **Customers** — List and manage consumers per `client_email_id`.
+- **Consumers** — List and manage consumers per `client_email_id`.
 - **Call jobs** — Trigger and monitor outbound campaigns (admin).
 - **Knowledge** — Upload documents to phone-scoped Qdrant collections.
 - **Search** — Natural-language search over uploaded knowledge.
@@ -24,7 +24,7 @@ Next.js 15 operations console for RelayDesk: dashboard, customers, call jobs, kn
 |---------------|-----------------|
 | `guest-clients` | View-only (default after SSO) |
 | `approved-clients` | Upload/delete documents |
-| `relaydesk-admins` | Full access including customer create, call-job trigger |
+| `relaydesk-admins` | Full access including consumer create, call-job trigger |
 
 ### Stack
 
@@ -151,7 +151,7 @@ This project has no `scripts/` folder. Use these **npm** commands from `ui/`:
 ```
 ui/
 ├── src/
-│   ├── app/              # Pages (login, dashboard, customers, …)
+│   ├── app/              # Pages (login, dashboard, consumers, …)
 │   ├── components/       # AppShell, profile form, UI primitives
 │   ├── hooks/            # usePermissions, useClientProfile
 │   └── lib/              # auth, api-client, cognito helpers

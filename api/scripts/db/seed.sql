@@ -30,7 +30,7 @@ ON CONFLICT (client_email_id) DO UPDATE SET
         EXCLUDED.client_business_phone_number
     );
 
-INSERT INTO customers (
+INSERT INTO consumers (
     client_id,
     client_business_phone_number,
     client_name,
@@ -74,7 +74,7 @@ INSERT INTO call_jobs (
     client_business_phone_number,
     client_email_id,
     status,
-    total_customers,
+    total_consumers,
     calls_completed,
     error_message,
     started_at,
@@ -91,7 +91,7 @@ SELECT
     NULL,
     NOW() - INTERVAL '1 day',
     NOW() - INTERVAL '1 day' + INTERVAL '15 minutes',
-    '[{"customer_id":1,"consumer_phone_number":"919900000001","success":true,"detail":"answered"},{"customer_id":2,"consumer_phone_number":"919900000002","success":true,"detail":"answered"},{"customer_id":3,"consumer_phone_number":"919900000003","success":false,"detail":"no answer"}]'
+    '[{"consumer_id":1,"consumer_phone_number":"919900000001","success":true,"detail":"answered"},{"consumer_id":2,"consumer_phone_number":"919900000002","success":true,"detail":"answered"},{"consumer_id":3,"consumer_phone_number":"919900000003","success":false,"detail":"no answer"}]'
 FROM clients AS c
 WHERE c.client_email_id = 'acme@example.com'
   AND c.client_business_phone_number IS NOT NULL
@@ -102,7 +102,7 @@ INSERT INTO call_jobs (
     client_business_phone_number,
     client_email_id,
     status,
-    total_customers,
+    total_consumers,
     calls_completed,
     error_message
 )
@@ -120,7 +120,7 @@ WHERE c.client_email_id = 'acme@example.com'
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO call_summaries (
-    customer_id,
+    consumer_id,
     client_email_id,
     call_start_time,
     call_end_time,
@@ -134,12 +134,12 @@ SELECT
     NOW() - INTERVAL '1 hour 45 minutes',
     'Agent greeted the caller and answered questions about pricing and onboarding. Caller requested a follow-up email.',
     'aaaaaaaa-bbbb-cccc-dddd-000000000001'::uuid
-FROM customers AS cust
+FROM consumers AS cust
 WHERE cust.client_email_id = 'acme@example.com'
   AND cust.consumer_phone_number = '919900000001';
 
 INSERT INTO call_summaries (
-    customer_id,
+    consumer_id,
     client_email_id,
     call_start_time,
     call_end_time,
@@ -153,7 +153,7 @@ SELECT
     NOW() - INTERVAL '1 day' + INTERVAL '8 minutes',
     'Brief call: caller asked about support hours. Agent provided business hours and offered to schedule a meeting.',
     'aaaaaaaa-bbbb-cccc-dddd-000000000001'::uuid
-FROM customers AS cust
+FROM consumers AS cust
 WHERE cust.client_email_id = 'acme@example.com'
   AND cust.consumer_phone_number = '919900000002';
 

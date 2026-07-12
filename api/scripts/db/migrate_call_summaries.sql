@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS call_summaries (
     id SERIAL PRIMARY KEY,
-    customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    consumer_id INTEGER NOT NULL REFERENCES consumers(id) ON DELETE CASCADE,
     client_email_id VARCHAR(255) NOT NULL,
     call_start_time TIMESTAMPTZ NOT NULL,
     call_end_time TIMESTAMPTZ,
@@ -12,8 +12,8 @@ CREATE TABLE IF NOT EXISTS call_summaries (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_call_summaries_customer
-    ON call_summaries (customer_id);
+CREATE INDEX IF NOT EXISTS idx_call_summaries_consumer
+    ON call_summaries (consumer_id);
 
 CREATE INDEX IF NOT EXISTS idx_call_summaries_client_email
     ON call_summaries (client_email_id);

@@ -4,7 +4,7 @@ import logging
 from uuid import UUID
 
 from app.core.config import Settings
-from app.domain.customer_models import CallAttemptResult, Customer
+from app.domain.consumer_models import CallAttemptResult, Consumer
 from app.services.livekit_outbound_caller import LiveKitOutboundCaller
 from app.services.simulated_outbound_caller import SimulatedOutboundCaller
 
@@ -31,10 +31,10 @@ class OutboundCaller:
     async def place_call(
         self,
         *,
-        customer: Customer,
+        consumer: Consumer,
         job_id: UUID,
     ) -> CallAttemptResult:
-        return await self._inner.place_call(customer=customer, job_id=job_id)
+        return await self._inner.place_call(consumer=consumer, job_id=job_id)
 
 
 def build_outbound_caller(settings: Settings) -> OutboundCaller:

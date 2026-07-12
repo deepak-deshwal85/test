@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS clients (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS customers (
+CREATE TABLE IF NOT EXISTS consumers (
     id SERIAL PRIMARY KEY,
     client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL,
     client_business_phone_number VARCHAR(32) NOT NULL,
@@ -27,30 +27,30 @@ CREATE TABLE IF NOT EXISTS customers (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_customers_client_consumer
-    ON customers (client_email_id, consumer_phone_number);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_consumers_client_consumer
+    ON consumers (client_email_id, consumer_phone_number);
 
-CREATE INDEX IF NOT EXISTS idx_customers_client_business_phone
-    ON customers (client_business_phone_number);
+CREATE INDEX IF NOT EXISTS idx_consumers_client_business_phone
+    ON consumers (client_business_phone_number);
 
-CREATE INDEX IF NOT EXISTS idx_customers_client_email
-    ON customers (client_email_id);
+CREATE INDEX IF NOT EXISTS idx_consumers_client_email
+    ON consumers (client_email_id);
 
-CREATE INDEX IF NOT EXISTS idx_customers_call_schedule
-    ON customers (client_email_id, call_schedule);
+CREATE INDEX IF NOT EXISTS idx_consumers_call_schedule
+    ON consumers (client_email_id, call_schedule);
 
-ALTER TABLE customers
-    DROP CONSTRAINT IF EXISTS chk_customers_call_schedule;
+ALTER TABLE consumers
+    DROP CONSTRAINT IF EXISTS chk_consumers_call_schedule;
 
-ALTER TABLE customers
-    ADD CONSTRAINT chk_customers_call_schedule
+ALTER TABLE consumers
+    ADD CONSTRAINT chk_consumers_call_schedule
     CHECK (call_schedule IN ('yes', 'no'));
 
-ALTER TABLE customers
-    DROP CONSTRAINT IF EXISTS chk_customers_status;
+ALTER TABLE consumers
+    DROP CONSTRAINT IF EXISTS chk_consumers_status;
 
-ALTER TABLE customers
-    ADD CONSTRAINT chk_customers_status
+ALTER TABLE consumers
+    ADD CONSTRAINT chk_consumers_status
     CHECK (status IN ('READY', 'MEETING_SCHEDULED', 'MEETING_NOT_SCHEDULED'));
 
 CREATE TABLE IF NOT EXISTS call_jobs (
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS call_jobs (
     client_business_phone_number VARCHAR(32) NOT NULL,
     client_email_id VARCHAR(255) NOT NULL,
     status VARCHAR(32) NOT NULL,
-    total_customers INTEGER NOT NULL DEFAULT 0,
+    total_consumers INTEGER NOT NULL DEFAULT 0,
     calls_completed INTEGER NOT NULL DEFAULT 0,
     error_message TEXT,
     started_at TIMESTAMPTZ,
@@ -78,7 +78,7 @@ CREATE INDEX IF NOT EXISTS idx_call_jobs_status
 
 CREATE TABLE IF NOT EXISTS call_summaries (
     id SERIAL PRIMARY KEY,
-    customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    consumer_id INTEGER NOT NULL REFERENCES consumers(id) ON DELETE CASCADE,
     client_email_id VARCHAR(255) NOT NULL,
     call_start_time TIMESTAMPTZ NOT NULL,
     call_end_time TIMESTAMPTZ,
@@ -87,8 +87,8 @@ CREATE TABLE IF NOT EXISTS call_summaries (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_call_summaries_customer
-    ON call_summaries (customer_id);
+CREATE INDEX IF NOT EXISTS idx_call_summaries_consumer
+    ON call_summaries (consumer_id);
 
 CREATE INDEX IF NOT EXISTS idx_call_summaries_client_email
     ON call_summaries (client_email_id);

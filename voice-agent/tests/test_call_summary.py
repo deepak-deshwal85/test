@@ -148,7 +148,7 @@ def test_call_summary_api_client_posts_record():
             http_client=client,
         )
         await api_client.create_call_summary(
-            customer_id=14,
+            consumer_id=14,
             call_start_time=start,
             call_end_time=end,
             call_summary="Caller: What are your hours?\nAgent: Nine to five.",
@@ -156,7 +156,7 @@ def test_call_summary_api_client_posts_record():
         )
         assert captured["path"] == "/v1/call-summaries"
         payload = captured["payload"]
-        assert payload["customer_id"] == 14
+        assert payload["consumer_id"] == 14
         assert "Caller: What are your hours?" in str(payload["call_summary"])
         await api_client.aclose()
 

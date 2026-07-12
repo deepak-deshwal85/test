@@ -239,7 +239,7 @@ def test_delete_client_admin_success(
     mock_service = AsyncMock(spec=ClientService)
     mock_service.delete_client.return_value = ClientDeleteResponse(
         client_email_id="client@example.com",
-        deleted_customers=3,
+        deleted_consumers=3,
         deleted_call_jobs=2,
         qdrant_collection_deleted=True,
         cognito_user_deleted=True,
@@ -258,7 +258,7 @@ def test_delete_client_admin_success(
     )
     assert response.status_code == 200
     payload = response.json()
-    assert payload["deleted_customers"] == 3
+    assert payload["deleted_consumers"] == 3
     assert payload["deleted_call_jobs"] == 2
     assert payload["qdrant_collection_deleted"] is True
     assert payload["cognito_user_deleted"] is True

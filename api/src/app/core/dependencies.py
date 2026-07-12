@@ -15,7 +15,7 @@ from app.db.postgres.client_repository import ClientRepository
 from app.db.postgres.client_voice_agent_config_repository import (
     ClientVoiceAgentConfigRepository,
 )
-from app.db.postgres.customer_repository import CustomerRepository
+from app.db.postgres.consumer_repository import ConsumerRepository
 from app.db.postgres.session import get_db_session
 from app.db.qdrant_repository import QdrantRepository
 from app.services.call_job_service import CallJobService, build_call_job_service
@@ -23,7 +23,7 @@ from app.services.call_summary_service import CallSummaryService
 from app.services.client_service import ClientService
 from app.services.client_voice_agent_config_service import ClientVoiceAgentConfigService
 from app.services.collection_service import CollectionService
-from app.services.customer_service import CustomerService
+from app.services.consumer_service import ConsumerService
 from app.services.document_service import DocumentService
 from app.services.embedding_service import EmbeddingService
 from app.services.search_service import SearchService
@@ -101,16 +101,16 @@ async def get_client_service(
     )
 
 
-async def get_customer_repository(
+async def get_consumer_repository(
     session: Annotated[AsyncSession, Depends(get_db_session)],
-) -> CustomerRepository:
-    return CustomerRepository(session)
+) -> ConsumerRepository:
+    return ConsumerRepository(session)
 
 
-async def get_customer_service(
-    repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
-) -> CustomerService:
-    return CustomerService(repository)
+async def get_consumer_service(
+    repository: Annotated[ConsumerRepository, Depends(get_consumer_repository)],
+) -> ConsumerService:
+    return ConsumerService(repository)
 
 
 async def get_call_summary_repository(
@@ -121,9 +121,9 @@ async def get_call_summary_repository(
 
 async def get_call_summary_service(
     repository: Annotated[CallSummaryRepository, Depends(get_call_summary_repository)],
-    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    consumer_repository: Annotated[ConsumerRepository, Depends(get_consumer_repository)],
 ) -> CallSummaryService:
-    return CallSummaryService(repository, customer_repository)
+    return CallSummaryService(repository, consumer_repository)
 
 
 async def get_client_voice_agent_config_repository(

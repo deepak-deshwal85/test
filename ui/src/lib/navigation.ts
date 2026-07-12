@@ -21,7 +21,7 @@ export type NavItem = {
 
 export const APPROVED_CLIENT_NAV: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/customers", label: "Customers", icon: Users },
+  { href: "/consumers", label: "Consumers", icon: Users },
   { href: "/call-history", label: "Call history", icon: History },
   { href: "/campaigns", label: "Campaign", icon: Megaphone },
   { href: "/knowledge", label: "Knowledge", icon: BookOpen },

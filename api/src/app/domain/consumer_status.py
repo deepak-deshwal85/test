@@ -1,0 +1,23 @@
+from __future__ import annotations
+
+CONSUMER_STATUS_READY = "READY"
+CONSUMER_STATUS_MEETING_SCHEDULED = "MEETING_SCHEDULED"
+CONSUMER_STATUS_MEETING_NOT_SCHEDULED = "MEETING_NOT_SCHEDULED"
+
+VALID_CONSUMER_STATUSES = frozenset(
+    {
+        CONSUMER_STATUS_READY,
+        CONSUMER_STATUS_MEETING_SCHEDULED,
+        CONSUMER_STATUS_MEETING_NOT_SCHEDULED,
+    }
+)
+
+VALID_CALL_SCHEDULES = frozenset({"yes", "no"})
+
+
+def consumer_status_after_call(*, meeting_scheduled: bool) -> str:
+    return (
+        CONSUMER_STATUS_MEETING_SCHEDULED
+        if meeting_scheduled
+        else CONSUMER_STATUS_MEETING_NOT_SCHEDULED
+    )

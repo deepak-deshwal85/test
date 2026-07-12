@@ -7,9 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings
 from app.db.postgres.call_job_repository import CallJobRepository
-from app.db.postgres.customer_repository import CustomerRepository
+from app.db.postgres.consumer_repository import ConsumerRepository
 from app.db.postgres.session import get_session_factory
-from app.domain.customer_models import CallAttemptResult
+from app.domain.consumer_models import CallAttemptResult
 from app.schemas.call_jobs import CallAttemptResponse, CallJobResponse
 from app.services.outbound_caller import OutboundCaller, build_outbound_caller
 
@@ -33,7 +33,7 @@ class CallJobService:
         if job.results:
             results = [
                 CallAttemptResponse(
-                    customer_id=result.customer_id,
+                    consumer_id=result.consumer_id,
                     consumer_phone_number=result.consumer_phone_number,
                     success=result.success,
                     detail=result.detail,
@@ -45,7 +45,7 @@ class CallJobService:
             client_business_phone_number=job.client_business_phone_number,
             client_email_id=job.client_email_id,
             status=job.status,
-            total_customers=job.total_customers,
+            total_consumers=job.total_consumers,
             calls_completed=job.calls_completed,
             error_message=job.error_message,
             started_at=job.started_at,
@@ -101,50 +101,50 @@ class CallJobService:
         try:
             async with self._session_factory() as session:
                 job_repository = CallJobRepository(session)
-                customer_repository = CustomerRepository(session)
+                consumer_repository = ConsumerRepository(session)
 
                 job = await job_repository.get(job_id)
                 if job is None:
                     logger.error("call job not found job_id=%s", job_id)
                     return
 
-                customers = await customer_repository.list_scheduled_for_campaign(
+                consumers = await consumer_repository.list_scheduled_for_campaign(
                     client_business_phone_number=job.client_business_phone_number,
                     client_email_id=job.client_email_id,
                 )
                 logger.info(
-                    "campaign job loaded customers job_id=%s client=%s scheduled=%d",
+                    "campaign job loaded consumers job_id=%s client=%s scheduled=%d",
                     job_id,
                     job.client_business_phone_number,
-                    len(customers),
+                    len(consumers),
                 )
-                for customer in customers:
+                for consumer in consumers:
                     logger.info(
-                        "customer queued job_id=%s id=%s name=%s consumer=%s",
+                        "consumer queued job_id=%s id=%s name=%s consumer=%s",
                         job_id,
-                        customer.id,
-                        customer.client_name,
-                        customer.consumer_phone_number,
+                        consumer.id,
+                        consumer.client_name,
+                        consumer.consumer_phone_number,
                     )
 
                 await job_repository.mark_running(
-                    job_id, total_customers=len(customers)
+                    job_id, total_consumers=len(consumers)
                 )
 
             completed = 0
-            for customer in customers:
+            for consumer in consumers:
                 result = await self._outbound_caller.place_call(
-                    customer=customer,
+                    consumer=consumer,
                     job_id=job_id,
                 )
                 results.append(result)
                 if result.success:
                     completed += 1
                 logger.info(
-                    "call attempt job_id=%s customer_id=%s consumer=%s success=%s detail=%s",
+                    "call attempt job_id=%s consumer_id=%s consumer=%s success=%s detail=%s",
                     job_id,
-                    customer.id,
-                    customer.consumer_phone_number,
+                    consumer.id,
+                    consumer.consumer_phone_number,
                     result.success,
                     result.detail,
                 )
@@ -165,7 +165,7 @@ class CallJobService:
                 "call job completed job_id=%s calls=%d/%d",
                 job_id,
                 completed,
-                len(customers),
+                len(consumers),
             )
         except Exception as exc:
             logger.exception("call job failed job_id=%s", job_id)

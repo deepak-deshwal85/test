@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "relaydesk-api"
 version = "2.0.0"
-description = "RelayDesk API — RAG, documents, customers, and call jobs"
+description = "RelayDesk API — RAG, documents, consumers, and call jobs"
 requires-python = ">=3.10"
 
 dependencies = [

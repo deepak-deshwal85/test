@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { CustomerCallHistorySheet } from "@/components/customer-call-history-sheet";
+import { ConsumerCallHistorySheet } from "@/components/consumer-call-history-sheet";
 import {
   Button,
   Card,
@@ -32,7 +32,7 @@ import {
 import { apiFetch } from "@/lib/api-client";
 import { clientScopeQuery, useClientScope } from "@/contexts/client-scope-context";
 import { usePermissions } from "@/hooks/use-permissions";
-import type { Customer, CustomerListResponse } from "@/lib/types";
+import type { Consumer, ConsumerListResponse } from "@/lib/types";
 import { Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 const emptyConsumerForm = {
@@ -44,35 +44,35 @@ function normalizePhoneInput(value: string): string {
   return value.replace(/\D/g, "");
 }
 
-export default function CustomersPage() {
+export default function ConsumersPage() {
   const searchParams = useSearchParams();
-  const { canManageData, canManageOwnCustomers } = usePermissions();
+  const { canManageData, canManageOwnConsumers } = usePermissions();
   const { selectedClient, clientEmailId, ready } = useClientScope();
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [consumers, setConsumers] = useState<Consumer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(emptyConsumerForm);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [mobileFormOpen, setMobileFormOpen] = useState(false);
-  const [historyCustomer, setHistoryCustomer] = useState<Customer | null>(null);
+  const [historyConsumer, setHistoryConsumer] = useState<Consumer | null>(null);
 
-  const canEditCustomers = canManageData || canManageOwnCustomers;
+  const canEditConsumers = canManageData || canManageOwnConsumers;
 
   async function load() {
     if (!ready || !clientEmailId) {
-      setCustomers([]);
+      setConsumers([]);
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const query = `v1/customers?client_email_id=${encodeURIComponent(clientEmailId)}`;
-      const data = await apiFetch<CustomerListResponse>(query);
-      setCustomers(data.customers);
+      const query = `v1/consumers?client_email_id=${encodeURIComponent(clientEmailId)}`;
+      const data = await apiFetch<ConsumerListResponse>(query);
+      setConsumers(data.consumers);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load customers");
+      setError(e instanceof Error ? e.message : "Failed to load consumers");
     } finally {
       setLoading(false);
     }
@@ -83,19 +83,19 @@ export default function CustomersPage() {
   }, [clientEmailId, ready]);
 
   useEffect(() => {
-    const customerParam = searchParams.get("customer");
-    if (!customerParam || customers.length === 0) {
+    const consumerParam = searchParams.get("consumer");
+    if (!consumerParam || consumers.length === 0) {
       return;
     }
-    const customerId = Number(customerParam);
-    if (!Number.isFinite(customerId)) {
+    const consumerId = Number(consumerParam);
+    if (!Number.isFinite(consumerId)) {
       return;
     }
-    const match = customers.find((customer) => customer.id === customerId);
+    const match = consumers.find((consumer) => consumer.id === consumerId);
     if (match) {
-      setHistoryCustomer(match);
+      setHistoryConsumer(match);
     }
-  }, [customers, searchParams]);
+  }, [consumers, searchParams]);
 
   function buildCreatePayload() {
     if (!selectedClient?.client_business_phone_number) {
@@ -126,7 +126,7 @@ export default function CustomersPage() {
         throw new Error("Consumer email is required.");
       }
       if (editingId) {
-        await apiFetch(`v1/customers/${editingId}?${scope}`, {
+        await apiFetch(`v1/consumers/${editingId}?${scope}`, {
           method: "PUT",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -135,7 +135,7 @@ export default function CustomersPage() {
           }),
         });
       } else {
-        await apiFetch("v1/customers", {
+        await apiFetch("v1/consumers", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(buildCreatePayload()),
@@ -153,21 +153,21 @@ export default function CustomersPage() {
   }
 
   async function handleDelete(id: number) {
-    if (!clientEmailId || !confirm("Delete this customer?")) return;
+    if (!clientEmailId || !confirm("Delete this consumer?")) return;
     try {
       const scope = clientScopeQuery(clientEmailId);
-      await apiFetch(`v1/customers/${id}?${scope}`, { method: "DELETE" });
+      await apiFetch(`v1/consumers/${id}?${scope}`, { method: "DELETE" });
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
     }
   }
 
-  function startEdit(customer: Customer) {
-    setEditingId(customer.id);
+  function startEdit(consumer: Consumer) {
+    setEditingId(consumer.id);
     setForm({
-      consumer_phone_number: customer.consumer_phone_number,
-      consumer_email_id: customer.consumer_email_id,
+      consumer_phone_number: consumer.consumer_phone_number,
+      consumer_email_id: consumer.consumer_email_id,
     });
     setMobileFormOpen(true);
   }
@@ -225,7 +225,7 @@ export default function CustomersPage() {
   return (
     <AppShell>
       <PageHeader
-        title="Customers"
+        title="Consumers"
         description="Manage consumers for the selected client."
         action={
           <Button onClick={() => void load()} variant="secondary">
@@ -238,11 +238,11 @@ export default function CustomersPage() {
       {error ? <ErrorBanner message={error} /> : null}
 
       {!clientEmailId ? (
-        <EmptyState message="Select a client in the header to view customers." />
+        <EmptyState message="Select a client in the header to view consumers." />
       ) : (
         <SplitLayout
           sidebar={
-            canEditCustomers ? (
+            canEditConsumers ? (
               <Card className="hidden lg:block">
                 <CardHeader>
                   <CardTitle>
@@ -259,7 +259,7 @@ export default function CustomersPage() {
                 <CardHeader>
                   <CardTitle>Read-only access</CardTitle>
                   <CardDescription>
-                    Your role can view customers but cannot create or edit records.
+                    Your role can view consumers but cannot create or edit records.
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -270,38 +270,38 @@ export default function CustomersPage() {
             <div className="border-b border-border px-5 py-4 sm:px-6">
               <CardTitle>All consumers</CardTitle>
               <CardDescription className="mt-1">
-                {customers.length} record{customers.length === 1 ? "" : "s"}
+                {consumers.length} record{consumers.length === 1 ? "" : "s"}
               </CardDescription>
             </div>
             <div className="p-2 sm:p-4">
               {loading ? (
                 <div className="flex items-center gap-2 px-3 py-8 text-sm text-muted-foreground">
                   <Spinner />
-                  Loading customers…
+                  Loading consumers…
                 </div>
-              ) : customers.length === 0 ? (
-                <EmptyState message="No customers for this client yet." />
+              ) : consumers.length === 0 ? (
+                <EmptyState message="No consumers for this client yet." />
               ) : (
                 <Table>
                   <TableHead>
                     <TableHeaderCell>Phone</TableHeaderCell>
                     <TableHeaderCell>Email</TableHeaderCell>
-                    {canEditCustomers ? (
+                    {canEditConsumers ? (
                       <TableHeaderCell className="text-right">Actions</TableHeaderCell>
                     ) : null}
                   </TableHead>
                   <TableBody>
-                    {customers.map((customer) => (
+                    {consumers.map((consumer) => (
                       <TableRow
-                        key={customer.id}
+                        key={consumer.id}
                         className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => setHistoryCustomer(customer)}
+                        onClick={() => setHistoryConsumer(consumer)}
                       >
                         <TableCell className="font-medium">
-                          {customer.consumer_phone_number}
+                          {consumer.consumer_phone_number}
                         </TableCell>
-                        <TableCell>{customer.consumer_email_id}</TableCell>
-                        {canEditCustomers ? (
+                        <TableCell>{consumer.consumer_email_id}</TableCell>
+                        {canEditConsumers ? (
                           <TableCell className="text-right">
                             <div
                               className="flex justify-end gap-1"
@@ -310,16 +310,16 @@ export default function CustomersPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                aria-label="Edit customer"
-                                onClick={() => startEdit(customer)}
+                                aria-label="Edit consumer"
+                                onClick={() => startEdit(consumer)}
                               >
                                 <Pencil className="h-4 w-4" aria-hidden />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                aria-label="Delete customer"
-                                onClick={() => void handleDelete(customer.id)}
+                                aria-label="Delete consumer"
+                                onClick={() => void handleDelete(consumer.id)}
                               >
                                 <Trash2 className="h-4 w-4 text-red-600" aria-hidden />
                               </Button>
@@ -336,7 +336,7 @@ export default function CustomersPage() {
         </SplitLayout>
       )}
 
-      {canEditCustomers && clientEmailId ? (
+      {canEditConsumers && clientEmailId ? (
         <>
           <Button
             type="button"
@@ -368,13 +368,13 @@ export default function CustomersPage() {
         </>
       ) : null}
 
-      <CustomerCallHistorySheet
-        open={historyCustomer !== null}
-        onOpenChange={(open) => !open && setHistoryCustomer(null)}
+      <ConsumerCallHistorySheet
+        open={historyConsumer !== null}
+        onOpenChange={(open) => !open && setHistoryConsumer(null)}
         clientEmailId={clientEmailId}
-        customerId={historyCustomer?.id ?? null}
-        customerPhone={historyCustomer?.consumer_phone_number}
-        customerEmail={historyCustomer?.consumer_email_id}
+        consumerId={historyConsumer?.id ?? null}
+        consumerPhone={historyConsumer?.consumer_phone_number}
+        consumerEmail={historyConsumer?.consumer_email_id}
       />
     </AppShell>
   );

@@ -37,7 +37,7 @@ async def test_finalize_call_summary_persists_after_session_history_populated():
     mock_ctx = SimpleNamespace(
         proc=SimpleNamespace(
             userdata={
-                "customer_id": 14,
+                "consumer_id": 14,
                 "job_id": UUID("d62cf7c6-8395-4135-801a-261660fe3662"),
                 "call_outcome": {"meeting_scheduled": False},
             }
@@ -68,6 +68,6 @@ async def test_finalize_call_summary_persists_after_session_history_populated():
         agent_module.persist_call_summary = original_persist
         agent_module.summarize_call_transcript = original_summarize
 
-    assert captured["customer_id"] == 14
+    assert captured["consumer_id"] == 14
     assert "Caller asked who delivered the judgment" in str(captured["call_summary"])
     mock_client.aclose.assert_awaited_once()

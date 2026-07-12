@@ -18,16 +18,16 @@ import { apiFetch, errorMessageFromUnknown } from "@/lib/api-client";
 import { clientScopeQuery, useClientScope } from "@/contexts/client-scope-context";
 import type {
   CollectionListResponse,
-  CustomerListResponse,
+  ConsumerListResponse,
   HealthResponse,
 } from "@/lib/types";
 import { ArrowRight, BookOpen, Megaphone, Users } from "lucide-react";
-import { callScheduleLabel, customerStatusColor, customerStatusLabel } from "@/lib/utils";
+import { callScheduleLabel, consumerStatusColor, consumerStatusLabel } from "@/lib/utils";
 
 export default function DashboardPage() {
   const { clientEmailId, ready } = useClientScope();
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [customers, setCustomers] = useState<CustomerListResponse | null>(null);
+  const [consumers, setConsumers] = useState<ConsumerListResponse | null>(null);
   const [collections, setCollections] = useState<CollectionListResponse | null>(
     null,
   );
@@ -43,17 +43,17 @@ export default function DashboardPage() {
         if (!ready || !clientEmailId) return;
 
         const scope = clientScopeQuery(clientEmailId);
-        const [customerResult, collectionResult] = await Promise.allSettled([
-          apiFetch<CustomerListResponse>(`v1/customers?limit=5&${scope}`),
+        const [consumerResult, collectionResult] = await Promise.allSettled([
+          apiFetch<ConsumerListResponse>(`v1/consumers?limit=5&${scope}`),
           apiFetch<CollectionListResponse>(`v1/collections?${scope}`),
         ]);
 
         const errors: string[] = [];
-        if (customerResult.status === "fulfilled") {
-          setCustomers(customerResult.value);
+        if (consumerResult.status === "fulfilled") {
+          setConsumers(consumerResult.value);
         } else {
           errors.push(
-            errorMessageFromUnknown(customerResult.reason, "Failed to load customers"),
+            errorMessageFromUnknown(consumerResult.reason, "Failed to load consumers"),
           );
         }
         if (collectionResult.status === "fulfilled") {
@@ -79,7 +79,7 @@ export default function DashboardPage() {
     <AppShell>
       <PageHeader
         title="Dashboard"
-        description="Overview of customers, knowledge bases, and platform health."
+        description="Overview of consumers, knowledge bases, and platform health."
       />
 
       {error ? <AlertBanner message={error} /> : null}
@@ -105,15 +105,15 @@ export default function DashboardPage() {
           />
 
           <StatCard
-            label="Customers"
-            value={customers?.count ?? 0}
+            label="Consumers"
+            value={consumers?.count ?? 0}
             icon={Users}
             footer={
               <Link
-                href="/customers"
+                href="/consumers"
                 className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
               >
-                Manage customers
+                Manage consumers
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
               </Link>
             }
@@ -161,30 +161,30 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Recent customers</CardTitle>
+              <CardTitle>Recent consumers</CardTitle>
               <CardDescription>Latest consumers for the active client.</CardDescription>
             </CardHeader>
             <ul className="space-y-2">
-              {(customers?.customers ?? []).map((customer) => (
+              {(consumers?.consumers ?? []).map((consumer) => (
                 <li
-                  key={customer.id}
+                  key={consumer.id}
                   className="flex items-center justify-between rounded-lg border border-zinc-100 bg-zinc-50/80 px-3 py-2.5 text-sm"
                 >
                   <div className="min-w-0">
                     <p className="truncate font-medium text-zinc-900">
-                      {customer.consumer_phone_number}
+                      {consumer.consumer_phone_number}
                     </p>
                     <p className="truncate text-xs text-zinc-500">
-                      {customer.consumer_email_id}
+                      {consumer.consumer_email_id}
                     </p>
                   </div>
-                  <Badge className={customerStatusColor(customer.status)}>
-                    {customerStatusLabel(customer.status)}
+                  <Badge className={consumerStatusColor(consumer.status)}>
+                    {consumerStatusLabel(consumer.status)}
                   </Badge>
                 </li>
               ))}
-              {!customers?.customers?.length ? (
-                <li className="text-sm text-zinc-500">No customers yet.</li>
+              {!consumers?.consumers?.length ? (
+                <li className="text-sm text-zinc-500">No consumers yet.</li>
               ) : null}
             </ul>
           </Card>

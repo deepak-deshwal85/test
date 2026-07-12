@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.postgres.models import CallJobRow
-from app.domain.customer_models import (
+from app.domain.consumer_models import (
     CallAttemptResult,
     CallJob,
     normalize_email,
@@ -27,7 +27,7 @@ class CallJobRepository:
         items = json.loads(raw)
         return [
             CallAttemptResult(
-                customer_id=int(item["customer_id"]),
+                consumer_id=int(item["consumer_id"]),
                 consumer_phone_number=str(item["consumer_phone_number"]),
                 success=bool(item["success"]),
                 detail=str(item["detail"]),
@@ -40,7 +40,7 @@ class CallJobRepository:
         return json.dumps(
             [
                 {
-                    "customer_id": result.customer_id,
+                    "consumer_id": result.consumer_id,
                     "consumer_phone_number": result.consumer_phone_number,
                     "success": result.success,
                     "detail": result.detail,
@@ -55,7 +55,7 @@ class CallJobRepository:
             client_business_phone_number=row.client_business_phone_number,
             client_email_id=row.client_email_id,
             status=row.status,
-            total_customers=row.total_customers,
+            total_consumers=row.total_consumers,
             calls_completed=row.calls_completed,
             error_message=row.error_message,
             started_at=row.started_at,
@@ -96,13 +96,13 @@ class CallJobRepository:
         return self._to_domain(row) if row else None
 
     async def mark_running(
-        self, job_id: UUID, *, total_customers: int
+        self, job_id: UUID, *, total_consumers: int
     ) -> CallJob | None:
         row = await self._session.get(CallJobRow, job_id)
         if row is None:
             return None
         row.status = "running"
-        row.total_customers = total_customers
+        row.total_consumers = total_consumers
         row.started_at = datetime.now(UTC)
         await self._session.commit()
         await self._session.refresh(row)

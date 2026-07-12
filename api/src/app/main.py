@@ -22,7 +22,7 @@ from app.routers import (
     call_summaries,
     clients,
     collections,
-    customers,
+    consumers,
     documents,
     embeddings,
     health,
@@ -56,7 +56,7 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         version=settings.app_version,
         description=(
-            "RAG REST API with Qdrant vector storage, customer management, "
+            "RAG REST API with Qdrant vector storage, consumer management, "
             "and outbound call jobs."
         ),
         lifespan=lifespan,
@@ -75,7 +75,7 @@ def create_app() -> FastAPI:
     app.include_router(collections.router)
     app.include_router(documents.router)
     app.include_router(search.router)
-    app.include_router(customers.router)
+    app.include_router(consumers.router)
     app.include_router(call_summaries.router)
     app.include_router(voice_agent_config.router)
     app.include_router(clients.router)

@@ -144,7 +144,7 @@ class ClientService:
         if counts is None:
             raise ValueError(f"Client {normalized!r} not found")
 
-        customers_deleted, call_jobs_deleted = counts
+        consumers_deleted, call_jobs_deleted = counts
 
         qdrant_deleted = False
         if self._collection_service is not None:
@@ -164,7 +164,7 @@ class ClientService:
 
         return ClientDeleteResponse(
             client_email_id=normalized,
-            deleted_customers=customers_deleted,
+            deleted_consumers=consumers_deleted,
             deleted_call_jobs=call_jobs_deleted,
             qdrant_collection_deleted=qdrant_deleted,
             cognito_user_deleted=cognito_deleted,

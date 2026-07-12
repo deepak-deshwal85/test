@@ -55,7 +55,7 @@ class CallSummaryApiClient:
     async def create_call_summary(
         self,
         *,
-        customer_id: int,
+        consumer_id: int,
         call_start_time: datetime,
         call_end_time: datetime | None,
         call_summary: str,
@@ -63,7 +63,7 @@ class CallSummaryApiClient:
         meeting_scheduled: bool = False,
     ) -> None:
         payload: dict[str, object] = {
-            "customer_id": customer_id,
+            "consumer_id": consumer_id,
             "call_start_time": call_start_time.isoformat(),
             "call_end_time": call_end_time.isoformat() if call_end_time else None,
             "call_summary": call_summary[:MAX_SUMMARY_LENGTH],
@@ -80,10 +80,10 @@ class CallSummaryApiClient:
         )
         if response.status_code >= 400:
             logger.error(
-                "call summary api failed status=%s detail=%s customer_id=%s",
+                "call summary api failed status=%s detail=%s consumer_id=%s",
                 response.status_code,
                 response.text,
-                customer_id,
+                consumer_id,
             )
             response.raise_for_status()
 
@@ -101,22 +101,22 @@ def create_call_summary_client(
 async def persist_call_summary(
     *,
     client: CallSummaryApiClient,
-    customer_id: int | None,
+    consumer_id: int | None,
     job_id: UUID | None,
     call_start_time: datetime,
     call_end_time: datetime,
     call_summary: str,
     meeting_scheduled: bool = False,
 ) -> None:
-    if customer_id is None:
-        logger.info("skipping call summary save: no customer_id in job metadata")
+    if consumer_id is None:
+        logger.info("skipping call summary save: no consumer_id in job metadata")
         return
     if not call_summary.strip():
         call_summary = "Call completed with no transcript captured."
 
     try:
         await client.create_call_summary(
-            customer_id=customer_id,
+            consumer_id=consumer_id,
             call_start_time=call_start_time,
             call_end_time=call_end_time,
             call_summary=call_summary,
@@ -124,10 +124,10 @@ async def persist_call_summary(
             meeting_scheduled=meeting_scheduled,
         )
         logger.info(
-            "saved call summary customer_id=%s meeting_scheduled=%s duration_seconds=%.1f",
-            customer_id,
+            "saved call summary consumer_id=%s meeting_scheduled=%s duration_seconds=%.1f",
+            consumer_id,
             meeting_scheduled,
             (call_end_time - call_start_time).total_seconds(),
         )
     except Exception:
-        logger.exception("failed to save call summary customer_id=%s", customer_id)
+        logger.exception("failed to save call summary consumer_id=%s", consumer_id)

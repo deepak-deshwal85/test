@@ -22,7 +22,7 @@ def test_create_call_summary(client: TestClient) -> None:
     from app.core.dependencies import (
         get_call_summary_service,
         get_client_repository,
-        get_customer_service,
+        get_consumer_service,
     )
 
     now = datetime.now(UTC)
@@ -30,7 +30,7 @@ def test_create_call_summary(client: TestClient) -> None:
     mock_service = AsyncMock()
     mock_service.create.return_value = CallSummaryResponse(
         id=1,
-        customer_id=14,
+        consumer_id=14,
         client_email_id="acme@example.com",
         call_start_time=now,
         call_end_time=now,
@@ -40,9 +40,9 @@ def test_create_call_summary(client: TestClient) -> None:
         consumer_phone_number="919900000001",
         consumer_email_id="alice.consumer@example.com",
     )
-    mock_customer_service = AsyncMock()
-    mock_customer_service.get.return_value = type(
-        "CustomerStub",
+    mock_consumer_service = AsyncMock()
+    mock_consumer_service.get.return_value = type(
+        "ConsumerStub",
         (),
         {"client_email_id": "acme@example.com"},
     )()
@@ -50,14 +50,14 @@ def test_create_call_summary(client: TestClient) -> None:
 
     app = create_app()
     app.dependency_overrides[get_call_summary_service] = lambda: mock_service
-    app.dependency_overrides[get_customer_service] = lambda: mock_customer_service
+    app.dependency_overrides[get_consumer_service] = lambda: mock_consumer_service
     app.dependency_overrides[get_client_repository] = lambda: mock_repository
     test_client = TestClient(app)
 
     response = test_client.post(
         "/v1/call-summaries?client_email_id=acme@example.com",
         json={
-            "customer_id": 14,
+            "consumer_id": 14,
             "call_start_time": now.isoformat(),
             "call_end_time": now.isoformat(),
             "call_summary": "Caller asked about pricing.",
@@ -65,7 +65,7 @@ def test_create_call_summary(client: TestClient) -> None:
         },
     )
     assert response.status_code == 201
-    assert response.json()["customer_id"] == 14
+    assert response.json()["consumer_id"] == 14
 
 
 def test_list_call_summaries(client: TestClient) -> None:
@@ -76,7 +76,7 @@ def test_list_call_summaries(client: TestClient) -> None:
     mock_service.list.return_value = [
         CallSummaryResponse(
             id=1,
-            customer_id=14,
+            consumer_id=14,
             client_email_id="acme@example.com",
             call_start_time=now,
             call_end_time=now,

@@ -4,16 +4,16 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.postgres.models import ClientRow, CustomerRow
-from app.domain.customer_models import Customer, normalize_email, normalize_phone_number
-from app.domain.customer_status import (
+from app.db.postgres.models import ClientRow, ConsumerRow
+from app.domain.consumer_models import Consumer, normalize_email, normalize_phone_number
+from app.domain.consumer_status import (
     VALID_CALL_SCHEDULES,
-    VALID_CUSTOMER_STATUSES,
-    customer_status_after_call,
+    VALID_CONSUMER_STATUSES,
+    consumer_status_after_call,
 )
 
-_DUPLICATE_CUSTOMER_MESSAGE = (
-    "Customer already exists for this client and consumer phone number"
+_DUPLICATE_CONSUMER_MESSAGE = (
+    "Consumer already exists for this client and consumer phone number"
 )
 
 
@@ -21,15 +21,15 @@ def _raise_from_integrity_error(exc: IntegrityError) -> None:
     message = str(exc.orig or exc).lower()
     if "not-null" in message or "notnull" in message or "null value" in message:
         raise ValueError(
-            "Customer could not be saved because required database fields are missing. "
+            "Consumer could not be saved because required database fields are missing. "
             "Restart the API to apply schema migrations, then try again."
         ) from exc
     if "unique" in message or "duplicate" in message:
-        raise ValueError(_DUPLICATE_CUSTOMER_MESSAGE) from exc
-    raise ValueError("Customer could not be saved due to a database constraint.") from exc
+        raise ValueError(_DUPLICATE_CONSUMER_MESSAGE) from exc
+    raise ValueError("Consumer could not be saved due to a database constraint.") from exc
 
 
-class CustomerRepository:
+class ConsumerRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
@@ -39,27 +39,27 @@ class CustomerRepository:
         client_email_id: str,
         client_business_phone_number: str,
         consumer_phone_number: str,
-        exclude_customer_id: int | None = None,
-    ) -> CustomerRow | None:
+        exclude_consumer_id: int | None = None,
+    ) -> ConsumerRow | None:
         normalized_email = normalize_email(client_email_id)
         normalized_consumer = normalize_phone_number(consumer_phone_number)
 
-        query = select(CustomerRow).where(
-            CustomerRow.client_email_id == normalized_email,
-            CustomerRow.consumer_phone_number == normalized_consumer,
+        query = select(ConsumerRow).where(
+            ConsumerRow.client_email_id == normalized_email,
+            ConsumerRow.consumer_phone_number == normalized_consumer,
         )
-        if exclude_customer_id is not None:
-            query = query.where(CustomerRow.id != exclude_customer_id)
+        if exclude_consumer_id is not None:
+            query = query.where(ConsumerRow.id != exclude_consumer_id)
 
         return (await self._session.execute(query)).scalars().first()
 
     @staticmethod
-    def _duplicate_customer_error() -> ValueError:
-        return ValueError(_DUPLICATE_CUSTOMER_MESSAGE)
+    def _duplicate_consumer_error() -> ValueError:
+        return ValueError(_DUPLICATE_CONSUMER_MESSAGE)
 
     @staticmethod
-    def _to_domain(row: CustomerRow) -> Customer:
-        return Customer(
+    def _to_domain(row: ConsumerRow) -> Consumer:
+        return Consumer(
             id=row.id,
             client_id=row.client_id,
             client_business_phone_number=row.client_business_phone_number,
@@ -84,7 +84,7 @@ class CustomerRepository:
         consumer_email_id: str,
         call_schedule: str = "no",
         status: str = "READY",
-    ) -> Customer:
+    ) -> Consumer:
         normalized_business = normalize_phone_number(client_business_phone_number)
         normalized_consumer = normalize_phone_number(consumer_phone_number)
         if normalized_consumer == normalized_business:
@@ -97,9 +97,9 @@ class CustomerRepository:
             client_business_phone_number=client_business_phone_number,
             consumer_phone_number=consumer_phone_number,
         ):
-            raise self._duplicate_customer_error()
+            raise self._duplicate_consumer_error()
 
-        row = CustomerRow(
+        row = ConsumerRow(
             client_business_phone_number=normalized_business,
             client_name=client_name.strip(),
             client_email_id=normalize_email(client_email_id),
@@ -118,16 +118,16 @@ class CustomerRepository:
         await self._session.refresh(row)
         return self._to_domain(row)
 
-    async def get(self, customer_id: int, *, client_email_id: str) -> Customer | None:
-        row = await self._session.get(CustomerRow, customer_id)
+    async def get(self, consumer_id: int, *, client_email_id: str) -> Consumer | None:
+        row = await self._session.get(ConsumerRow, consumer_id)
         if row is None:
             return None
         if row.client_email_id != normalize_email(client_email_id):
             return None
         return self._to_domain(row) if row else None
 
-    async def get_by_id(self, customer_id: int) -> Customer | None:
-        row = await self._session.get(CustomerRow, customer_id)
+    async def get_by_id(self, consumer_id: int) -> Consumer | None:
+        row = await self._session.get(ConsumerRow, consumer_id)
         return self._to_domain(row) if row else None
 
     async def list(
@@ -137,16 +137,16 @@ class CustomerRepository:
         client_business_phone_number: str | None = None,
         skip: int = 0,
         limit: int = 100,
-    ) -> list[Customer]:
-        query = select(CustomerRow)
+    ) -> list[Consumer]:
+        query = select(ConsumerRow)
         if client_email_id:
             query = query.where(
-                CustomerRow.client_email_id == normalize_email(client_email_id)
+                ConsumerRow.client_email_id == normalize_email(client_email_id)
             )
-        query = query.order_by(CustomerRow.id)
+        query = query.order_by(ConsumerRow.id)
         if client_business_phone_number:
             query = query.where(
-                CustomerRow.client_business_phone_number
+                ConsumerRow.client_business_phone_number
                 == normalize_phone_number(client_business_phone_number)
             )
         query = query.offset(skip).limit(limit)
@@ -155,24 +155,24 @@ class CustomerRepository:
 
     async def list_scheduled_for_campaign(
         self, *, client_business_phone_number: str, client_email_id: str
-    ) -> list[Customer]:
+    ) -> list[Consumer]:
         query = (
-            select(CustomerRow)
-            .where(CustomerRow.client_email_id == normalize_email(client_email_id))
+            select(ConsumerRow)
+            .where(ConsumerRow.client_email_id == normalize_email(client_email_id))
             .where(
-                CustomerRow.client_business_phone_number
+                ConsumerRow.client_business_phone_number
                 == normalize_phone_number(client_business_phone_number)
             )
-            .where(CustomerRow.call_schedule == "yes")
-            .where(CustomerRow.status == "READY")
-            .order_by(CustomerRow.id)
+            .where(ConsumerRow.call_schedule == "yes")
+            .where(ConsumerRow.status == "READY")
+            .order_by(ConsumerRow.id)
         )
         rows = (await self._session.execute(query)).scalars().all()
         return [self._to_domain(row) for row in rows]
 
     async def list_approved_by_client(
         self, *, client_business_phone_number: str, client_email_id: str
-    ) -> list[Customer]:
+    ) -> list[Consumer]:
         """Deprecated: use list_scheduled_for_campaign."""
         return await self.list_scheduled_for_campaign(
             client_business_phone_number=client_business_phone_number,
@@ -181,7 +181,7 @@ class CustomerRepository:
 
     async def update(
         self,
-        customer_id: int,
+        consumer_id: int,
         *,
         client_email_id: str,
         client_business_phone_number: str | None = None,
@@ -190,8 +190,8 @@ class CustomerRepository:
         consumer_phone_number: str | None = None,
         call_schedule: str | None = None,
         status: str | None = None,
-    ) -> Customer | None:
-        row = await self._session.get(CustomerRow, customer_id)
+    ) -> Consumer | None:
+        row = await self._session.get(ConsumerRow, consumer_id)
         if row is None:
             return None
         if row.client_email_id != normalize_email(client_email_id):
@@ -216,16 +216,16 @@ class CustomerRepository:
                 client_email_id=row.client_email_id,
                 client_business_phone_number=normalized_business,
                 consumer_phone_number=normalized_consumer,
-                exclude_customer_id=customer_id,
+                exclude_consumer_id=consumer_id,
             ):
-                raise self._duplicate_customer_error()
+                raise self._duplicate_consumer_error()
             row.consumer_phone_number = normalized_consumer
         if call_schedule is not None:
             if call_schedule not in VALID_CALL_SCHEDULES:
                 raise ValueError("call_schedule must be 'yes' or 'no'")
             row.call_schedule = call_schedule
         if status is not None:
-            if status not in VALID_CUSTOMER_STATUSES:
+            if status not in VALID_CONSUMER_STATUSES:
                 raise ValueError(
                     "status must be READY, MEETING_SCHEDULED, or MEETING_NOT_SCHEDULED"
                 )
@@ -241,19 +241,19 @@ class CustomerRepository:
 
     async def update_status_after_call(
         self,
-        customer_id: int,
+        consumer_id: int,
         *,
         client_email_id: str,
         meeting_scheduled: bool,
-    ) -> Customer | None:
+    ) -> Consumer | None:
         return await self.update(
-            customer_id,
+            consumer_id,
             client_email_id=client_email_id,
-            status=customer_status_after_call(meeting_scheduled=meeting_scheduled),
+            status=consumer_status_after_call(meeting_scheduled=meeting_scheduled),
         )
 
-    async def delete(self, customer_id: int, *, client_email_id: str) -> bool:
-        row = await self._session.get(CustomerRow, customer_id)
+    async def delete(self, consumer_id: int, *, client_email_id: str) -> bool:
+        row = await self._session.get(ConsumerRow, consumer_id)
         if row is None:
             return False
         if row.client_email_id != normalize_email(client_email_id):
@@ -263,9 +263,9 @@ class CustomerRepository:
         return True
 
     async def approve(
-        self, customer_id: int, *, client_email_id: str
-    ) -> Customer | None:
-        row = await self._session.get(CustomerRow, customer_id)
+        self, consumer_id: int, *, client_email_id: str
+    ) -> Consumer | None:
+        row = await self._session.get(ConsumerRow, consumer_id)
         if row is None:
             return None
         normalized_email = normalize_email(client_email_id)

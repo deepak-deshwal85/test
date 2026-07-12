@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Drop all RelayDesk tables and recreate schema (+ optional seed data).
 
-Destructive — deletes every row in clients, customers, and call_jobs.
+Destructive — deletes every row in clients, consumers, and call_jobs.
 
 Usage:
   cd api
@@ -60,7 +60,7 @@ def main() -> int:
 
     if not args.yes:
         print(
-            "Refusing to run without --yes. This drops clients, customers, and call_jobs.",
+            "Refusing to run without --yes. This drops clients, consumers, and call_jobs.",
             file=sys.stderr,
         )
         return 1

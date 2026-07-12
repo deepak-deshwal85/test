@@ -1,6 +1,6 @@
 # RelayDesk API
 
-FastAPI service providing **RAG** (Qdrant vector search, document ingest), **customer management** (PostgreSQL), **outbound call jobs** (LiveKit SIP), and **client profiles**. All routes except `/health` require a Cognito JWT unless `OAUTH_DISABLED=true`.
+FastAPI service providing **RAG** (Qdrant vector search, document ingest), **consumer management** (PostgreSQL), **outbound call jobs** (LiveKit SIP), and **client profiles**. All routes except `/health` require a Cognito JWT unless `OAUTH_DISABLED=true`.
 
 [← Back to monorepo](../README.md) · **Infrastructure:** [`../infra/README.md`](../infra/README.md)
 
@@ -11,7 +11,7 @@ FastAPI service providing **RAG** (Qdrant vector search, document ingest), **cus
 ### What it does
 
 - **RAG:** Upload PDF/text/markdown per phone collection (`phone_<digits>`), embed with OpenAI, search via Qdrant Cloud.
-- **Customers:** CRUD for client/consumer records scoped by `client_email_id`.
+- **Consumers:** CRUD for client/consumer records scoped by `client_email_id`.
 - **Call jobs:** Async outbound dialing of all consumers for a client phone number.
 - **Clients:** Profile setup (name, phone, email) after SSO; links Cognito `sub` to tenant.
 - **Auth:** Validates Cognito access tokens; UI users are email-scoped; M2M voice-agent tokens bypass tenant checks.
@@ -34,7 +34,7 @@ src/app/
 |--------|---------|
 | `/health` | Liveness (no auth) |
 | `/v1/collections`, `/v1/search` | RAG — collections, documents, semantic search |
-| `/v1/customers` | Customer CRUD + approve |
+| `/v1/consumers` | Consumer CRUD + approve |
 | `/v1/call-jobs` | Trigger and poll outbound campaigns |
 | `/v1/clients` | Client profile (`/me`, `/profile`) |
 | `/v1/embeddings` | Embedding cache (admin) |
@@ -115,7 +115,7 @@ uv run python scripts/init_db.py              # schema + dummy seed
 uv run python scripts/init_db.py --schema-only
 ```
 
-Seed includes `acme@example.com`, 3 customers, and 2 call jobs (idempotent).
+Seed includes `acme@example.com`, 3 consumers, and 2 call jobs (idempotent).
 
 **Drop and recreate** (destructive — deletes all rows):
 
@@ -206,12 +206,12 @@ All scripts run from the `api/` directory unless noted.
 |--------|---------|--------|
 | `scripts/init_db.py` | Create tables + optional dummy seed data | `uv run python scripts/init_db.py` |
 | `scripts/reset_db.py` | **Drop all tables**, recreate schema + seed | `uv run python scripts/reset_db.py --yes` |
-| `scripts/db/drop.sql` | Drop `call_jobs`, `customers`, `clients` | Used by `reset_db.py` |
-| `scripts/db/schema.sql` | Idempotent DDL (clients, customers, call_jobs) | Used by `init_db.py` / `reset_db.py` |
-| `scripts/db/seed.sql` | Dummy dev rows (Acme client, 3 customers, 2 call jobs) | Used by `init_db.py` |
+| `scripts/db/drop.sql` | Drop `call_jobs`, `consumers`, `clients` | Used by `reset_db.py` |
+| `scripts/db/schema.sql` | Idempotent DDL (clients, consumers, call_jobs) | Used by `init_db.py` / `reset_db.py` |
+| `scripts/db/seed.sql` | Dummy dev rows (Acme client, 3 consumers, 2 call jobs) | Used by `init_db.py` |
 | `scripts/init_db.sql` | Deprecated pointer | Use `init_db.py` instead |
 | `scripts/migrate_db.py` | Apply SQL migrations to existing DB | `uv run python scripts/migrate_db.py` |
-| `scripts/db/migrate_customer_campaign.sql` | Add `call_schedule` + `status` columns | Used by `migrate_db.py` |
+| `scripts/db/migrate_consumer_campaign.sql` | Add `call_schedule` + `status` columns | Used by `migrate_db.py` |
 | `scripts/upload_document.py` | Upload file to a collection via HTTP | `uv run python scripts/upload_document.py --file doc.pdf --collection phone_911171366880` |
 | `scripts/reset_qdrant_collections.py` | Delete all Qdrant Cloud collections (destructive) | `uv run python scripts/reset_qdrant_collections.py --yes` |
 | `scripts/bench_search.py` | Benchmark search latency | `uv run python scripts/bench_search.py --query "hello"` |

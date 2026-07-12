@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from app.main import create_app
 from app.schemas.call_jobs import CallJobResponse
-from app.schemas.customers import CustomerResponse
+from app.schemas.consumers import ConsumerResponse
 
 
 @pytest.fixture
@@ -25,14 +25,14 @@ def test_health(client: TestClient) -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_create_customer(client: TestClient) -> None:
+def test_create_consumer(client: TestClient) -> None:
     from unittest.mock import AsyncMock
 
-    from app.core.dependencies import get_client_repository, get_customer_service
+    from app.core.dependencies import get_client_repository, get_consumer_service
 
     now = datetime.now(UTC)
     mock_service = AsyncMock()
-    mock_service.create.return_value = CustomerResponse(
+    mock_service.create.return_value = ConsumerResponse(
         id=1,
         client_id=None,
         client_business_phone_number="911171366880",
@@ -51,12 +51,12 @@ def test_create_customer(client: TestClient) -> None:
     mock_repository.get_by_cognito_sub.return_value = None
 
     app = create_app()
-    app.dependency_overrides[get_customer_service] = lambda: mock_service
+    app.dependency_overrides[get_consumer_service] = lambda: mock_service
     app.dependency_overrides[get_client_repository] = lambda: mock_repository
     test_client = TestClient(app)
 
     response = test_client.post(
-        "/v1/customers",
+        "/v1/consumers",
         json={
             "client_business_phone_number": "911171366880",
             "client_name": "Acme Corp",
@@ -80,7 +80,7 @@ def test_trigger_call_job(client: TestClient) -> None:
         client_business_phone_number="911171366880",
         client_email_id="acme@example.com",
         status="pending",
-        total_customers=0,
+        total_consumers=0,
         calls_completed=0,
         error_message=None,
         started_at=None,
@@ -113,7 +113,7 @@ def test_trigger_call_job(client: TestClient) -> None:
 def test_raise_from_integrity_error_maps_not_null() -> None:
     from sqlalchemy.exc import IntegrityError
 
-    from app.db.postgres.customer_repository import _raise_from_integrity_error
+    from app.db.postgres.consumer_repository import _raise_from_integrity_error
 
     exc = IntegrityError("INSERT", {}, Exception('null value in column "client_phone_number"'))
     try:
@@ -127,7 +127,7 @@ def test_raise_from_integrity_error_maps_not_null() -> None:
 def test_raise_from_integrity_error_maps_unique() -> None:
     from sqlalchemy.exc import IntegrityError
 
-    from app.db.postgres.customer_repository import _raise_from_integrity_error
+    from app.db.postgres.consumer_repository import _raise_from_integrity_error
 
     exc = IntegrityError("INSERT", {}, Exception("duplicate key value violates unique constraint"))
     try:
@@ -136,32 +136,32 @@ def test_raise_from_integrity_error_maps_unique() -> None:
         assert "already exists" in str(err)
     else:
         raise AssertionError("expected ValueError")
-    from app.domain.customer_models import normalize_phone_number
+    from app.domain.consumer_models import normalize_phone_number
 
     assert normalize_phone_number("+91 91117 1366880") == "91911171366880"
     assert normalize_phone_number("9876543210") == "9876543210"
 
 
-def test_create_customer_rejects_duplicate(client: TestClient) -> None:
+def test_create_consumer_rejects_duplicate(client: TestClient) -> None:
     from unittest.mock import AsyncMock
 
-    from app.core.dependencies import get_client_repository, get_customer_service
+    from app.core.dependencies import get_client_repository, get_consumer_service
 
     mock_service = AsyncMock()
     mock_service.create.side_effect = ValueError(
-        "Customer already exists for this client and consumer phone number"
+        "Consumer already exists for this client and consumer phone number"
     )
     mock_repository = AsyncMock()
     mock_repository.get_by_email.return_value = None
     mock_repository.get_by_cognito_sub.return_value = None
 
     app = create_app()
-    app.dependency_overrides[get_customer_service] = lambda: mock_service
+    app.dependency_overrides[get_consumer_service] = lambda: mock_service
     app.dependency_overrides[get_client_repository] = lambda: mock_repository
     test_client = TestClient(app)
 
     response = test_client.post(
-        "/v1/customers",
+        "/v1/consumers",
         json={
             "client_business_phone_number": "911171366880",
             "client_name": "Acme Corp",
@@ -174,12 +174,12 @@ def test_create_customer_rejects_duplicate(client: TestClient) -> None:
     assert "already exists" in response.json()["detail"]
 
 
-def test_create_customer_rejects_consumer_matching_business_phone(
+def test_create_consumer_rejects_consumer_matching_business_phone(
     client: TestClient,
 ) -> None:
     from unittest.mock import AsyncMock
 
-    from app.core.dependencies import get_client_repository, get_customer_service
+    from app.core.dependencies import get_client_repository, get_consumer_service
 
     mock_service = AsyncMock()
     mock_service.create.side_effect = ValueError(
@@ -190,12 +190,12 @@ def test_create_customer_rejects_consumer_matching_business_phone(
     mock_repository.get_by_cognito_sub.return_value = None
 
     app = create_app()
-    app.dependency_overrides[get_customer_service] = lambda: mock_service
+    app.dependency_overrides[get_consumer_service] = lambda: mock_service
     app.dependency_overrides[get_client_repository] = lambda: mock_repository
     test_client = TestClient(app)
 
     response = test_client.post(
-        "/v1/customers",
+        "/v1/consumers",
         json={
             "client_business_phone_number": "911171366880",
             "client_name": "Acme Corp",

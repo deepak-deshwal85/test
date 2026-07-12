@@ -7,9 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.postgres.models import CallSummaryRow, CustomerRow
+from app.db.postgres.models import CallSummaryRow, ConsumerRow
 from app.domain.call_summary_models import CallSummary
-from app.domain.customer_models import normalize_email
+from app.domain.consumer_models import normalize_email
 
 
 class CallSummaryRepository:
@@ -25,7 +25,7 @@ class CallSummaryRepository:
     ) -> CallSummary:
         return CallSummary(
             id=row.id,
-            customer_id=row.customer_id,
+            consumer_id=row.consumer_id,
             client_email_id=row.client_email_id,
             call_start_time=row.call_start_time,
             call_end_time=row.call_end_time,
@@ -36,10 +36,10 @@ class CallSummaryRepository:
             consumer_email_id=consumer_email_id,
         )
 
-    async def _get_customer(
-        self, customer_id: int, *, client_email_id: str | None = None
-    ) -> CustomerRow | None:
-        row = await self._session.get(CustomerRow, customer_id)
+    async def _get_consumer(
+        self, consumer_id: int, *, client_email_id: str | None = None
+    ) -> ConsumerRow | None:
+        row = await self._session.get(ConsumerRow, consumer_id)
         if row is None:
             return None
         if client_email_id is not None and row.client_email_id != normalize_email(
@@ -51,21 +51,21 @@ class CallSummaryRepository:
     async def create(
         self,
         *,
-        customer_id: int,
+        consumer_id: int,
         client_email_id: str,
         call_start_time: datetime,
         call_end_time: datetime | None,
         call_summary: str,
         job_id: uuid.UUID | None = None,
     ) -> CallSummary:
-        customer = await self._get_customer(
-            customer_id, client_email_id=client_email_id
+        consumer = await self._get_consumer(
+            consumer_id, client_email_id=client_email_id
         )
-        if customer is None:
-            raise ValueError("Customer not found for this client")
+        if consumer is None:
+            raise ValueError("Consumer not found for this client")
 
         row = CallSummaryRow(
-            customer_id=customer_id,
+            consumer_id=consumer_id,
             client_email_id=normalize_email(client_email_id),
             call_start_time=call_start_time,
             call_end_time=call_end_time,
@@ -81,8 +81,8 @@ class CallSummaryRepository:
         await self._session.refresh(row)
         return self._to_domain(
             row,
-            consumer_phone_number=customer.consumer_phone_number,
-            consumer_email_id=customer.consumer_email_id,
+            consumer_phone_number=consumer.consumer_phone_number,
+            consumer_email_id=consumer.consumer_email_id,
         )
 
     async def get(self, summary_id: int, *, client_email_id: str) -> CallSummary | None:
@@ -91,41 +91,41 @@ class CallSummaryRepository:
             return None
         if row.client_email_id != normalize_email(client_email_id):
             return None
-        customer = await self._session.get(CustomerRow, row.customer_id)
+        consumer = await self._session.get(ConsumerRow, row.consumer_id)
         return self._to_domain(
             row,
-            consumer_phone_number=customer.consumer_phone_number if customer else None,
-            consumer_email_id=customer.consumer_email_id if customer else None,
+            consumer_phone_number=consumer.consumer_phone_number if consumer else None,
+            consumer_email_id=consumer.consumer_email_id if consumer else None,
         )
 
     async def list(
         self,
         *,
         client_email_id: str | None,
-        customer_id: int | None = None,
+        consumer_id: int | None = None,
         skip: int = 0,
         limit: int = 100,
     ) -> list[CallSummary]:
         query = (
-            select(CallSummaryRow, CustomerRow)
-            .join(CustomerRow, CustomerRow.id == CallSummaryRow.customer_id)
+            select(CallSummaryRow, ConsumerRow)
+            .join(ConsumerRow, ConsumerRow.id == CallSummaryRow.consumer_id)
             .order_by(CallSummaryRow.call_start_time.desc())
         )
         if client_email_id:
             query = query.where(
                 CallSummaryRow.client_email_id == normalize_email(client_email_id)
             )
-        if customer_id is not None:
-            query = query.where(CallSummaryRow.customer_id == customer_id)
+        if consumer_id is not None:
+            query = query.where(CallSummaryRow.consumer_id == consumer_id)
         query = query.offset(skip).limit(limit)
         rows = (await self._session.execute(query)).all()
         return [
             self._to_domain(
                 summary_row,
-                consumer_phone_number=customer_row.consumer_phone_number,
-                consumer_email_id=customer_row.consumer_email_id,
+                consumer_phone_number=consumer_row.consumer_phone_number,
+                consumer_email_id=consumer_row.consumer_email_id,
             )
-            for summary_row, customer_row in rows
+            for summary_row, consumer_row in rows
         ]
 
     async def update(
@@ -152,11 +152,11 @@ class CallSummaryRepository:
 
         await self._session.commit()
         await self._session.refresh(row)
-        customer = await self._session.get(CustomerRow, row.customer_id)
+        consumer = await self._session.get(ConsumerRow, row.consumer_id)
         return self._to_domain(
             row,
-            consumer_phone_number=customer.consumer_phone_number if customer else None,
-            consumer_email_id=customer.consumer_email_id if customer else None,
+            consumer_phone_number=consumer.consumer_phone_number if consumer else None,
+            consumer_email_id=consumer.consumer_email_id if consumer else None,
         )
 
     async def delete(self, summary_id: int, *, client_email_id: str) -> bool:

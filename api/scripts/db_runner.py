@@ -40,22 +40,72 @@ def to_asyncpg_dsn(database_url: str) -> str:
 
 
 def split_sql_statements(sql_text: str) -> list[str]:
+    """Split SQL into statements on semicolons outside quotes and dollar-quoted blocks."""
     statements: list[str] = []
     buffer: list[str] = []
-    for line in sql_text.splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("--"):
+    i = 0
+    n = len(sql_text)
+    dollar_delim: str | None = None
+    in_single = False
+
+    while i < n:
+        if dollar_delim is not None:
+            if sql_text.startswith(dollar_delim, i):
+                buffer.append(dollar_delim)
+                i += len(dollar_delim)
+                dollar_delim = None
+                continue
+            buffer.append(sql_text[i])
+            i += 1
             continue
-        buffer.append(line)
-        if stripped.endswith(";"):
-            statement = "\n".join(buffer).strip()
+
+        if in_single:
+            ch = sql_text[i]
+            buffer.append(ch)
+            if ch == "'" and i + 1 < n and sql_text[i + 1] == "'":
+                buffer.append("'")
+                i += 2
+                continue
+            if ch == "'":
+                in_single = False
+            i += 1
+            continue
+
+        if sql_text.startswith("--", i):
+            while i < n and sql_text[i] != "\n":
+                i += 1
+            continue
+
+        if sql_text[i] == "$":
+            j = i + 1
+            while j < n and (sql_text[j].isalnum() or sql_text[j] == "_"):
+                j += 1
+            if j < n and sql_text[j] == "$":
+                dollar_delim = sql_text[i : j + 1]
+                buffer.append(dollar_delim)
+                i = j + 1
+                continue
+
+        if sql_text[i] == "'":
+            in_single = True
+            buffer.append("'")
+            i += 1
+            continue
+
+        if sql_text[i] == ";":
+            statement = "".join(buffer).strip()
             if statement:
                 statements.append(statement)
             buffer = []
-    if buffer:
-        trailing = "\n".join(buffer).strip()
-        if trailing:
-            statements.append(trailing)
+            i += 1
+            continue
+
+        buffer.append(sql_text[i])
+        i += 1
+
+    trailing = "".join(buffer).strip()
+    if trailing:
+        statements.append(trailing)
     return statements
 
 

@@ -245,14 +245,14 @@ async def _resolve_session_client(ctx: JobContext) -> ClientConfig:
         except json.JSONDecodeError:
             logger.warning("invalid job metadata JSON: %r", ctx.job.metadata)
 
-    customer_id: int | None = None
+    consumer_id: int | None = None
     job_id: UUID | None = None
-    raw_customer_id = parsed_metadata.get("customer_id")
-    if raw_customer_id is not None:
+    raw_consumer_id = parsed_metadata.get("consumer_id")
+    if raw_consumer_id is not None:
         try:
-            customer_id = int(raw_customer_id)
+            consumer_id = int(raw_consumer_id)
         except (TypeError, ValueError):
-            logger.warning("invalid customer_id in job metadata: %r", raw_customer_id)
+            logger.warning("invalid consumer_id in job metadata: %r", raw_consumer_id)
     raw_job_id = parsed_metadata.get("job_id")
     if raw_job_id:
         try:
@@ -260,7 +260,7 @@ async def _resolve_session_client(ctx: JobContext) -> ClientConfig:
         except ValueError:
             logger.warning("invalid job_id in job metadata: %r", raw_job_id)
 
-    ctx.proc.userdata["customer_id"] = customer_id
+    ctx.proc.userdata["consumer_id"] = consumer_id
     ctx.proc.userdata["job_id"] = job_id
     call_outcome: dict[str, bool] = {"meeting_scheduled": False}
     ctx.proc.userdata["call_outcome"] = call_outcome
@@ -368,7 +368,7 @@ async def _finalize_call_summary(
 ) -> None:
     """Persist the call summary after LiveKit closes the voice session."""
     call_end_time = datetime.now(UTC)
-    customer_id = state.ctx.proc.userdata.get("customer_id")
+    consumer_id = state.ctx.proc.userdata.get("consumer_id")
     job_id = state.ctx.proc.userdata.get("job_id")
     call_outcome = state.ctx.proc.userdata.get("call_outcome") or {}
     try:
@@ -383,9 +383,9 @@ async def _finalize_call_summary(
             meeting_scheduled=bool(call_outcome.get("meeting_scheduled")),
         )
         logger.info(
-            "built call summary customer_id=%s lines=%d transcript_chars=%d "
+            "built call summary consumer_id=%s lines=%d transcript_chars=%d "
             "summary_chars=%d shutdown_reason=%s duration_seconds=%.1f",
-            customer_id,
+            consumer_id,
             len(state.transcript_collector.lines),
             len(transcript),
             len(summary_text),
@@ -394,7 +394,7 @@ async def _finalize_call_summary(
         )
         await persist_call_summary(
             client=state.call_summary_client,
-            customer_id=customer_id,
+            consumer_id=consumer_id,
             job_id=job_id,
             call_start_time=state.call_start_time,
             call_end_time=call_end_time,

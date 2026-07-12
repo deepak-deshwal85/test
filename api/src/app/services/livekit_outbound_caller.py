@@ -7,7 +7,7 @@ from uuid import UUID
 from livekit import api
 
 from app.core.config import Settings
-from app.domain.customer_models import CallAttemptResult, Customer, format_sip_phone
+from app.domain.consumer_models import CallAttemptResult, Consumer, format_sip_phone
 
 logger = logging.getLogger("relaydesk-api")
 
@@ -19,19 +19,19 @@ class LiveKitOutboundCaller:
     async def place_call(
         self,
         *,
-        customer: Customer,
+        consumer: Consumer,
         job_id: UUID,
     ) -> CallAttemptResult:
-        room_name = f"outbound-{job_id}-{customer.id}"
-        consumer_phone = format_sip_phone(customer.consumer_phone_number)
+        room_name = f"outbound-{job_id}-{consumer.id}"
+        consumer_phone = format_sip_phone(consumer.consumer_phone_number)
         metadata = json.dumps(
             {
                 "call_type": "outbound",
-                "client_email_id": customer.client_email_id,
-                "client_business_phone_number": customer.client_business_phone_number,
-                "client_name": customer.client_name,
-                "consumer_phone_number": customer.consumer_phone_number,
-                "customer_id": customer.id,
+                "client_email_id": consumer.client_email_id,
+                "client_business_phone_number": consumer.client_business_phone_number,
+                "client_name": consumer.client_name,
+                "consumer_phone_number": consumer.consumer_phone_number,
+                "consumer_id": consumer.id,
                 "job_id": str(job_id),
             }
         )
@@ -39,8 +39,8 @@ class LiveKitOutboundCaller:
         logger.info(
             "dialing consumer job_id=%s client=%s (%s) consumer=%s room=%s",
             job_id,
-            customer.client_business_phone_number,
-            customer.client_name,
+            consumer.client_business_phone_number,
+            consumer.client_name,
             consumer_phone,
             room_name,
         )
@@ -69,32 +69,32 @@ class LiveKitOutboundCaller:
                         room_name=room_name,
                         sip_trunk_id=self._settings.livekit_sip_outbound_trunk_id,
                         sip_call_to=consumer_phone,
-                        participant_identity=f"consumer-{customer.id}",
-                        participant_name=customer.client_name,
+                        participant_identity=f"consumer-{consumer.id}",
+                        participant_name=consumer.client_name,
                         wait_until_answered=False,
                     )
                 )
 
             detail = (
                 f"LiveKit outbound call initiated from client "
-                f"{customer.client_business_phone_number} to {consumer_phone} in room {room_name}"
+                f"{consumer.client_business_phone_number} to {consumer_phone} in room {room_name}"
             )
             logger.info(detail)
             return CallAttemptResult(
-                customer_id=customer.id,
-                consumer_phone_number=customer.consumer_phone_number,
+                consumer_id=consumer.id,
+                consumer_phone_number=consumer.consumer_phone_number,
                 success=True,
                 detail=detail,
             )
         except Exception as exc:
             logger.exception(
-                "livekit outbound call failed job_id=%s customer_id=%s",
+                "livekit outbound call failed job_id=%s consumer_id=%s",
                 job_id,
-                customer.id,
+                consumer.id,
             )
             return CallAttemptResult(
-                customer_id=customer.id,
-                consumer_phone_number=customer.consumer_phone_number,
+                consumer_id=consumer.id,
+                consumer_phone_number=consumer.consumer_phone_number,
                 success=False,
                 detail=str(exc),
             )

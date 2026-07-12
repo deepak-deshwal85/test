@@ -55,7 +55,7 @@ def main() -> int:
     parser.add_argument("--all", action="store_true")
     parser.add_argument(
         "--file",
-        default="migrate_customer_campaign.sql",
+        default="migrate_consumer_campaign.sql",
         help="Migration file under api/scripts/db/.",
     )
     args = parser.parse_args()

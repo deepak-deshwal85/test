@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.dependencies import (
     get_client_repository,
-    get_customer_service,
+    get_consumer_service,
     require_permission,
     verify_access_token,
 )
@@ -14,22 +14,22 @@ from app.core.oauth import AuthenticatedPrincipal
 from app.core.rbac import Permission
 from app.core.tenant import is_scope_unrestricted, principal_email, verify_client_email_scope
 from app.db.postgres.client_repository import ClientRepository
-from app.schemas.customers import (
-    CustomerCreateRequest,
-    CustomerListResponse,
-    CustomerResponse,
-    CustomerUpdateRequest,
+from app.schemas.consumers import (
+    ConsumerCreateRequest,
+    ConsumerListResponse,
+    ConsumerResponse,
+    ConsumerUpdateRequest,
 )
-from app.services.customer_service import CustomerService
+from app.services.consumer_service import ConsumerService
 
 router = APIRouter(
-    prefix="/v1/customers",
-    tags=["customers"],
+    prefix="/v1/consumers",
+    tags=["consumers"],
     dependencies=[Depends(verify_access_token)],
 )
 
 
-async def _validate_customer_write_scope(
+async def _validate_consumer_write_scope(
     principal: AuthenticatedPrincipal,
     body_email: str,
     body_business_phone: str | None,
@@ -61,17 +61,17 @@ async def _validate_customer_write_scope(
     return scoped_email
 
 
-@router.post("", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
-async def create_customer(
-    body: CustomerCreateRequest,
-    service: Annotated[CustomerService, Depends(get_customer_service)],
+@router.post("", response_model=ConsumerResponse, status_code=status.HTTP_201_CREATED)
+async def create_consumer(
+    body: ConsumerCreateRequest,
+    service: Annotated[ConsumerService, Depends(get_consumer_service)],
     repository: Annotated[ClientRepository, Depends(get_client_repository)],
     principal: Annotated[
         AuthenticatedPrincipal,
         Depends(require_permission(Permission.DOCUMENT_WRITE)),
     ],
-) -> CustomerResponse:
-    scoped_email = await _validate_customer_write_scope(
+) -> ConsumerResponse:
+    scoped_email = await _validate_consumer_write_scope(
         principal,
         body.client_email_id,
         body.client_business_phone_number,
@@ -94,16 +94,16 @@ async def create_customer(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("", response_model=CustomerListResponse)
-async def list_customers(
-    service: Annotated[CustomerService, Depends(get_customer_service)],
+@router.get("", response_model=ConsumerListResponse)
+async def list_consumers(
+    service: Annotated[ConsumerService, Depends(get_consumer_service)],
     principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
     repository: Annotated[ClientRepository, Depends(get_client_repository)],
     client_email_id: Annotated[str | None, Query(min_length=3)] = None,
     client_business_phone_number: Annotated[str | None, Query()] = None,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
-) -> CustomerListResponse:
+) -> ConsumerListResponse:
     if not client_email_id and not is_scope_unrestricted(principal):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -114,45 +114,45 @@ async def list_customers(
         if client_email_id
         else None
     )
-    customers = await service.list(
+    consumers = await service.list(
         client_email_id=scoped_email,
         client_business_phone_number=client_business_phone_number,
         skip=skip,
         limit=limit,
     )
-    return CustomerListResponse(customers=customers, count=len(customers))
+    return ConsumerListResponse(consumers=consumers, count=len(consumers))
 
 
-@router.get("/{customer_id}", response_model=CustomerResponse)
-async def get_customer(
-    customer_id: int,
+@router.get("/{consumer_id}", response_model=ConsumerResponse)
+async def get_consumer(
+    consumer_id: int,
     principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
     client_email_id: Annotated[str, Query(min_length=3)],
     repository: Annotated[ClientRepository, Depends(get_client_repository)],
-    service: Annotated[CustomerService, Depends(get_customer_service)],
-) -> CustomerResponse:
+    service: Annotated[ConsumerService, Depends(get_consumer_service)],
+) -> ConsumerResponse:
     scoped_email = await verify_client_email_scope(
         principal, client_email_id, repository
     )
-    customer = await service.get(customer_id, client_email_id=scoped_email)
-    if customer is None:
-        raise HTTPException(status_code=404, detail="Customer not found")
-    return customer
+    consumer = await service.get(consumer_id, client_email_id=scoped_email)
+    if consumer is None:
+        raise HTTPException(status_code=404, detail="Consumer not found")
+    return consumer
 
 
-@router.put("/{customer_id}", response_model=CustomerResponse)
-async def update_customer(
-    customer_id: int,
+@router.put("/{consumer_id}", response_model=ConsumerResponse)
+async def update_consumer(
+    consumer_id: int,
     client_email_id: Annotated[str, Query(min_length=3)],
-    body: CustomerUpdateRequest,
-    service: Annotated[CustomerService, Depends(get_customer_service)],
+    body: ConsumerUpdateRequest,
+    service: Annotated[ConsumerService, Depends(get_consumer_service)],
     repository: Annotated[ClientRepository, Depends(get_client_repository)],
     principal: Annotated[
         AuthenticatedPrincipal,
         Depends(require_permission(Permission.DOCUMENT_WRITE)),
     ],
-) -> CustomerResponse:
-    scoped_email = await _validate_customer_write_scope(
+) -> ConsumerResponse:
+    scoped_email = await _validate_consumer_write_scope(
         principal,
         client_email_id,
         body.client_business_phone_number,
@@ -166,23 +166,23 @@ async def update_customer(
             }
         )
     try:
-        customer = await service.update(
-            customer_id,
+        consumer = await service.update(
+            consumer_id,
             client_email_id=scoped_email,
             body=body,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    if customer is None:
-        raise HTTPException(status_code=404, detail="Customer not found")
-    return customer
+    if consumer is None:
+        raise HTTPException(status_code=404, detail="Consumer not found")
+    return consumer
 
 
-@router.delete("/{customer_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_customer(
-    customer_id: int,
+@router.delete("/{consumer_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_consumer(
+    consumer_id: int,
     client_email_id: Annotated[str, Query(min_length=3)],
-    service: Annotated[CustomerService, Depends(get_customer_service)],
+    service: Annotated[ConsumerService, Depends(get_consumer_service)],
     repository: Annotated[ClientRepository, Depends(get_client_repository)],
     principal: Annotated[
         AuthenticatedPrincipal,
@@ -192,23 +192,23 @@ async def delete_customer(
     scoped_email = await verify_client_email_scope(
         principal, client_email_id, repository
     )
-    deleted = await service.delete(customer_id, client_email_id=scoped_email)
+    deleted = await service.delete(consumer_id, client_email_id=scoped_email)
     if not deleted:
-        raise HTTPException(status_code=404, detail="Customer not found")
+        raise HTTPException(status_code=404, detail="Consumer not found")
 
 
 @router.post(
-    "/{customer_id}/approve",
-    response_model=CustomerResponse,
+    "/{consumer_id}/approve",
+    response_model=ConsumerResponse,
     status_code=status.HTTP_200_OK,
 )
-async def approve_customer(
-    customer_id: int,
+async def approve_consumer(
+    consumer_id: int,
     client_email_id: Annotated[str, Query(min_length=3)],
-    service: Annotated[CustomerService, Depends(get_customer_service)],
+    service: Annotated[ConsumerService, Depends(get_consumer_service)],
     _principal: Annotated[object, Depends(require_permission(Permission.ADMIN))] = ...,
-) -> CustomerResponse:
-    customer = await service.approve(customer_id, client_email_id=client_email_id)
-    if customer is None:
-        raise HTTPException(status_code=404, detail="Customer not found")
-    return customer
+) -> ConsumerResponse:
+    consumer = await service.approve(consumer_id, client_email_id=client_email_id)
+    if consumer is None:
+        raise HTTPException(status_code=404, detail="Consumer not found")
+    return consumer

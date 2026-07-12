@@ -39,19 +39,19 @@ export interface ClientAdminListResponse {
 
 export interface ClientDeleteResponse {
   client_email_id: string;
-  deleted_customers: number;
+  deleted_consumers: number;
   deleted_call_jobs: number;
   qdrant_collection_deleted: boolean;
   cognito_user_deleted: boolean;
 }
 
 export type CallScheduleValue = "yes" | "no";
-export type CustomerStatusValue =
+export type ConsumerStatusValue =
   | "READY"
   | "MEETING_SCHEDULED"
   | "MEETING_NOT_SCHEDULED";
 
-export interface Customer {
+export interface Consumer {
   id: number;
   client_id: number | null;
   client_business_phone_number: string;
@@ -61,19 +61,19 @@ export interface Customer {
   consumer_email_id: string;
   is_approved: boolean;
   call_schedule: CallScheduleValue;
-  status: CustomerStatusValue;
+  status: ConsumerStatusValue;
   created_at: string;
   updated_at: string;
 }
 
-export interface CustomerListResponse {
-  customers: Customer[];
+export interface ConsumerListResponse {
+  consumers: Consumer[];
   count: number;
 }
 
 export interface CallSummary {
   id: number;
-  customer_id: number;
+  consumer_id: number;
   client_email_id: string;
   call_start_time: string;
   call_end_time: string | null;
@@ -90,7 +90,7 @@ export interface CallSummaryListResponse {
 }
 
 export interface CallAttempt {
-  customer_id: number;
+  consumer_id: number;
   consumer_phone_number: string;
   success: boolean;
   detail: string;
@@ -101,7 +101,7 @@ export interface CallJob {
   client_business_phone_number: string;
   client_email_id: string;
   status: string;
-  total_customers: number;
+  total_consumers: number;
   calls_completed: number;
   error_message: string | null;
   started_at: string | null;

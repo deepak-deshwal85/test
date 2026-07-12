@@ -25,7 +25,7 @@ export function statusColor(status: string): string {
   }
 }
 
-export function customerStatusLabel(value: string): string {
+export function consumerStatusLabel(value: string): string {
   switch (value) {
     case "READY":
       return "Ready";
@@ -38,7 +38,7 @@ export function customerStatusLabel(value: string): string {
   }
 }
 
-export function customerStatusColor(value: string): string {
+export function consumerStatusColor(value: string): string {
   switch (value) {
     case "READY":
       return "bg-emerald-50 text-emerald-700";

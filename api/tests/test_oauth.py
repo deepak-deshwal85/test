@@ -255,7 +255,7 @@ def test_approved_client_can_upload_documents(
     assert response.status_code == 200
 
 
-def test_approved_client_can_create_customers(
+def test_approved_client_can_create_consumers(
     monkeypatch: pytest.MonkeyPatch, rsa_keys, mock_client_repository
 ) -> None:
     from datetime import UTC, datetime
@@ -263,9 +263,9 @@ def test_approved_client_can_create_customers(
     from fastapi.testclient import TestClient
     from unittest.mock import AsyncMock
 
-    from app.core.dependencies import get_client_repository, get_customer_service
+    from app.core.dependencies import get_client_repository, get_consumer_service
     from app.main import create_app
-    from app.schemas.customers import CustomerResponse
+    from app.schemas.consumers import ConsumerResponse
 
     private_key, public_key = rsa_keys
     public_pem = public_key.public_bytes(
@@ -276,7 +276,7 @@ def test_approved_client_can_create_customers(
 
     now = datetime.now(UTC)
     mock_service = AsyncMock()
-    mock_service.create.return_value = CustomerResponse(
+    mock_service.create.return_value = ConsumerResponse(
         id=1,
         client_id=None,
         client_business_phone_number="911171366880",
@@ -292,7 +292,7 @@ def test_approved_client_can_create_customers(
     )
 
     app = create_app()
-    app.dependency_overrides[get_customer_service] = lambda: mock_service
+    app.dependency_overrides[get_consumer_service] = lambda: mock_service
     app.dependency_overrides[get_client_repository] = lambda: mock_client_repository
     token = _encode_token(
         private_key,
@@ -301,7 +301,7 @@ def test_approved_client_can_create_customers(
     )
     client = TestClient(app)
     response = client.post(
-        "/v1/customers",
+        "/v1/consumers",
         headers={"Authorization": f"Bearer {token}"},
         json={
             "client_business_phone_number": "911171366880",

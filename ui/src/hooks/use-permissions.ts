@@ -17,6 +17,6 @@ export function usePermissions() {
     canUploadDocuments: hasPermission(role, "document_write"),
     canManageData: hasPermission(role, "admin"),
     isGuest: (role ?? "guest-clients") === "guest-clients",
-    canManageOwnCustomers: hasPermission(role, "document_write"),
+    canManageOwnConsumers: hasPermission(role, "document_write"),
   };
 }

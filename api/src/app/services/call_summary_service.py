@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.db.postgres.call_summary_repository import CallSummaryRepository
-from app.db.postgres.customer_repository import CustomerRepository
+from app.db.postgres.consumer_repository import ConsumerRepository
 from app.domain.call_summary_models import CallSummary
 from app.schemas.call_summaries import (
     CallSummaryCreateRequest,
@@ -14,16 +14,16 @@ class CallSummaryService:
     def __init__(
         self,
         repository: CallSummaryRepository,
-        customer_repository: CustomerRepository,
+        consumer_repository: ConsumerRepository,
     ) -> None:
         self._repository = repository
-        self._customer_repository = customer_repository
+        self._consumer_repository = consumer_repository
 
     @staticmethod
     def _to_response(summary: CallSummary) -> CallSummaryResponse:
         return CallSummaryResponse(
             id=summary.id,
-            customer_id=summary.customer_id,
+            consumer_id=summary.consumer_id,
             client_email_id=summary.client_email_id,
             call_start_time=summary.call_start_time,
             call_end_time=summary.call_end_time,
@@ -41,15 +41,15 @@ class CallSummaryService:
         body: CallSummaryCreateRequest,
     ) -> CallSummaryResponse:
         summary = await self._repository.create(
-            customer_id=body.customer_id,
+            consumer_id=body.consumer_id,
             client_email_id=client_email_id,
             call_start_time=body.call_start_time,
             call_end_time=body.call_end_time,
             call_summary=body.call_summary,
             job_id=body.job_id,
         )
-        await self._customer_repository.update_status_after_call(
-            body.customer_id,
+        await self._consumer_repository.update_status_after_call(
+            body.consumer_id,
             client_email_id=client_email_id,
             meeting_scheduled=body.meeting_scheduled,
         )
@@ -65,13 +65,13 @@ class CallSummaryService:
         self,
         *,
         client_email_id: str | None,
-        customer_id: int | None = None,
+        consumer_id: int | None = None,
         skip: int = 0,
         limit: int = 100,
     ) -> list[CallSummaryResponse]:
         summaries = await self._repository.list(
             client_email_id=client_email_id,
-            customer_id=customer_id,
+            consumer_id=consumer_id,
             skip=skip,
             limit=limit,
         )

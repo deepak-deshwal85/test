@@ -149,7 +149,7 @@ export default function CallHistoryPage() {
             ) : (
               <Table>
                 <TableHead>
-                  <TableHeaderCell>Customer</TableHeaderCell>
+                  <TableHeaderCell>Consumer</TableHeaderCell>
                   <TableHeaderCell>Started</TableHeaderCell>
                   <TableHeaderCell>Duration</TableHeaderCell>
                   <TableHeaderCell>Summary</TableHeaderCell>
@@ -163,7 +163,7 @@ export default function CallHistoryPage() {
                     >
                       <TableCell>
                         <div className="font-medium">
-                          {item.consumer_phone_number ?? `#${item.customer_id}`}
+                          {item.consumer_phone_number ?? `#${item.consumer_id}`}
                         </div>
                         {item.consumer_email_id ? (
                           <div className="text-xs text-muted-foreground">
@@ -193,7 +193,7 @@ export default function CallHistoryPage() {
             <>
               <SheetHeader>
                 <SheetTitle>
-                  {selected.consumer_phone_number ?? `Customer #${selected.customer_id}`}
+                  {selected.consumer_phone_number ?? `Consumer #${selected.consumer_id}`}
                 </SheetTitle>
                 <SheetDescription>
                   {formatDate(selected.call_start_time)}
@@ -211,8 +211,8 @@ export default function CallHistoryPage() {
                   {selected.call_summary}
                 </div>
                 <Button variant="secondary" asChild>
-                  <Link href={`/customers?customer=${selected.customer_id}`}>
-                    View customer
+                  <Link href={`/consumers?consumer=${selected.consumer_id}`}>
+                    View consumer
                   </Link>
                 </Button>
               </div>

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.postgres.models import ClientRow, ClientVoiceAgentConfigRow
 from app.domain.client_models import Client
 from app.domain.client_voice_agent_config_models import ClientVoiceAgentConfig
-from app.domain.customer_models import normalize_email
+from app.domain.consumer_models import normalize_email
 from app.domain.voice_agent_defaults import DEFAULT_VOICE_AGENT_GREETING
 
 
@@ -66,7 +66,7 @@ class ClientVoiceAgentConfigRepository:
     async def get_by_business_phone(
         self, phone_number: str
     ) -> ClientVoiceAgentConfig | None:
-        from app.domain.customer_models import normalize_phone_number
+        from app.domain.consumer_models import normalize_phone_number
 
         normalized = normalize_phone_number(phone_number)
         client_row = (

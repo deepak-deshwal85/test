@@ -27,7 +27,7 @@ type DeleteClientAccountSectionProps = {
 
 function formatDeleteSummary(result: ClientDeleteResponse): string {
   const parts = [
-    `${result.deleted_customers} customer${result.deleted_customers === 1 ? "" : "s"}`,
+    `${result.deleted_consumers} consumer${result.deleted_consumers === 1 ? "" : "s"}`,
     `${result.deleted_call_jobs} call job${result.deleted_call_jobs === 1 ? "" : "s"}`,
   ];
   if (result.qdrant_collection_deleted) {
@@ -112,7 +112,7 @@ export function DeleteClientAccountSection({
           <div>
             <CardTitle>Delete account</CardTitle>
             <CardDescription>
-              Permanently remove a client and all associated data: customers,
+              Permanently remove a client and all associated data: consumers,
               call jobs, profile, knowledge base (Qdrant), and Cognito user.
             </CardDescription>
           </div>
@@ -153,7 +153,7 @@ export function DeleteClientAccountSection({
               <p className="font-medium text-foreground">This will delete:</p>
               <ul className="mt-2 list-inside list-disc space-y-1">
                 <li>Client profile for {selectedClient.client_email_id}</li>
-                <li>All customers (consumers) for this client</li>
+                <li>All consumers for this client</li>
                 <li>All call jobs and call history</li>
                 <li>Knowledge base collection in Qdrant</li>
                 <li>Cognito login for this user</li>

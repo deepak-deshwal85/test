@@ -3,9 +3,9 @@ from __future__ import annotations
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.postgres.models import CallJobRow, ClientRow, CustomerRow
+from app.db.postgres.models import CallJobRow, ClientRow, ConsumerRow
 from app.domain.client_models import Client
-from app.domain.customer_models import normalize_email, normalize_phone_number
+from app.domain.consumer_models import normalize_email, normalize_phone_number
 
 
 class ClientRepository:
@@ -167,7 +167,7 @@ class ClientRepository:
         return [self._to_domain(row) for row in rows]
 
     async def delete_by_email(self, client_email_id: str) -> tuple[int, int] | None:
-        """Delete client row and related customers/call jobs. Returns counts or None."""
+        """Delete client row and related consumers/call jobs. Returns counts or None."""
         normalized = normalize_email(client_email_id)
         row = (
             await self._session.execute(
@@ -177,8 +177,8 @@ class ClientRepository:
         if row is None:
             return None
 
-        customers_result = await self._session.execute(
-            delete(CustomerRow).where(CustomerRow.client_email_id == normalized)
+        consumers_result = await self._session.execute(
+            delete(ConsumerRow).where(ConsumerRow.client_email_id == normalized)
         )
         call_jobs_result = await self._session.execute(
             delete(CallJobRow).where(CallJobRow.client_email_id == normalized)
@@ -188,6 +188,6 @@ class ClientRepository:
         )
         await self._session.commit()
         return (
-            int(customers_result.rowcount or 0),
+            int(consumers_result.rowcount or 0),
             int(call_jobs_result.rowcount or 0),
         )

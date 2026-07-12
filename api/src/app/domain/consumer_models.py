@@ -30,7 +30,7 @@ def format_sip_phone(value: str) -> str:
 
 
 @dataclass(frozen=True)
-class Customer:
+class Consumer:
     id: int
     client_id: int | None
     client_business_phone_number: str
@@ -51,7 +51,7 @@ class CallJob:
     client_business_phone_number: str
     client_email_id: str
     status: str
-    total_customers: int
+    total_consumers: int
     calls_completed: int
     error_message: str | None
     started_at: datetime | None
@@ -62,7 +62,7 @@ class CallJob:
 
 @dataclass(frozen=True)
 class CallAttemptResult:
-    customer_id: int
+    consumer_id: int
     consumer_phone_number: str
     success: bool
     detail: str

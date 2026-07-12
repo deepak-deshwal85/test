@@ -20,7 +20,7 @@ export default async function LoginPage({
               Run voice campaigns with clarity
             </h2>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              Manage customers, knowledge bases, outbound call jobs, and client
+              Manage consumers, knowledge bases, outbound call jobs, and client
               approvals from one operations console.
             </p>
           </div>

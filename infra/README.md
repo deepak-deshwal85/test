@@ -55,7 +55,7 @@ Sections below cover architecture, secrets, domain setup, Cognito roles, all scr
 | **ALB** | HTTPS termination, routes to UI (`:3000`) and API (`:8090`) |
 | **ACM** | TLS certificate for custom domain |
 | **Cognito** | User pool, UI client, M2M client, role groups, post-confirmation Lambda |
-| **RDS** | PostgreSQL for customers, clients, call jobs |
+| **RDS** | PostgreSQL for consumers, clients, call jobs |
 | **ECR** | Container registries for api, ui, voice-agent |
 | **Cloud Map** | `api.relaydesk.local` — internal API DNS for voice agent |
 | **SSM** | Secure parameters for all app secrets |
@@ -206,7 +206,7 @@ $env:RDS_DB_PASSWORD = "YourRdsPassword"
 python infra/scripts/init_database.py --use-tunnel
 ```
 
-Creates `clients`, `customers`, `call_jobs` and optional dummy dev rows. See [`api/scripts/init_db.py`](../api/scripts/init_db.py).
+Creates `clients`, `consumers`, `call_jobs` and optional dummy dev rows. See [`api/scripts/init_db.py`](../api/scripts/init_db.py).
 
 **Local API against AWS RDS** (SSM tunnel — see [Connect from your laptop](#connect-from-your-laptop-psql--pgadmin)):
 

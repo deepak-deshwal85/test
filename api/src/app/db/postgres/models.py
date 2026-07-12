@@ -39,13 +39,13 @@ class ClientRow(Base):
     )
 
 
-class CustomerRow(Base):
-    __tablename__ = "customers"
+class ConsumerRow(Base):
+    __tablename__ = "consumers"
     __table_args__ = (
         UniqueConstraint(
             "client_email_id",
             "consumer_phone_number",
-            name="uq_customers_client_consumer",
+            name="uq_consumers_client_consumer",
         ),
     )
 
@@ -85,7 +85,7 @@ class CallJobRow(Base):
     client_business_phone_number: Mapped[str] = mapped_column(String(32), nullable=False)
     client_email_id: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
-    total_customers: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_consumers: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     calls_completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(
@@ -104,8 +104,8 @@ class CallSummaryRow(Base):
     __tablename__ = "call_summaries"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    customer_id: Mapped[int] = mapped_column(
-        ForeignKey("customers.id", ondelete="CASCADE"), nullable=False
+    consumer_id: Mapped[int] = mapped_column(
+        ForeignKey("consumers.id", ondelete="CASCADE"), nullable=False
     )
     client_email_id: Mapped[str] = mapped_column(String(255), nullable=False)
     call_start_time: Mapped[datetime] = mapped_column(

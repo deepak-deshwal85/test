@@ -27,29 +27,29 @@ function formatDuration(start: string, end: string | null): string {
   return remainder ? `${minutes}m ${remainder}s` : `${minutes}m`;
 }
 
-type CustomerCallHistorySheetProps = {
+type ConsumerCallHistorySheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clientEmailId: string | null;
-  customerId: number | null;
-  customerPhone?: string;
-  customerEmail?: string;
+  consumerId: number | null;
+  consumerPhone?: string;
+  consumerEmail?: string;
 };
 
-export function CustomerCallHistorySheet({
+export function ConsumerCallHistorySheet({
   open,
   onOpenChange,
   clientEmailId,
-  customerId,
-  customerPhone,
-  customerEmail,
-}: CustomerCallHistorySheetProps) {
+  consumerId,
+  consumerPhone,
+  consumerEmail,
+}: ConsumerCallHistorySheetProps) {
   const [summaries, setSummaries] = useState<CallSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open || !clientEmailId || !customerId) {
+    if (!open || !clientEmailId || !consumerId) {
       return;
     }
     let cancelled = false;
@@ -59,7 +59,7 @@ export function CustomerCallHistorySheet({
       try {
         const scope = clientScopeQuery(clientEmailId!);
         const data = await apiFetch<CallSummaryListResponse>(
-          `v1/call-summaries?${scope}&customer_id=${customerId}&limit=50`,
+          `v1/call-summaries?${scope}&consumer_id=${consumerId}&limit=50`,
         );
         if (!cancelled) {
           setSummaries(data.summaries);
@@ -79,9 +79,9 @@ export function CustomerCallHistorySheet({
     return () => {
       cancelled = true;
     };
-  }, [open, clientEmailId, customerId]);
+  }, [open, clientEmailId, consumerId]);
 
-  const title = customerPhone ?? (customerId ? `Customer #${customerId}` : "Call history");
+  const title = consumerPhone ?? (consumerId ? `Consumer #${consumerId}` : "Call history");
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -89,8 +89,8 @@ export function CustomerCallHistorySheet({
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
           <SheetDescription>
-            {customerEmail ? `${customerEmail} · ` : ""}
-            Past call summaries for this customer
+            {consumerEmail ? `${consumerEmail} · ` : ""}
+            Past call summaries for this consumer
           </SheetDescription>
         </SheetHeader>
         <div className="mt-4 space-y-4 overflow-y-auto px-1 pb-6">
@@ -102,7 +102,7 @@ export function CustomerCallHistorySheet({
           ) : error ? (
             <p className="text-sm text-red-600">{error}</p>
           ) : summaries.length === 0 ? (
-            <EmptyState message="No calls recorded for this customer yet." />
+            <EmptyState message="No calls recorded for this consumer yet." />
           ) : (
             summaries.map((item) => (
               <article
