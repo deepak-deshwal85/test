@@ -213,3 +213,38 @@ def dev_bypass_principal(
         role=role,
         is_m2m=False,
     )
+
+
+def enrich_ui_principal_session_email(
+    principal: AuthenticatedPrincipal,
+    *,
+    session_email: str | None,
+    settings: Settings,
+) -> AuthenticatedPrincipal:
+    """Fill missing email on UI user tokens from the trusted session header.
+
+    Cognito access tokens often omit ``email``; the Next.js proxy forwards the
+    signed-in user's email from the ID token as ``x-relaydesk-user-email``.
+    """
+    if principal.is_m2m or principal.email:
+        return principal
+    if not settings.cognito_ui_client_id:
+        return principal
+    if principal.client_id != settings.cognito_ui_client_id:
+        return principal
+    if not session_email:
+        return principal
+    normalized = session_email.strip().lower()
+    if "@" not in normalized:
+        return principal
+    return AuthenticatedPrincipal(
+        subject=principal.subject,
+        client_id=principal.client_id,
+        username=principal.username,
+        email=normalized,
+        scopes=principal.scopes,
+        token_use=principal.token_use,
+        groups=principal.groups,
+        role=principal.role,
+        is_m2m=principal.is_m2m,
+    )

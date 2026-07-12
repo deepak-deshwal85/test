@@ -10,6 +10,7 @@ from app.core.config import Settings, get_settings
 from app.core.oauth import (
     AuthenticatedPrincipal,
     dev_bypass_principal,
+    enrich_ui_principal_session_email,
     validate_access_token,
 )
 from app.core.rbac import Permission
@@ -126,7 +127,9 @@ async def get_call_summary_repository(
 
 async def get_call_summary_service(
     repository: Annotated[CallSummaryRepository, Depends(get_call_summary_repository)],
-    consumer_repository: Annotated[ConsumerRepository, Depends(get_consumer_repository)],
+    consumer_repository: Annotated[
+        ConsumerRepository, Depends(get_consumer_repository)
+    ],
 ) -> CallSummaryService:
     return CallSummaryService(repository, consumer_repository)
 
@@ -204,7 +207,12 @@ def verify_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return validate_access_token(credentials.credentials, settings)
+    principal = validate_access_token(credentials.credentials, settings)
+    return enrich_ui_principal_session_email(
+        principal,
+        session_email=request.headers.get("x-relaydesk-user-email"),
+        settings=settings,
+    )
 
 
 def require_permission(permission: Permission):

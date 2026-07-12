@@ -439,3 +439,55 @@ def test_clients_me_returns_existing_profile(
     assert response.status_code == 200
     assert response.json()["client_email_id"] == "linked@example.com"
     mock_service.ensure_on_sign_in.assert_not_awaited()
+
+
+def test_approved_client_scoped_endpoint_uses_session_email(
+    monkeypatch: pytest.MonkeyPatch,
+    rsa_keys,
+    mock_client_repository,
+) -> None:
+    from datetime import UTC, datetime
+    from cryptography.hazmat.primitives import serialization
+    from fastapi.testclient import TestClient
+    from unittest.mock import AsyncMock
+
+    from app.core.dependencies import get_client_repository, get_client_service
+    from app.main import create_app
+    from app.schemas.clients import ClientProfileResponse
+
+    private_key, public_key = rsa_keys
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    _install_fake_jwks(monkeypatch, public_pem)
+
+    now = datetime.now(UTC)
+    mock_service = AsyncMock()
+    mock_service.get_profile.return_value = ClientProfileResponse(
+        id=1,
+        client_phone_number=None,
+        client_business_phone_number="911171366880",
+        client_name="Approved User",
+        client_email_id="user@example.com",
+        created_at=now,
+    )
+
+    app = create_app()
+    app.dependency_overrides[get_client_service] = lambda: mock_service
+    app.dependency_overrides[get_client_repository] = lambda: mock_client_repository
+    token = _encode_token(
+        private_key,
+        **{"cognito:groups": ["approved-clients"]},
+    )
+    client = TestClient(app)
+    response = client.get(
+        "/v1/clients/profile",
+        params={"client_email_id": "user@example.com"},
+        headers={
+            "Authorization": f"Bearer {token}",
+            "X-RelayDesk-User-Email": "user@example.com",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["client_email_id"] == "user@example.com"

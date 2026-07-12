@@ -74,6 +74,29 @@ def test_guest_email_scope_match() -> None:
     )
 
 
+def test_guest_email_scope_match_via_session_header() -> None:
+    principal = _principal(email=None)
+    assert (
+        ensure_client_email_scope(
+            principal,
+            "client@example.com",
+            session_email="client@example.com",
+        )
+        == "client@example.com"
+    )
+
+
+def test_guest_email_scope_mismatch_with_wrong_session_header() -> None:
+    principal = _principal(email=None)
+    with pytest.raises(HTTPException) as exc:
+        ensure_client_email_scope(
+            principal,
+            "client@example.com",
+            session_email="other@example.com",
+        )
+    assert exc.value.status_code == 403
+
+
 def test_resolve_scope_without_profile_returns_empty_collection_scope() -> None:
     principal = _principal()
     scope = resolve_client_scope(

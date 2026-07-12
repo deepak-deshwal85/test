@@ -43,13 +43,15 @@ async def verify_client_email_scope(
     principal: AuthenticatedPrincipal,
     client_email_id: str,
     repository: ClientRepository,
+    *,
+    session_email: str | None = None,
 ) -> str:
     normalized = client_email_id.strip().lower()
     if is_scope_unrestricted(principal):
         return normalized
 
-    token_email = principal_email(principal)
-    if not token_email or token_email != normalized:
+    effective_email = resolve_user_email(principal, session_email)
+    if not effective_email or effective_email != normalized:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Client email scope mismatch",
@@ -60,12 +62,14 @@ async def verify_client_email_scope(
 def ensure_client_email_scope(
     principal: AuthenticatedPrincipal,
     client_email_id: str,
+    *,
+    session_email: str | None = None,
 ) -> str:
     normalized = client_email_id.strip().lower()
     if is_scope_unrestricted(principal):
         return normalized
-    token_email = principal_email(principal)
-    if not token_email or token_email != normalized:
+    effective_email = resolve_user_email(principal, session_email)
+    if not effective_email or effective_email != normalized:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Client email scope mismatch",
