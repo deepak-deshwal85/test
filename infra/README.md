@@ -405,7 +405,6 @@ All scripts in `infra/scripts/`. Run from repo root unless noted.
 | **`bootstrap_db.py`** | Drop, recreate, seed PostgreSQL | `python infra/scripts/bootstrap_db.py --use-tunnel --password "$RDS_DB_PASSWORD" --yes` |
 | **`approve_cognito_user.py`** | Assign or revoke Cognito roles | `python infra/scripts/approve_cognito_user.py --email u@x.com --role relaydesk-admins` |
 | **`cost_control.py`** | Stop/start ECS + ASG (+ optional RDS) | `python infra/scripts/cost_control.py status` |
-| **`asg-instance-refresh-prefs.json`** | ASG instance refresh preferences | Used with `aws autoscaling start-instance-refresh` |
 
 `deploy_common.py` is a shared library used by the deploy scripts — not run directly.
 
@@ -447,17 +446,15 @@ python infra/scripts/cost_control.py start \
 ### ASG instance refresh (after changing instance type)
 
 ```bash
-export PREFS_FILE="file://$(pwd)/infra/scripts/asg-instance-refresh-prefs.json"
-
 aws autoscaling start-instance-refresh \
   --auto-scaling-group-name relaydesk-prod-ecs-api \
   --region ap-south-1 --profile relaydesk-admin \
-  --preferences "$PREFS_FILE"
+  --preferences '{"MinHealthyPercentage":0,"InstanceWarmup":300}'
 
 aws autoscaling start-instance-refresh \
   --auto-scaling-group-name relaydesk-prod-ecs-voice \
   --region ap-south-1 --profile relaydesk-admin \
-  --preferences "$PREFS_FILE"
+  --preferences '{"MinHealthyPercentage":0,"InstanceWarmup":300}'
 ```
 
 ---
