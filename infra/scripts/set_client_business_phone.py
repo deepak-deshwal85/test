@@ -5,7 +5,7 @@ Used by infra/scripts/approve_cognito_user.py (via `uv run` from api/).
 
 Usage:
   cd api
-  uv run python scripts/set_client_business_phone.py \\
+  uv run python ../infra/scripts/set_client_business_phone.py \\
     --email client@example.com \\
     --business-phone +911171366880
 """
@@ -16,7 +16,8 @@ import asyncio
 import sys
 from pathlib import Path
 
-_API_SRC = Path(__file__).resolve().parents[1] / "src"
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_API_SRC = _REPO_ROOT / "api" / "src"
 if str(_API_SRC) not in sys.path:
     sys.path.insert(0, str(_API_SRC))
 

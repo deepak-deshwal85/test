@@ -134,12 +134,7 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 8090
 
 ### Upload a test document
 
-```bash
-uv run python scripts/upload_document.py \
-  --file ./data/sample.pdf \
-  --collection phone_911171366880 \
-  --base-url http://127.0.0.1:8090
-```
+Use the **Knowledge** page in the UI, or Swagger `POST /v1/collections/{collection}/documents/upload`.
 
 ---
 
@@ -199,9 +194,8 @@ All scripts run from the `api/` directory unless noted.
 | `scripts/db/drop.sql` | Drop all application tables | Used by `bootstrap_db.py` |
 | `scripts/db/schema.sql` | DDL (clients, consumers, call_jobs, etc.) | Used by `bootstrap_db.py` |
 | `scripts/db/seed_deepak.sql` | Deepak dev seed data | Used by `bootstrap_db.py` |
-| `scripts/upload_document.py` | Upload file to a collection via HTTP | `uv run python scripts/upload_document.py --file doc.pdf --collection phone_911171366880` |
-| `scripts/reset_qdrant_collections.py` | Delete all Qdrant Cloud collections (destructive) | `uv run python scripts/reset_qdrant_collections.py --yes` |
-| `scripts/bench_search.py` | Benchmark search latency | `uv run python scripts/bench_search.py --query "hello"` |
+
+Document upload, search, and collection management are available via the UI and Swagger (`/docs`).
 
 ### Infra helpers (repo root)
 
@@ -211,15 +205,6 @@ All scripts run from the `api/` directory unless noted.
 | [`../infra/scripts/rds_tunnel.ps1`](../infra/scripts/rds_tunnel.ps1) | SSM port-forward to RDS on `localhost:15432` |
 | [`../infra/scripts/write_local_tunnel_database_url.bat`](../infra/scripts/write_local_tunnel_database_url.bat) | Write `api/.env.local` with tunnel `DATABASE_URL` |
 | [`../infra/scripts/start_local_api.bat`](../infra/scripts/start_local_api.bat) | Tunnel env + start API |
-
-### `reset_qdrant_collections.py`
-
-Removes every collection in the configured Qdrant Cloud cluster. Use only in dev.
-
-```bash
-uv run python scripts/reset_qdrant_collections.py --dry-run
-uv run python scripts/reset_qdrant_collections.py --yes
-```
 
 ---
 

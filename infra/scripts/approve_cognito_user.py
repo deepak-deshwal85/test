@@ -350,7 +350,7 @@ def upsert_client_business_phone(
 ) -> None:
     repo_root = Path(__file__).resolve().parents[2]
     api_dir = repo_root / "api"
-    helper = api_dir / "scripts" / "set_client_business_phone.py"
+    helper = Path(__file__).resolve().parent / "set_client_business_phone.py"
     if not helper.is_file():
         raise RuntimeError(f"Missing helper script: {helper}")
 
