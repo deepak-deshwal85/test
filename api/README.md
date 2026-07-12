@@ -96,13 +96,13 @@ The API **does not** create tables on startup. After RDS exists and `DATABASE_UR
 
 ```powershell
 $env:RDS_DB_PASSWORD = "YourRdsPassword"
-python infra/scripts/bootstrap_database.py --use-tunnel --yes
+python infra/scripts/bootstrap_db.py --use-tunnel --password $env:RDS_DB_PASSWORD --yes
 ```
 
-Or from `api/`:
+Or:
 
 ```bash
-uv run python scripts/bootstrap_db.py --yes
+python infra/scripts/bootstrap_db.py --yes
 ```
 
 Seed includes two Deepak clients (`deepakdeshwal85@gmail.com`, `deepakdeshwal85@yahoo.com`), voice agent configs, consumers, call jobs, and call summaries.
@@ -182,27 +182,18 @@ aws logs tail /ecs/relaydesk-prod/api --since 10m --follow \
 
 ---
 
-## 4. Scripts
+## 4. Infra scripts
 
-All scripts run from the `api/` directory unless noted.
-
-| Script | Purpose | Usage |
-|--------|---------|--------|
-| `scripts/bootstrap_db.py` | **Drop all tables**, recreate schema + Deepak seed | `uv run python scripts/bootstrap_db.py --yes` |
-| `scripts/db_runner.py` | Shared SQL helpers for bootstrap | Used by `bootstrap_db.py` |
-| `scripts/db/drop.sql` | Drop all application tables | Used by `bootstrap_db.py` |
-| `scripts/db/schema.sql` | DDL (clients, consumers, call_jobs, etc.) | Used by `bootstrap_db.py` |
-| `scripts/db/seed_deepak.sql` | Deepak dev seed data | Used by `bootstrap_db.py` |
-
-Document upload, search, and collection management are available via the UI and Swagger (`/docs`).
-
-### Infra helpers (repo root)
+Database bootstrap and deployment scripts live under [`../infra/scripts/`](../infra/scripts/).
 
 | Script | Purpose |
 |--------|---------|
-| [`../infra/scripts/bootstrap_database.py`](../infra/scripts/bootstrap_database.py) | Drop, recreate, and seed PostgreSQL via RDS tunnel |
+| [`../infra/scripts/bootstrap_db.py`](../infra/scripts/bootstrap_db.py) | Drop, recreate, and seed PostgreSQL |
 | [`../infra/scripts/rds_tunnel.py`](../infra/scripts/rds_tunnel.py) | RDS SSM tunnel and `api/.env.local` setup |
 | [`../infra/scripts/deploy_api.py`](../infra/scripts/deploy_api.py) | Build, push, and deploy API to ECS |
+| [`../infra/scripts/sync_ssm_parameters.py`](../infra/scripts/sync_ssm_parameters.py) | Sync secrets to SSM |
+
+Document upload, search, and collection management are available via the UI and Swagger (`/docs`).
 
 ---
 

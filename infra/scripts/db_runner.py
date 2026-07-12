@@ -1,4 +1,4 @@
-"""Shared helpers for api/scripts/bootstrap_db.py."""
+"""Shared helpers for infra/scripts/bootstrap_db.py."""
 
 from __future__ import annotations
 
@@ -11,12 +11,13 @@ from dotenv import load_dotenv
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 DB_DIR = SCRIPTS_DIR / "db"
-PROJECT_ROOT = SCRIPTS_DIR.parent
+REPO_ROOT = SCRIPTS_DIR.parents[1]
+API_DIR = REPO_ROOT / "api"
 
 
 def load_env() -> None:
-    load_dotenv(PROJECT_ROOT / ".env.local")
-    load_dotenv(PROJECT_ROOT / ".env")
+    load_dotenv(API_DIR / ".env.local")
+    load_dotenv(API_DIR / ".env")
 
 
 def resolve_database_url(explicit: str | None = None) -> str:
@@ -129,4 +130,3 @@ async def apply_schema(connection: asyncpg.Connection) -> int:
     count = await run_sql_file(connection, path)
     print(f"Applied schema ({count} statements) from {path.name}")
     return count
-

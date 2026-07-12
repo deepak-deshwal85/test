@@ -210,10 +210,10 @@ python infra/scripts/sync_ssm_parameters.py \
 ```powershell
 # With SSM tunnel to RDS
 $env:RDS_DB_PASSWORD = "YourRdsPassword"
-python infra/scripts/bootstrap_database.py --use-tunnel --yes
+python infra/scripts/bootstrap_db.py --use-tunnel --password "$RDS_DB_PASSWORD" --yes
 ```
 
-Drops all tables, recreates schema, and loads Deepak seed data. See [`api/scripts/bootstrap_db.py`](../api/scripts/bootstrap_db.py).
+Drops all tables, recreates schema, and loads Deepak seed data. See [`infra/scripts/bootstrap_db.py`](scripts/bootstrap_db.py).
 
 **Local API against AWS RDS** (SSM tunnel — see [Connect from your laptop](#connect-from-your-laptop-psql--pgadmin)):
 
@@ -402,7 +402,7 @@ All scripts in `infra/scripts/`. Run from repo root unless noted.
 | **`deploy_all.py`** | Deploy all services (parallel by default) | `python infra/scripts/deploy_all.py` |
 | **`rds_tunnel.py`** | RDS SSM tunnel + local `DATABASE_URL` | `python infra/scripts/rds_tunnel.py start` |
 | **`sync_ssm_parameters.py`** | Push secrets to SSM (all or `--only KEY`) | `python infra/scripts/sync_ssm_parameters.py --profile relaydesk-admin` |
-| **`bootstrap_database.py`** | Drop, recreate, seed PostgreSQL | `python infra/scripts/bootstrap_database.py --use-tunnel --yes` |
+| **`bootstrap_db.py`** | Drop, recreate, seed PostgreSQL | `python infra/scripts/bootstrap_db.py --use-tunnel --password "$RDS_DB_PASSWORD" --yes` |
 | **`approve_cognito_user.py`** | Assign or revoke Cognito roles | `python infra/scripts/approve_cognito_user.py --email u@x.com --role relaydesk-admins` |
 | **`cost_control.py`** | Stop/start ECS + ASG (+ optional RDS) | `python infra/scripts/cost_control.py status` |
 | **`asg-instance-refresh-prefs.json`** | ASG instance refresh preferences | Used with `aws autoscaling start-instance-refresh` |
