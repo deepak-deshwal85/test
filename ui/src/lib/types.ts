@@ -108,6 +108,30 @@ export interface CallJobListResponse {
   count: number;
 }
 
+export interface VoiceAgentSchedule {
+  id: number;
+  client_id: number;
+  enabled: boolean;
+  run_time: string;
+  days_of_week: number[];
+  timezone: string;
+  next_run_at: string | null;
+  last_run_at: string | null;
+  last_job_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VoiceAgentScheduleOverview {
+  client_email_id: string;
+  client_name: string;
+  client_business_phone_number: string | null;
+  ready_consumer_count: number;
+  has_active_job: boolean;
+  voice_agent_config: VoiceAgentConfig;
+  schedule: VoiceAgentSchedule;
+}
+
 export interface CollectionInfo {
   name: string;
   points_count: number;

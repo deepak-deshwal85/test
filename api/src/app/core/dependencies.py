@@ -7,7 +7,11 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
-from app.core.oauth import AuthenticatedPrincipal, dev_bypass_principal, validate_access_token
+from app.core.oauth import (
+    AuthenticatedPrincipal,
+    dev_bypass_principal,
+    validate_access_token,
+)
 from app.core.rbac import Permission
 from app.db.embedding_provider import EmbeddingProviderFactory
 from app.db.postgres.call_summary_repository import CallSummaryRepository
@@ -16,7 +20,7 @@ from app.db.postgres.client_voice_agent_config_repository import (
     ClientVoiceAgentConfigRepository,
 )
 from app.db.postgres.consumer_repository import ConsumerRepository
-from app.db.postgres.session import get_db_session
+from app.db.postgres.session import get_db_session, get_session_factory
 from app.db.qdrant_repository import QdrantRepository
 from app.services.call_job_service import CallJobService, build_call_job_service
 from app.services.call_summary_service import CallSummaryService
@@ -27,6 +31,7 @@ from app.services.consumer_service import ConsumerService
 from app.services.document_service import DocumentService
 from app.services.embedding_service import EmbeddingService
 from app.services.search_service import SearchService
+from app.services.voice_agent_schedule_service import VoiceAgentScheduleService
 
 _call_job_service: CallJobService | None = None
 _qdrant_repository: QdrantRepository | None = None
@@ -140,6 +145,20 @@ async def get_client_voice_agent_config_service(
     client_repository: Annotated[ClientRepository, Depends(get_client_repository)],
 ) -> ClientVoiceAgentConfigService:
     return ClientVoiceAgentConfigService(repository, client_repository)
+
+
+async def get_voice_agent_schedule_service(
+    config_service: Annotated[
+        ClientVoiceAgentConfigService,
+        Depends(get_client_voice_agent_config_service),
+    ],
+    call_job_service: Annotated[CallJobService, Depends(get_call_job_service)],
+) -> VoiceAgentScheduleService:
+    return VoiceAgentScheduleService(
+        session_factory=get_session_factory(),
+        config_service=config_service,
+        call_job_service=call_job_service,
+    )
 
 
 def get_call_job_service(

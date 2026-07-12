@@ -3,6 +3,7 @@
 
 Usage (from repo root):
   # Start tunnel (blocking — leave terminal open):
+  python infra/scripts/rds_tunnel.py
   python infra/scripts/rds_tunnel.py start
 
   # Write api/.env.local for local API dev:
@@ -223,14 +224,21 @@ def main(argv: list[str] | None = None) -> int:
         default=str(DEFAULT_TERRAFORM_DIR),
     )
     parser.add_argument("--local-port", type=int, default=DEFAULT_LOCAL_PORT)
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command")
+    # Defaults for running with no subcommand (same as `start`).
+    parser.set_defaults(
+        func=cmd_start,
+        command="start",
+        instance_id=None,
+        rds_host=None,
+    )
 
     start_parser = subparsers.add_parser(
-        "start", help="Open SSM port-forward to RDS (blocking)"
+        "start", help="Open SSM port-forward to RDS (blocking; default command)"
     )
     start_parser.add_argument("--instance-id", default=None)
     start_parser.add_argument("--rds-host", default=None)
-    start_parser.set_defaults(func=cmd_start)
+    start_parser.set_defaults(func=cmd_start, command="start")
 
     write_parser = subparsers.add_parser(
         "write-env",
@@ -245,7 +253,7 @@ def main(argv: list[str] | None = None) -> int:
         "--env-file",
         default=str(DEFAULT_ENV_FILE),
     )
-    write_parser.set_defaults(func=cmd_write_env)
+    write_parser.set_defaults(func=cmd_write_env, command="write-env")
 
     args = parser.parse_args(argv)
     try:

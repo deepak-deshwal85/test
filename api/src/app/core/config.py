@@ -131,6 +131,9 @@ class Settings(BaseSettings):
     livekit_agent_name: str = Field(
         default="relaydesk-agent", alias="LIVEKIT_AGENT_NAME"
     )
+    voice_agent_schedule_enabled: bool = Field(
+        default=True, alias="VOICE_AGENT_SCHEDULE_ENABLED"
+    )
 
     @property
     def livekit_outbound_enabled(self) -> bool:

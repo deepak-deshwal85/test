@@ -155,3 +155,13 @@ class CallJobRepository:
             query = query.where(CallJobRow.client_id == client_id)
         rows = (await self._session.execute(query)).scalars().all()
         return [self._to_domain(row) for row in rows]
+
+    async def has_active_for_client(self, client_id: int) -> bool:
+        query = (
+            select(CallJobRow.id)
+            .where(CallJobRow.client_id == client_id)
+            .where(CallJobRow.status.in_(("pending", "running")))
+            .limit(1)
+        )
+        row = (await self._session.execute(query)).scalar_one_or_none()
+        return row is not None
