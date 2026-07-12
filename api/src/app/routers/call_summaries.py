@@ -31,14 +31,15 @@ router = APIRouter(
 )
 
 
-async def _resolve_client_email_for_create(
+async def _resolve_client_id_for_create(
     *,
     principal: AuthenticatedPrincipal,
     body: CallSummaryCreateRequest,
     consumer_service: ConsumerService,
     repository: ClientRepository,
     client_email_id: str | None,
-) -> str:
+) -> int:
+    """Return the client_id that owns this consumer, after auth/scope validation."""
     if principal.is_m2m:
         consumer = await consumer_service.get_by_id(body.consumer_id)
         if consumer is None:
@@ -50,27 +51,52 @@ async def _resolve_client_email_for_create(
             scoped = await verify_client_email_scope(
                 principal, client_email_id, repository
             )
-            if consumer.client_email_id != scoped:
+            client = await repository.get_by_email(scoped)
+            if client is None or consumer.client_id != client.id:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Consumer not found",
                 )
-        return consumer.client_email_id
+        return consumer.client_id
 
     if not client_email_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="client_email_id is required",
         )
-    consumer = await consumer_service.get(
-        body.consumer_id, client_email_id=client_email_id
-    )
+    scoped = await verify_client_email_scope(principal, client_email_id, repository)
+    client = await repository.get_by_email(scoped)
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    consumer = await consumer_service.get(body.consumer_id, client_id=client.id)
     if consumer is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Consumer not found",
         )
-    return await verify_client_email_scope(principal, client_email_id, repository)
+    return client.id
+
+
+async def _resolve_client_id(
+    principal: AuthenticatedPrincipal,
+    client_email_id: str | None,
+    repository: ClientRepository,
+) -> int | None:
+    if is_scope_unrestricted(principal):
+        if not client_email_id:
+            return None
+        client = await repository.get_by_email(client_email_id.strip().lower())
+        return client.id if client else None
+    if not client_email_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="client_email_id is required",
+        )
+    scoped = await verify_client_email_scope(principal, client_email_id, repository)
+    client = await repository.get_by_email(scoped)
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    return client.id
 
 
 @router.post(
@@ -90,7 +116,7 @@ async def create_call_summary(
             detail="Insufficient permissions",
         )
 
-    scoped_email = await _resolve_client_email_for_create(
+    client_id = await _resolve_client_id_for_create(
         principal=principal,
         body=body,
         consumer_service=consumer_service,
@@ -99,7 +125,7 @@ async def create_call_summary(
     )
 
     try:
-        return await service.create(client_email_id=scoped_email, body=body)
+        return await service.create(client_id=client_id, body=body)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -114,18 +140,9 @@ async def list_call_summaries(
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> CallSummaryListResponse:
-    if not client_email_id and not is_scope_unrestricted(principal):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="client_email_id is required",
-        )
-    scoped_email = (
-        await verify_client_email_scope(principal, client_email_id, repository)
-        if client_email_id
-        else None
-    )
+    client_id = await _resolve_client_id(principal, client_email_id, repository)
     summaries = await service.list(
-        client_email_id=scoped_email,
+        client_id=client_id,
         consumer_id=consumer_id,
         skip=skip,
         limit=limit,
@@ -141,10 +158,8 @@ async def get_call_summary(
     principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
     repository: Annotated[ClientRepository, Depends(get_client_repository)],
 ) -> CallSummaryResponse:
-    scoped_email = await verify_client_email_scope(
-        principal, client_email_id, repository
-    )
-    summary = await service.get(summary_id, client_email_id=scoped_email)
+    client_id = await _resolve_client_id(principal, client_email_id, repository)
+    summary = await service.get(summary_id, client_id=client_id or 0)
     if summary is None:
         raise HTTPException(status_code=404, detail="Call summary not found")
     return summary
@@ -162,10 +177,8 @@ async def update_call_summary(
         Depends(require_permission(Permission.DOCUMENT_WRITE)),
     ],
 ) -> CallSummaryResponse:
-    scoped_email = await verify_client_email_scope(
-        principal, client_email_id, repository
-    )
-    summary = await service.update(summary_id, client_email_id=scoped_email, body=body)
+    client_id = await _resolve_client_id(principal, client_email_id, repository)
+    summary = await service.update(summary_id, client_id=client_id or 0, body=body)
     if summary is None:
         raise HTTPException(status_code=404, detail="Call summary not found")
     return summary
@@ -182,9 +195,7 @@ async def delete_call_summary(
         Depends(require_permission(Permission.DOCUMENT_WRITE)),
     ],
 ) -> None:
-    scoped_email = await verify_client_email_scope(
-        principal, client_email_id, repository
-    )
-    deleted = await service.delete(summary_id, client_email_id=scoped_email)
+    client_id = await _resolve_client_id(principal, client_email_id, repository)
+    deleted = await service.delete(summary_id, client_id=client_id or 0)
     if not deleted:
         raise HTTPException(status_code=404, detail="Call summary not found")

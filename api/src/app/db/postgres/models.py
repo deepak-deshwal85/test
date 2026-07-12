@@ -43,25 +43,19 @@ class ConsumerRow(Base):
     __tablename__ = "consumers"
     __table_args__ = (
         UniqueConstraint(
-            "client_email_id",
+            "client_id",
             "consumer_phone_number",
             name="uq_consumers_client_consumer",
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    client_id: Mapped[int | None] = mapped_column(
-        ForeignKey("clients.id", ondelete="SET NULL"), nullable=True
+    client_id: Mapped[int] = mapped_column(
+        ForeignKey("clients.id", ondelete="RESTRICT"), nullable=False
     )
-    client_business_phone_number: Mapped[str] = mapped_column(String(32), nullable=False)
-    client_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    client_email_id: Mapped[str] = mapped_column(String(255), nullable=False)
     consumer_phone_number: Mapped[str] = mapped_column(String(32), nullable=False)
     consumer_email_id: Mapped[str] = mapped_column(String(255), nullable=False)
-    is_approved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    call_schedule: Mapped[str] = mapped_column(
-        String(3), nullable=False, default="no"
-    )
+    is_approved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="READY"
     )
@@ -82,8 +76,9 @@ class CallJobRow(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    client_business_phone_number: Mapped[str] = mapped_column(String(32), nullable=False)
-    client_email_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    client_id: Mapped[int] = mapped_column(
+        ForeignKey("clients.id", ondelete="RESTRICT"), nullable=False
+    )
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     total_consumers: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     calls_completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -107,7 +102,9 @@ class CallSummaryRow(Base):
     consumer_id: Mapped[int] = mapped_column(
         ForeignKey("consumers.id", ondelete="CASCADE"), nullable=False
     )
-    client_email_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    client_id: Mapped[int] = mapped_column(
+        ForeignKey("clients.id", ondelete="RESTRICT"), nullable=False
+    )
     call_start_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )

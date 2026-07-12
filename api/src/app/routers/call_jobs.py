@@ -30,16 +30,23 @@ router = APIRouter(
 )
 
 
-async def _scoped_email(
+async def _resolve_client_id(
     principal: AuthenticatedPrincipal,
     client_email_id: str | None,
     repository: ClientRepository,
-) -> str | None:
+) -> int | None:
     if is_scope_unrestricted(principal):
-        return client_email_id.strip().lower() if client_email_id else None
+        if not client_email_id:
+            return None
+        client = await repository.get_by_email(client_email_id.strip().lower())
+        return client.id if client else None
     if not client_email_id:
         raise HTTPException(status_code=400, detail="client_email_id is required")
-    return await verify_client_email_scope(principal, client_email_id, repository)
+    scoped_email = await verify_client_email_scope(principal, client_email_id, repository)
+    client = await repository.get_by_email(scoped_email)
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    return client.id
 
 
 @router.post(
@@ -61,23 +68,19 @@ async def trigger_call_job(
     scoped_email = await verify_client_email_scope(
         principal, body.client_email_id, repository
     )
-    if not is_scope_unrestricted(principal):
-        client = await repository.get_by_email(scoped_email)
-        if client is None or not client.client_business_phone_number:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Client business phone number is not configured",
-            )
-        if (
-            body.client_business_phone_number.strip()
-            != client.client_business_phone_number
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Client business phone number cannot be changed",
-            )
+    client = await repository.get_by_email(scoped_email)
+    if client is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Client profile not found",
+        )
+    if not client.client_business_phone_number:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Client business phone number is not configured",
+        )
     try:
-        job = await service.create_job(body.client_business_phone_number, scoped_email)
+        job = await service.create_job(client.id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     background_tasks.add_task(service.run_job, job.id)
@@ -85,7 +88,7 @@ async def trigger_call_job(
         job_id=job.id,
         status=job.status,
         message=(
-            f"Campaign queued for client {job.client_business_phone_number}. "
+            f"Campaign queued for client {client.client_business_phone_number}. "
             f"Poll GET /v1/call-jobs/{job.id} for status."
         ),
     )
@@ -97,13 +100,11 @@ async def list_call_jobs(
     principal: Annotated[AuthenticatedPrincipal, Depends(verify_access_token)],
     repository: Annotated[ClientRepository, Depends(get_client_repository)],
     client_email_id: Annotated[str | None, Query(min_length=3)] = None,
-    client_business_phone_number: str | None = None,
     limit: int = 20,
 ) -> CallJobListResponse:
-    scoped_email = await _scoped_email(principal, client_email_id, repository)
+    client_id = await _resolve_client_id(principal, client_email_id, repository)
     jobs = await service.list_jobs(
-        client_email_id=scoped_email,
-        client_business_phone_number=client_business_phone_number,
+        client_id=client_id,
         limit=min(max(limit, 1), 100),
     )
     return CallJobListResponse(jobs=jobs, count=len(jobs))
@@ -117,8 +118,8 @@ async def get_call_job(
     repository: Annotated[ClientRepository, Depends(get_client_repository)],
     client_email_id: Annotated[str | None, Query(min_length=3)] = None,
 ) -> CallJobResponse:
-    scoped_email = await _scoped_email(principal, client_email_id, repository)
-    job = await service.get_job(job_id, client_email_id=scoped_email)
+    client_id = await _resolve_client_id(principal, client_email_id, repository)
+    job = await service.get_job(job_id, client_id=client_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Call job not found")
     return job

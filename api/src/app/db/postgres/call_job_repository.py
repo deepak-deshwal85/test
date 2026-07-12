@@ -11,8 +11,6 @@ from app.db.postgres.models import CallJobRow
 from app.domain.consumer_models import (
     CallAttemptResult,
     CallJob,
-    normalize_email,
-    normalize_phone_number,
 )
 
 
@@ -52,8 +50,7 @@ class CallJobRepository:
     def _to_domain(self, row: CallJobRow) -> CallJob:
         return CallJob(
             id=row.id,
-            client_business_phone_number=row.client_business_phone_number,
-            client_email_id=row.client_email_id,
+            client_id=row.client_id,
             status=row.status,
             total_consumers=row.total_consumers,
             calls_completed=row.calls_completed,
@@ -64,15 +61,10 @@ class CallJobRepository:
             results=self._parse_results(row.results_json),
         )
 
-    async def create(
-        self, *, client_business_phone_number: str, client_email_id: str
-    ) -> CallJob:
+    async def create(self, *, client_id: int) -> CallJob:
         row = CallJobRow(
             id=uuid4(),
-            client_business_phone_number=normalize_phone_number(
-                client_business_phone_number
-            ),
-            client_email_id=normalize_email(client_email_id),
+            client_id=client_id,
             status="pending",
         )
         self._session.add(row)
@@ -80,13 +72,6 @@ class CallJobRepository:
             await self._session.commit()
         except Exception as exc:
             await self._session.rollback()
-            message = str(exc).lower()
-            if "client_phone_number" in message and "call_jobs" in message:
-                raise ValueError(
-                    "call_jobs table has a legacy client_phone_number column. "
-                    "Run: uv run python scripts/migrate_db.py "
-                    "--file migrate_call_jobs_legacy_phone.sql"
-                ) from exc
             raise
         await self._session.refresh(row)
         return self._to_domain(row)
@@ -162,19 +147,11 @@ class CallJobRepository:
     async def list_recent(
         self,
         *,
-        client_email_id: str | None = None,
-        client_business_phone_number: str | None = None,
+        client_id: int | None = None,
         limit: int = 20,
     ) -> list[CallJob]:
         query = select(CallJobRow).order_by(CallJobRow.created_at.desc()).limit(limit)
-        if client_email_id:
-            query = query.where(
-                CallJobRow.client_email_id == normalize_email(client_email_id)
-            )
-        if client_business_phone_number:
-            query = query.where(
-                CallJobRow.client_business_phone_number
-                == normalize_phone_number(client_business_phone_number)
-            )
+        if client_id is not None:
+            query = query.where(CallJobRow.client_id == client_id)
         rows = (await self._session.execute(query)).scalars().all()
         return [self._to_domain(row) for row in rows]

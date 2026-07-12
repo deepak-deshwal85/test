@@ -42,7 +42,7 @@ async def test_call_summary_create_updates_consumer_status():
     summary_repo.create.return_value = CallSummary(
         id=1,
         consumer_id=14,
-        client_email_id="acme@example.com",
+        client_id=42,
         call_start_time=now,
         call_end_time=now,
         call_summary="Booked a meeting.",
@@ -59,22 +59,18 @@ async def test_call_summary_create_updates_consumer_status():
         call_summary="Booked a meeting.",
         meeting_scheduled=True,
     )
-    await service.create(client_email_id="acme@example.com", body=body)
+    await service.create(client_id=42, body=body)
 
     consumer_repo.update_status_after_call.assert_awaited_once_with(
         14,
-        client_email_id="acme@example.com",
+        client_id=42,
         meeting_scheduled=True,
     )
 
 
 def test_default_consumer_create_values():
     body = ConsumerCreateRequest(
-        client_business_phone_number="911171366880",
-        client_name="Acme",
-        client_email_id="acme@example.com",
         consumer_phone_number="919900000001",
         consumer_email_id="alice@example.com",
     )
-    assert body.call_schedule == "no"
     assert body.status == CONSUMER_STATUS_READY

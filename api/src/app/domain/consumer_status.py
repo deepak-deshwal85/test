@@ -12,8 +12,6 @@ VALID_CONSUMER_STATUSES = frozenset(
     }
 )
 
-VALID_CALL_SCHEDULES = frozenset({"yes", "no"})
-
 
 def consumer_status_after_call(*, meeting_scheduled: bool) -> str:
     return (

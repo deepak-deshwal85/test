@@ -45,7 +45,6 @@ export interface ClientDeleteResponse {
   cognito_user_deleted: boolean;
 }
 
-export type CallScheduleValue = "yes" | "no";
 export type ConsumerStatusValue =
   | "READY"
   | "MEETING_SCHEDULED"
@@ -53,14 +52,10 @@ export type ConsumerStatusValue =
 
 export interface Consumer {
   id: number;
-  client_id: number | null;
-  client_business_phone_number: string;
-  client_name: string;
-  client_email_id: string;
+  client_id: number;
   consumer_phone_number: string;
   consumer_email_id: string;
   is_approved: boolean;
-  call_schedule: CallScheduleValue;
   status: ConsumerStatusValue;
   created_at: string;
   updated_at: string;
@@ -74,7 +69,7 @@ export interface ConsumerListResponse {
 export interface CallSummary {
   id: number;
   consumer_id: number;
-  client_email_id: string;
+  client_id: number;
   call_start_time: string;
   call_end_time: string | null;
   call_summary: string;
@@ -98,8 +93,7 @@ export interface CallAttempt {
 
 export interface CallJob {
   id: string;
-  client_business_phone_number: string;
-  client_email_id: string;
+  client_id: number;
   status: string;
   total_consumers: number;
   calls_completed: number;

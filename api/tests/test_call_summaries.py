@@ -31,7 +31,7 @@ def test_create_call_summary(client: TestClient) -> None:
     mock_service.create.return_value = CallSummaryResponse(
         id=1,
         consumer_id=14,
-        client_email_id="acme@example.com",
+        client_id=42,
         call_start_time=now,
         call_end_time=now,
         call_summary="Caller asked about pricing.",
@@ -44,7 +44,7 @@ def test_create_call_summary(client: TestClient) -> None:
     mock_consumer_service.get.return_value = type(
         "ConsumerStub",
         (),
-        {"client_email_id": "acme@example.com"},
+        {"client_id": 42},
     )()
     mock_repository = AsyncMock()
 
@@ -77,7 +77,7 @@ def test_list_call_summaries(client: TestClient) -> None:
         CallSummaryResponse(
             id=1,
             consumer_id=14,
-            client_email_id="acme@example.com",
+            client_id=42,
             call_start_time=now,
             call_end_time=now,
             call_summary="Summary text",

@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.db.postgres.call_summary_repository import CallSummaryRepository
 from app.db.postgres.consumer_repository import ConsumerRepository
 from app.domain.call_summary_models import CallSummary
+from app.domain.consumer_models import normalize_email
 from app.schemas.call_summaries import (
     CallSummaryCreateRequest,
     CallSummaryResponse,
@@ -24,7 +25,7 @@ class CallSummaryService:
         return CallSummaryResponse(
             id=summary.id,
             consumer_id=summary.consumer_id,
-            client_email_id=summary.client_email_id,
+            client_id=summary.client_id,
             call_start_time=summary.call_start_time,
             call_end_time=summary.call_end_time,
             call_summary=summary.call_summary,
@@ -37,12 +38,12 @@ class CallSummaryService:
     async def create(
         self,
         *,
-        client_email_id: str,
+        client_id: int,
         body: CallSummaryCreateRequest,
     ) -> CallSummaryResponse:
         summary = await self._repository.create(
             consumer_id=body.consumer_id,
-            client_email_id=client_email_id,
+            client_id=client_id,
             call_start_time=body.call_start_time,
             call_end_time=body.call_end_time,
             call_summary=body.call_summary,
@@ -50,27 +51,27 @@ class CallSummaryService:
         )
         await self._consumer_repository.update_status_after_call(
             body.consumer_id,
-            client_email_id=client_email_id,
+            client_id=client_id,
             meeting_scheduled=body.meeting_scheduled,
         )
         return self._to_response(summary)
 
     async def get(
-        self, summary_id: int, *, client_email_id: str
+        self, summary_id: int, *, client_id: int
     ) -> CallSummaryResponse | None:
-        summary = await self._repository.get(summary_id, client_email_id=client_email_id)
+        summary = await self._repository.get(summary_id, client_id=client_id)
         return self._to_response(summary) if summary else None
 
     async def list(
         self,
         *,
-        client_email_id: str | None,
+        client_id: int | None,
         consumer_id: int | None = None,
         skip: int = 0,
         limit: int = 100,
     ) -> list[CallSummaryResponse]:
         summaries = await self._repository.list(
-            client_email_id=client_email_id,
+            client_id=client_id,
             consumer_id=consumer_id,
             skip=skip,
             limit=limit,
@@ -81,17 +82,17 @@ class CallSummaryService:
         self,
         summary_id: int,
         *,
-        client_email_id: str,
+        client_id: int,
         body: CallSummaryUpdateRequest,
     ) -> CallSummaryResponse | None:
         summary = await self._repository.update(
             summary_id,
-            client_email_id=client_email_id,
+            client_id=client_id,
             call_start_time=body.call_start_time,
             call_end_time=body.call_end_time,
             call_summary=body.call_summary,
         )
         return self._to_response(summary) if summary else None
 
-    async def delete(self, summary_id: int, *, client_email_id: str) -> bool:
-        return await self._repository.delete(summary_id, client_email_id=client_email_id)
+    async def delete(self, summary_id: int, *, client_id: int) -> bool:
+        return await self._repository.delete(summary_id, client_id=client_id)

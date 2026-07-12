@@ -32,14 +32,10 @@ def format_sip_phone(value: str) -> str:
 @dataclass(frozen=True)
 class Consumer:
     id: int
-    client_id: int | None
-    client_business_phone_number: str
-    client_name: str
-    client_email_id: str
+    client_id: int
     consumer_phone_number: str
     consumer_email_id: str
     is_approved: bool
-    call_schedule: str
     status: str
     created_at: datetime
     updated_at: datetime
@@ -48,8 +44,7 @@ class Consumer:
 @dataclass(frozen=True)
 class CallJob:
     id: UUID
-    client_business_phone_number: str
-    client_email_id: str
+    client_id: int
     status: str
     total_consumers: int
     calls_completed: int

@@ -26,28 +26,34 @@ def test_health(client: TestClient) -> None:
 
 
 def test_create_consumer(client: TestClient) -> None:
-    from unittest.mock import AsyncMock
+    from unittest.mock import AsyncMock, MagicMock
 
     from app.core.dependencies import get_client_repository, get_consumer_service
+    from app.domain.client_models import Client
 
     now = datetime.now(UTC)
     mock_service = AsyncMock()
     mock_service.create.return_value = ConsumerResponse(
         id=1,
-        client_id=None,
-        client_business_phone_number="911171366880",
-        client_name="Acme Corp",
-        client_email_id="acme@example.com",
+        client_id=42,
         consumer_phone_number="9876543210",
         consumer_email_id="consumer@example.com",
-        is_approved=False,
-        call_schedule="no",
+        is_approved=True,
         status="READY",
         created_at=now,
         updated_at=now,
     )
+    mock_client = Client(
+        id=42,
+        client_phone_number=None,
+        client_business_phone_number="911171366880",
+        client_name="Acme Corp",
+        client_email_id="acme@example.com",
+        cognito_sub=None,
+        created_at=now,
+    )
     mock_repository = AsyncMock()
-    mock_repository.get_by_email.return_value = None
+    mock_repository.get_by_email.return_value = mock_client
     mock_repository.get_by_cognito_sub.return_value = None
 
     app = create_app()
@@ -56,29 +62,26 @@ def test_create_consumer(client: TestClient) -> None:
     test_client = TestClient(app)
 
     response = test_client.post(
-        "/v1/consumers",
+        "/v1/consumers?client_email_id=acme@example.com",
         json={
-            "client_business_phone_number": "911171366880",
-            "client_name": "Acme Corp",
-            "client_email_id": "acme@example.com",
             "consumer_phone_number": "9876543210",
             "consumer_email_id": "consumer@example.com",
         },
     )
     assert response.status_code == 201
-    assert response.json()["client_name"] == "Acme Corp"
+    assert response.json()["consumer_phone_number"] == "9876543210"
 
 
 def test_trigger_call_job(client: TestClient) -> None:
     from app.core.dependencies import get_call_job_service, get_client_repository
+    from app.domain.client_models import Client
 
     job_id = uuid4()
     now = datetime.now(UTC)
     mock_service = AsyncMock()
     mock_service.create_job.return_value = CallJobResponse(
         id=job_id,
-        client_business_phone_number="911171366880",
-        client_email_id="acme@example.com",
+        client_id=42,
         status="pending",
         total_consumers=0,
         calls_completed=0,
@@ -88,8 +91,17 @@ def test_trigger_call_job(client: TestClient) -> None:
         created_at=now,
     )
     mock_service.run_job = AsyncMock()
+    mock_client = Client(
+        id=42,
+        client_phone_number=None,
+        client_business_phone_number="911171366880",
+        client_name="Acme Corp",
+        client_email_id="acme@example.com",
+        cognito_sub=None,
+        created_at=now,
+    )
     mock_repository = AsyncMock()
-    mock_repository.get_by_email.return_value = None
+    mock_repository.get_by_email.return_value = mock_client
     mock_repository.get_by_cognito_sub.return_value = None
 
     app = create_app()
@@ -99,10 +111,7 @@ def test_trigger_call_job(client: TestClient) -> None:
 
     response = test_client.post(
         "/v1/call-jobs/trigger",
-        json={
-            "client_business_phone_number": "911171366880",
-            "client_email_id": "acme@example.com",
-        },
+        json={"client_email_id": "acme@example.com"},
     )
     assert response.status_code == 202
     data = response.json()
@@ -146,13 +155,24 @@ def test_create_consumer_rejects_duplicate(client: TestClient) -> None:
     from unittest.mock import AsyncMock
 
     from app.core.dependencies import get_client_repository, get_consumer_service
+    from app.domain.client_models import Client
 
+    now = datetime.now(UTC)
     mock_service = AsyncMock()
     mock_service.create.side_effect = ValueError(
         "Consumer already exists for this client and consumer phone number"
     )
+    mock_client = Client(
+        id=42,
+        client_phone_number=None,
+        client_business_phone_number="911171366880",
+        client_name="Acme Corp",
+        client_email_id="acme@example.com",
+        cognito_sub=None,
+        created_at=now,
+    )
     mock_repository = AsyncMock()
-    mock_repository.get_by_email.return_value = None
+    mock_repository.get_by_email.return_value = mock_client
     mock_repository.get_by_cognito_sub.return_value = None
 
     app = create_app()
@@ -161,11 +181,8 @@ def test_create_consumer_rejects_duplicate(client: TestClient) -> None:
     test_client = TestClient(app)
 
     response = test_client.post(
-        "/v1/consumers",
+        "/v1/consumers?client_email_id=acme@example.com",
         json={
-            "client_business_phone_number": "911171366880",
-            "client_name": "Acme Corp",
-            "client_email_id": "acme@example.com",
             "consumer_phone_number": "9876543210",
             "consumer_email_id": "consumer@example.com",
         },
@@ -180,13 +197,24 @@ def test_create_consumer_rejects_consumer_matching_business_phone(
     from unittest.mock import AsyncMock
 
     from app.core.dependencies import get_client_repository, get_consumer_service
+    from app.domain.client_models import Client
 
+    now = datetime.now(UTC)
     mock_service = AsyncMock()
     mock_service.create.side_effect = ValueError(
         "Consumer phone number must be different from the client business phone"
     )
+    mock_client = Client(
+        id=42,
+        client_phone_number=None,
+        client_business_phone_number="911171366880",
+        client_name="Acme Corp",
+        client_email_id="acme@example.com",
+        cognito_sub=None,
+        created_at=now,
+    )
     mock_repository = AsyncMock()
-    mock_repository.get_by_email.return_value = None
+    mock_repository.get_by_email.return_value = mock_client
     mock_repository.get_by_cognito_sub.return_value = None
 
     app = create_app()
@@ -195,11 +223,8 @@ def test_create_consumer_rejects_consumer_matching_business_phone(
     test_client = TestClient(app)
 
     response = test_client.post(
-        "/v1/consumers",
+        "/v1/consumers?client_email_id=acme@example.com",
         json={
-            "client_business_phone_number": "911171366880",
-            "client_name": "Acme Corp",
-            "client_email_id": "acme@example.com",
             "consumer_phone_number": "911171366880",
             "consumer_email_id": "consumer@example.com",
         },

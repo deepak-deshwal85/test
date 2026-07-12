@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 
+from app.domain.client_models import Client
 from app.domain.consumer_models import CallAttemptResult, Consumer
 
 logger = logging.getLogger("relaydesk-api")
@@ -12,11 +13,12 @@ class SimulatedOutboundCaller:
         self,
         *,
         consumer: Consumer,
+        client: Client,
         job_id,
     ) -> CallAttemptResult:
         detail = (
-            f"SIMULATED call from client {consumer.client_business_phone_number} "
-            f"({consumer.client_name}) to consumer {consumer.consumer_phone_number}. "
+            f"SIMULATED call from client {client.client_business_phone_number} "
+            f"({client.client_name}) to consumer {consumer.consumer_phone_number}. "
             "Configure LiveKit SIP env vars for real dialing."
         )
         logger.warning(detail)

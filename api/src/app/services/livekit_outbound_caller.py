@@ -7,6 +7,7 @@ from uuid import UUID
 from livekit import api
 
 from app.core.config import Settings
+from app.domain.client_models import Client
 from app.domain.consumer_models import CallAttemptResult, Consumer, format_sip_phone
 
 logger = logging.getLogger("relaydesk-api")
@@ -20,6 +21,7 @@ class LiveKitOutboundCaller:
         self,
         *,
         consumer: Consumer,
+        client: Client,
         job_id: UUID,
     ) -> CallAttemptResult:
         room_name = f"outbound-{job_id}-{consumer.id}"
@@ -27,9 +29,9 @@ class LiveKitOutboundCaller:
         metadata = json.dumps(
             {
                 "call_type": "outbound",
-                "client_email_id": consumer.client_email_id,
-                "client_business_phone_number": consumer.client_business_phone_number,
-                "client_name": consumer.client_name,
+                "client_email_id": client.client_email_id,
+                "client_business_phone_number": client.client_business_phone_number or "",
+                "client_name": client.client_name,
                 "consumer_phone_number": consumer.consumer_phone_number,
                 "consumer_id": consumer.id,
                 "job_id": str(job_id),
@@ -39,8 +41,8 @@ class LiveKitOutboundCaller:
         logger.info(
             "dialing consumer job_id=%s client=%s (%s) consumer=%s room=%s",
             job_id,
-            consumer.client_business_phone_number,
-            consumer.client_name,
+            client.client_business_phone_number,
+            client.client_name,
             consumer_phone,
             room_name,
         )
@@ -70,14 +72,14 @@ class LiveKitOutboundCaller:
                         sip_trunk_id=self._settings.livekit_sip_outbound_trunk_id,
                         sip_call_to=consumer_phone,
                         participant_identity=f"consumer-{consumer.id}",
-                        participant_name=consumer.client_name,
+                        participant_name=client.client_name,
                         wait_until_answered=False,
                     )
                 )
 
             detail = (
                 f"LiveKit outbound call initiated from client "
-                f"{consumer.client_business_phone_number} to {consumer_phone} in room {room_name}"
+                f"{client.client_business_phone_number} to {consumer_phone} in room {room_name}"
             )
             logger.info(detail)
             return CallAttemptResult(

@@ -45,6 +45,10 @@ class ClientRepository:
         ).scalar_one_or_none()
         return self._to_domain(row) if row else None
 
+    async def get_by_id(self, client_id: int) -> Client | None:
+        row = await self._session.get(ClientRow, client_id)
+        return self._to_domain(row) if row else None
+
     async def get_by_cognito_sub(self, cognito_sub: str) -> Client | None:
         row = (
             await self._session.execute(
@@ -178,10 +182,10 @@ class ClientRepository:
             return None
 
         consumers_result = await self._session.execute(
-            delete(ConsumerRow).where(ConsumerRow.client_email_id == normalized)
+            delete(ConsumerRow).where(ConsumerRow.client_id == row.id)
         )
         call_jobs_result = await self._session.execute(
-            delete(CallJobRow).where(CallJobRow.client_email_id == normalized)
+            delete(CallJobRow).where(CallJobRow.client_id == row.id)
         )
         await self._session.execute(
             delete(ClientRow).where(ClientRow.client_email_id == normalized)

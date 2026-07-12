@@ -24,7 +24,7 @@ class CallSummaryUpdateRequest(BaseModel):
 class CallSummaryResponse(BaseModel):
     id: int
     consumer_id: int
-    client_email_id: str
+    client_id: int
     call_start_time: datetime
     call_end_time: datetime | None
     call_summary: str

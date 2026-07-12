@@ -7,8 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings
 from app.db.postgres.call_job_repository import CallJobRepository
+from app.db.postgres.client_repository import ClientRepository
 from app.db.postgres.consumer_repository import ConsumerRepository
 from app.db.postgres.session import get_session_factory
+from app.domain.client_models import Client
 from app.domain.consumer_models import CallAttemptResult
 from app.schemas.call_jobs import CallAttemptResponse, CallJobResponse
 from app.services.outbound_caller import OutboundCaller, build_outbound_caller
@@ -42,8 +44,7 @@ class CallJobService:
             ]
         return CallJobResponse(
             id=job.id,
-            client_business_phone_number=job.client_business_phone_number,
-            client_email_id=job.client_email_id,
+            client_id=job.client_id,
             status=job.status,
             total_consumers=job.total_consumers,
             calls_completed=job.calls_completed,
@@ -54,45 +55,31 @@ class CallJobService:
             results=results,
         )
 
-    async def create_job(
-        self, client_business_phone_number: str, client_email_id: str
-    ) -> CallJobResponse:
+    async def create_job(self, client_id: int) -> CallJobResponse:
         async with self._session_factory() as session:
             repository = CallJobRepository(session)
-            job = await repository.create(
-                client_business_phone_number=client_business_phone_number,
-                client_email_id=client_email_id,
-            )
+            job = await repository.create(client_id=client_id)
             return self._to_response(job)
 
     async def get_job(
-        self, job_id: UUID, *, client_email_id: str | None = None
+        self, job_id: UUID, *, client_id: int | None = None
     ) -> CallJobResponse | None:
         async with self._session_factory() as session:
             repository = CallJobRepository(session)
             job = await repository.get(job_id)
-            if (
-                job
-                and client_email_id
-                and job.client_email_id != client_email_id.strip().lower()
-            ):
+            if job and client_id is not None and job.client_id != client_id:
                 return None
             return self._to_response(job) if job else None
 
     async def list_jobs(
         self,
         *,
-        client_email_id: str | None = None,
-        client_business_phone_number: str | None = None,
+        client_id: int | None = None,
         limit: int = 20,
     ) -> list[CallJobResponse]:
         async with self._session_factory() as session:
             repository = CallJobRepository(session)
-            jobs = await repository.list_recent(
-                client_email_id=client_email_id,
-                client_business_phone_number=client_business_phone_number,
-                limit=limit,
-            )
+            jobs = await repository.list_recent(client_id=client_id, limit=limit)
             return [self._to_response(job) for job in jobs]
 
     async def run_job(self, job_id: UUID) -> None:
@@ -102,30 +89,31 @@ class CallJobService:
             async with self._session_factory() as session:
                 job_repository = CallJobRepository(session)
                 consumer_repository = ConsumerRepository(session)
+                client_repository = ClientRepository(session)
 
                 job = await job_repository.get(job_id)
                 if job is None:
                     logger.error("call job not found job_id=%s", job_id)
                     return
 
-                consumers = await consumer_repository.list_scheduled_for_campaign(
-                    client_business_phone_number=job.client_business_phone_number,
-                    client_email_id=job.client_email_id,
+                client = await client_repository.get_by_id(job.client_id)
+                if client is None:
+                    logger.error(
+                        "call job client not found job_id=%s client_id=%s",
+                        job_id,
+                        job.client_id,
+                    )
+                    return
+
+                consumers = await consumer_repository.list_ready_for_campaign(
+                    client_id=job.client_id
                 )
                 logger.info(
-                    "campaign job loaded consumers job_id=%s client=%s scheduled=%d",
+                    "campaign job loaded consumers job_id=%s client_id=%s ready=%d",
                     job_id,
-                    job.client_business_phone_number,
+                    job.client_id,
                     len(consumers),
                 )
-                for consumer in consumers:
-                    logger.info(
-                        "consumer queued job_id=%s id=%s name=%s consumer=%s",
-                        job_id,
-                        consumer.id,
-                        consumer.client_name,
-                        consumer.consumer_phone_number,
-                    )
 
                 await job_repository.mark_running(
                     job_id, total_consumers=len(consumers)
@@ -135,6 +123,7 @@ class CallJobService:
             for consumer in consumers:
                 result = await self._outbound_caller.place_call(
                     consumer=consumer,
+                    client=client,
                     job_id=job_id,
                 )
                 results.append(result)

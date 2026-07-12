@@ -278,14 +278,10 @@ def test_approved_client_can_create_consumers(
     mock_service = AsyncMock()
     mock_service.create.return_value = ConsumerResponse(
         id=1,
-        client_id=None,
-        client_business_phone_number="911171366880",
-        client_name="Acme",
-        client_email_id="user@example.com",
+        client_id=42,
         consumer_phone_number="9000000000",
         consumer_email_id="consumer@example.com",
-        is_approved=False,
-        call_schedule="no",
+        is_approved=True,
         status="READY",
         created_at=now,
         updated_at=now,
@@ -301,12 +297,9 @@ def test_approved_client_can_create_consumers(
     )
     client = TestClient(app)
     response = client.post(
-        "/v1/consumers",
+        "/v1/consumers?client_email_id=user@example.com",
         headers={"Authorization": f"Bearer {token}"},
         json={
-            "client_business_phone_number": "911171366880",
-            "client_name": "Acme",
-            "client_email_id": "user@example.com",
             "consumer_phone_number": "9000000000",
             "consumer_email_id": "consumer@example.com",
         },
