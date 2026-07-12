@@ -151,8 +151,6 @@ Run from `voice-agent/` unless noted.
 | `src/agent.py console` | Local audio test (no telephony) | `uv run python src/agent.py console` |
 | `src/agent.py dev` | Dev mode against LiveKit Cloud | `uv run python src/agent.py dev` |
 | `src/agent.py start` | Production worker (used in Docker/ECS) | `uv run python src/agent.py start` |
-| `scripts/verify_calcom.py` | Test Cal.com API connectivity | `uv run python scripts/verify_calcom.py` |
-| `scripts/debug_calcom_slots.py` | Debug available Cal.com slots | `uv run python scripts/debug_calcom_slots.py` |
 
 ### Infra scripts (voice-agent secrets)
 
