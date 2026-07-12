@@ -2,7 +2,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   BookOpen,
   Bot,
-  CalendarClock,
   Database,
   History,
   LayoutDashboard,
@@ -24,8 +23,7 @@ export const APPROVED_CLIENT_NAV: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/consumers", label: "Consumers", icon: Users },
   { href: "/call-history", label: "Call history", icon: History },
-  { href: "/campaigns", label: "Campaign", icon: Megaphone },
-  { href: "/schedule", label: "Schedule", icon: CalendarClock },
+  { href: "/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/knowledge", label: "Knowledge", icon: BookOpen },
   { href: "/voice-agent", label: "Voice agent", icon: Bot },
   { href: "/profile", label: "Profile", icon: UserCircle },

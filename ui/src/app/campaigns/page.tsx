@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import {
   Badge,
@@ -11,6 +12,8 @@ import {
   CardTitle,
   EmptyState,
   ErrorBanner,
+  Input,
+  Label,
   PageHeader,
   Select,
   Spinner,
@@ -31,24 +34,99 @@ import type {
   Consumer,
   ConsumerListResponse,
   ConsumerStatusValue,
+  VoiceAgentScheduleOverview,
 } from "@/lib/types";
 import { formatDate, statusColor } from "@/lib/utils";
-import { Megaphone, RefreshCw } from "lucide-react";
+import { ArrowRight, Bot, CalendarClock, Megaphone, RefreshCw } from "lucide-react";
+
+const DAY_OPTIONS = [
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+  { value: 7, label: "Sun" },
+] as const;
+
+const TIMEZONE_OPTIONS = [
+  "Asia/Kolkata",
+  "Asia/Dubai",
+  "Asia/Singapore",
+  "Europe/London",
+  "America/New_York",
+  "America/Los_Angeles",
+  "UTC",
+] as const;
+
+function formatScheduleDays(days: number[]): string {
+  if (days.length === 0) return "—";
+  const labels = DAY_OPTIONS.filter((d) => days.includes(d.value)).map((d) => d.label);
+  if (labels.length === 7) return "Every day";
+  if (
+    labels.length === 5 &&
+    [1, 2, 3, 4, 5].every((d) => days.includes(d))
+  ) {
+    return "Mon–Fri";
+  }
+  return labels.join(", ");
+}
 
 export default function CampaignsPage() {
+  const scheduleRef = useRef<HTMLDivElement>(null);
   const { canManageOwnConsumers } = usePermissions();
   const { clientEmailId, clientBusinessPhoneNumber, ready } = useClientScope();
+
+  const [overview, setOverview] = useState<VoiceAgentScheduleOverview | null>(null);
   const [consumers, setConsumers] = useState<Consumer[]>([]);
   const [jobs, setJobs] = useState<CallJob[]>([]);
   const [selectedJob, setSelectedJob] = useState<CallJob | null>(null);
+
+  const [loadingOverview, setLoadingOverview] = useState(true);
   const [loadingConsumers, setLoadingConsumers] = useState(true);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [triggering, setTriggering] = useState(false);
+  const [savingSchedule, setSavingSchedule] = useState(false);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const readyCount = consumers.filter((c) => c.status === "READY").length;
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [runTime, setRunTime] = useState("09:00");
+  const [daysOfWeek, setDaysOfWeek] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [timezone, setTimezone] = useState("Asia/Kolkata");
+
+  const scope = clientScopeQuery(clientEmailId);
+  const scopeSuffix = scope ? `?${scope}` : "";
+
+  const readyCount =
+    overview?.ready_consumer_count ??
+    consumers.filter((c) => c.status === "READY").length;
+  const hasActiveJob = overview?.has_active_job ?? false;
+  const voiceConfig = overview?.voice_agent_config;
+
+  async function loadOverview() {
+    if (!ready || !clientEmailId) {
+      setOverview(null);
+      setLoadingOverview(false);
+      return;
+    }
+    setLoadingOverview(true);
+    try {
+      const data = await apiFetch<VoiceAgentScheduleOverview>(
+        `v1/voice-agent-schedule${scopeSuffix}`,
+      );
+      setOverview(data);
+      setScheduleEnabled(data.schedule.enabled);
+      setRunTime(data.schedule.run_time);
+      setDaysOfWeek(data.schedule.days_of_week);
+      setTimezone(data.schedule.timezone);
+    } catch (e) {
+      setError(errorMessageFromUnknown(e, "Failed to load campaign overview"));
+    } finally {
+      setLoadingOverview(false);
+    }
+  }
 
   async function loadConsumers() {
     if (!ready || !clientEmailId) {
@@ -57,9 +135,7 @@ export default function CampaignsPage() {
       return;
     }
     setLoadingConsumers(true);
-    setError(null);
     try {
-      const scope = clientScopeQuery(clientEmailId);
       const data = await apiFetch<ConsumerListResponse>(`v1/consumers?${scope}`);
       setConsumers(data.consumers);
     } catch (e) {
@@ -77,7 +153,6 @@ export default function CampaignsPage() {
     }
     setLoadingJobs(true);
     try {
-      const scope = clientScopeQuery(clientEmailId);
       const data = await apiFetch<CallJobListResponse>(
         `v1/call-jobs?${scope}&limit=10`,
       );
@@ -89,12 +164,36 @@ export default function CampaignsPage() {
     }
   }
 
-  useEffect(() => {
+  function refreshAll() {
+    void loadOverview();
     void loadConsumers();
     void loadJobs();
-    const timer = setInterval(() => void loadJobs(), 5000);
+  }
+
+  useEffect(() => {
+    refreshAll();
+    const timer = setInterval(() => {
+      void loadJobs();
+      void loadOverview();
+    }, 5000);
     return () => clearInterval(timer);
-  }, [clientEmailId, ready]);
+  }, [clientEmailId, ready, scopeSuffix]);
+
+  useEffect(() => {
+    if (loadingOverview) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("tab") === "schedule") {
+      scheduleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [loadingOverview]);
+
+  function toggleDay(day: number) {
+    setDaysOfWeek((current) =>
+      current.includes(day)
+        ? current.filter((value) => value !== day)
+        : [...current, day].sort((a, b) => a - b),
+    );
+  }
 
   async function updateConsumerStatus(consumer: Consumer, newStatus: ConsumerStatusValue) {
     if (!clientEmailId) return;
@@ -102,7 +201,6 @@ export default function CampaignsPage() {
     setError(null);
     setSuccess(null);
     try {
-      const scope = clientScopeQuery(clientEmailId);
       const updated = await apiFetch<Consumer>(
         `v1/consumers/${consumer.id}?${scope}`,
         {
@@ -114,6 +212,7 @@ export default function CampaignsPage() {
       setConsumers((current) =>
         current.map((row) => (row.id === updated.id ? updated : row)),
       );
+      await loadOverview();
     } catch (e) {
       setError(errorMessageFromUnknown(e, "Failed to update consumer"));
     } finally {
@@ -128,9 +227,14 @@ export default function CampaignsPage() {
     }
     if (!clientEmailId) return;
     if (readyCount === 0) {
-      setError("Set status to Ready for at least one consumer to trigger a campaign.");
+      setError("Set status to Ready for at least one consumer to run a campaign.");
       return;
     }
+    if (hasActiveJob) {
+      setError("A campaign is already running for this client.");
+      return;
+    }
+
     setTriggering(true);
     setError(null);
     setSuccess(null);
@@ -140,24 +244,61 @@ export default function CampaignsPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ client_email_id: clientEmailId }),
       });
-      const scope = clientScopeQuery(clientEmailId);
       const job = await apiFetch<CallJob>(`v1/call-jobs/${result.job_id}?${scope}`);
       setSelectedJob(job);
       setSuccess(
         `Campaign started — ${readyCount} consumer${readyCount === 1 ? "" : "s"} queued.`,
       );
       await loadJobs();
+      await loadOverview();
     } catch (e) {
-      setError(errorMessageFromUnknown(e, "Failed to trigger campaign"));
+      setError(errorMessageFromUnknown(e, "Failed to start campaign"));
     } finally {
       setTriggering(false);
+    }
+  }
+
+  async function saveSchedule(e: React.FormEvent) {
+    e.preventDefault();
+    if (!clientEmailId) return;
+    if (daysOfWeek.length === 0) {
+      setError("Select at least one day of the week.");
+      return;
+    }
+
+    setSavingSchedule(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const data = await apiFetch<VoiceAgentScheduleOverview>(
+        `v1/voice-agent-schedule${scopeSuffix}`,
+        {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            enabled: scheduleEnabled,
+            run_time: runTime,
+            days_of_week: daysOfWeek,
+            timezone,
+          }),
+        },
+      );
+      setOverview(data);
+      setSuccess(
+        data.schedule.enabled
+          ? "Schedule saved. Campaigns will run automatically at the configured time."
+          : "Schedule saved. Automatic runs are disabled.",
+      );
+    } catch (e) {
+      setError(errorMessageFromUnknown(e, "Failed to save schedule"));
+    } finally {
+      setSavingSchedule(false);
     }
   }
 
   async function viewJob(jobId: string) {
     if (!clientEmailId) return;
     try {
-      const scope = clientScopeQuery(clientEmailId);
       const job = await apiFetch<CallJob>(`v1/call-jobs/${jobId}?${scope}`);
       setSelectedJob(job);
     } catch (e) {
@@ -165,13 +306,17 @@ export default function CampaignsPage() {
     }
   }
 
+  const calcomConfigured = Boolean(
+    voiceConfig?.calcom_username && voiceConfig?.calcom_event_type_slug,
+  );
+
   return (
     <AppShell>
       <PageHeader
-        title="Campaign"
-        description="Consumers with status Ready will be called when a campaign is triggered."
+        title="Campaigns"
+        description="Call Ready consumers now or on a schedule. Uses your voice agent settings for each outbound call."
         action={
-          <Button variant="secondary" onClick={() => { void loadConsumers(); void loadJobs(); }}>
+          <Button variant="secondary" onClick={refreshAll}>
             <RefreshCw className="h-4 w-4" aria-hidden />
             Refresh
           </Button>
@@ -183,38 +328,217 @@ export default function CampaignsPage() {
 
       {!clientEmailId ? (
         <EmptyState message="Select a client in the header to manage campaigns." />
+      ) : loadingOverview && !overview ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Spinner />
+          Loading campaigns…
+        </div>
       ) : (
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Trigger campaign</CardTitle>
+              <CardTitle>Run campaign</CardTitle>
               <CardDescription>
                 Calls all consumers with status <strong>Ready</strong> using business phone{" "}
                 {clientBusinessPhoneNumber ?? "—"}.
               </CardDescription>
             </CardHeader>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-muted text-foreground">
+                {readyCount} ready
+              </Badge>
+              {scheduleEnabled ? (
+                <Badge className="bg-emerald-50 text-emerald-700">
+                  Schedule on · {formatScheduleDays(daysOfWeek)} {runTime}
+                </Badge>
+              ) : (
+                <Badge className="bg-muted text-muted-foreground">Schedule off</Badge>
+              )}
+              {overview?.schedule.enabled && overview.schedule.next_run_at ? (
+                <Badge className="bg-blue-50 text-blue-700">
+                  Next: {formatDate(overview.schedule.next_run_at)}
+                </Badge>
+              ) : null}
+              {hasActiveJob ? (
+                <Badge className="bg-amber-50 text-amber-800">Running…</Badge>
+              ) : null}
+            </div>
+
             {canManageOwnConsumers ? (
               <Button
+                className="mt-4"
                 onClick={() => void triggerCampaign()}
-                disabled={triggering || !clientBusinessPhoneNumber || readyCount === 0}
+                disabled={
+                  triggering ||
+                  !clientBusinessPhoneNumber ||
+                  readyCount === 0 ||
+                  hasActiveJob
+                }
               >
                 {triggering ? <Spinner /> : <Megaphone className="h-4 w-4" aria-hidden />}
-                {triggering ? "Starting…" : `Trigger campaign (${readyCount} ready)`}
+                {triggering ? "Starting…" : `Run now (${readyCount} ready)`}
               </Button>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                You can view campaign progress but cannot trigger calls with your role.
+              <p className="mt-4 text-sm text-muted-foreground">
+                You can view campaign progress but cannot start calls with your role.
               </p>
             )}
+
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm">
+              <div className="flex items-start gap-2">
+                <Bot className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                <div>
+                  <p className="font-medium text-foreground">
+                    {voiceConfig?.client_name ?? "Voice agent"}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Cal.com: {calcomConfigured ? "configured" : "not configured"}
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/voice-agent"
+                className="inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Agent settings
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </Link>
+            </div>
           </Card>
 
-          <Card padding={false}>
-            <div className="border-b border-border px-5 py-4 sm:px-6">
-              <CardTitle>Consumers</CardTitle>
-              <CardDescription className="mt-1">
-                Status <strong>Ready</strong> consumers are included in the next campaign.
-                After a call, status becomes Meeting scheduled or No meeting automatically.
+          <div ref={scheduleRef} id="schedule" className="scroll-mt-6 max-w-2xl">
+            <Card>
+            <CardHeader>
+              <CardTitle>Schedule</CardTitle>
+              <CardDescription>
+                When enabled, campaigns run automatically at the configured time for this
+                client. Only <strong>Ready</strong> consumers are called.
               </CardDescription>
+            </CardHeader>
+
+            <form className="space-y-5" onSubmit={saveSchedule}>
+              <label className="flex items-center gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-input"
+                  checked={scheduleEnabled}
+                  disabled={!canManageOwnConsumers}
+                  onChange={(e) => setScheduleEnabled(e.target.checked)}
+                />
+                <span>Enable automatic campaigns</span>
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="run_time">Run time</Label>
+                  <Input
+                    id="run_time"
+                    type="time"
+                    value={runTime}
+                    disabled={!canManageOwnConsumers}
+                    onChange={(e) => setRunTime(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="timezone">Timezone</Label>
+                  <Select
+                    id="timezone"
+                    value={timezone}
+                    disabled={!canManageOwnConsumers}
+                    onChange={(e) => setTimezone(e.target.value)}
+                  >
+                    {TIMEZONE_OPTIONS.map((tz) => (
+                      <option key={tz} value={tz}>
+                        {tz}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium">Days of week</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {DAY_OPTIONS.map((day) => {
+                    const selected = daysOfWeek.includes(day.value);
+                    return (
+                      <button
+                        key={day.value}
+                        type="button"
+                        disabled={!canManageOwnConsumers}
+                        onClick={() => toggleDay(day.value)}
+                        className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
+                          selected
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-muted/30 text-muted-foreground"
+                        }`}
+                      >
+                        {day.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <dl className="grid gap-4 rounded-lg border border-border bg-muted/20 p-4 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Next run
+                  </dt>
+                  <dd className="mt-1 font-medium">
+                    {overview?.schedule.enabled && overview.schedule.next_run_at
+                      ? formatDate(overview.schedule.next_run_at)
+                      : "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Last run
+                  </dt>
+                  <dd className="mt-1 font-medium">
+                    {overview?.schedule.last_run_at
+                      ? formatDate(overview.schedule.last_run_at)
+                      : "Never"}
+                  </dd>
+                </div>
+              </dl>
+
+              {canManageOwnConsumers ? (
+                <Button type="submit" disabled={savingSchedule}>
+                  {savingSchedule ? (
+                    <Spinner />
+                  ) : (
+                    <CalendarClock className="h-4 w-4" aria-hidden />
+                  )}
+                  {savingSchedule ? "Saving…" : "Save schedule"}
+                </Button>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  You can view the schedule but cannot change it with your role.
+                </p>
+              )}
+            </form>
+            </Card>
+          </div>
+
+          <Card padding={false}>
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
+              <div>
+                <CardTitle>Ready consumers</CardTitle>
+                <CardDescription className="mt-1">
+                  Included in the next manual or scheduled campaign. After a call, status
+                  updates automatically.
+                </CardDescription>
+              </div>
+              <Link
+                href="/consumers"
+                className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Manage all
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </Link>
             </div>
             <div className="p-2 sm:p-4">
               {loadingConsumers ? (

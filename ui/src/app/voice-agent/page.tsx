@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import {
   Button,
@@ -18,6 +19,7 @@ import {
 import { apiFetch } from "@/lib/api-client";
 import { clientScopeQuery, useClientScope } from "@/contexts/client-scope-context";
 import type { VoiceAgentConfig } from "@/lib/types";
+import { ArrowRight } from "lucide-react";
 
 const DEFAULT_GREETING =
   "Greet the caller briefly. Introduce the business and summarize key service offerings. Say you can answer questions by searching the uploaded documents. Ask what they would like to know.";
@@ -126,6 +128,19 @@ export default function VoiceAgentPage() {
       <div className="space-y-6">
         {error ? <ErrorBanner message={error} /> : null}
         {success ? <SuccessBanner message={success} /> : null}
+
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm">
+          <p className="text-muted-foreground">
+            Campaigns use these settings when calling <strong>Ready</strong> consumers.
+          </p>
+          <Link
+            href="/campaigns"
+            className="inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Go to Campaigns
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          </Link>
+        </div>
 
         <Card className="max-w-2xl">
           <CardHeader>
