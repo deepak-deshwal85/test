@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -22,18 +23,17 @@ from livekit.agents import (
 from livekit.agents.voice.turn import EndpointingOptions
 from livekit.plugins import ai_coustics, deepgram, xai
 
-from dataclasses import replace
-
 from agent_instructions import build_conversation_flow_instructions
-from client_config import ClientConfig, resolve_client_config
-from rag_client import build_rag_instructions, build_rag_tools
 from call_summary_builder import (
     CallTranscriptCollector,
     build_call_transcript_from_collector,
     setup_call_transcript_collector,
 )
 from call_summary_llm import summarize_call_transcript
+from client_config import ClientConfig, resolve_client_config
+from rag_client import build_rag_instructions, build_rag_tools
 from rag_client.call_summary_client import (
+    CallSummaryApiClient,
     create_call_summary_client,
     persist_call_summary,
 )
@@ -352,6 +352,61 @@ def prewarm(proc: JobProcess) -> None:
 server.setup_fnc = prewarm
 
 
+@dataclass
+class _CallSummarySessionState:
+    call_start_time: datetime
+    transcript_collector: CallTranscriptCollector
+    session: AgentSession
+    agent: DefaultAgent
+    client_config: ClientConfig
+    call_summary_client: CallSummaryApiClient
+    ctx: JobContext
+
+
+async def _finalize_call_summary(
+    state: _CallSummarySessionState, *, reason: str
+) -> None:
+    """Persist the call summary after LiveKit closes the voice session."""
+    call_end_time = datetime.now(UTC)
+    customer_id = state.ctx.proc.userdata.get("customer_id")
+    job_id = state.ctx.proc.userdata.get("job_id")
+    call_outcome = state.ctx.proc.userdata.get("call_outcome") or {}
+    try:
+        transcript = build_call_transcript_from_collector(
+            state.transcript_collector,
+            state.session.history,
+            state.agent._chat_ctx,
+        )
+        summary_text = await summarize_call_transcript(
+            transcript,
+            client_name=state.client_config.client_name,
+            meeting_scheduled=bool(call_outcome.get("meeting_scheduled")),
+        )
+        logger.info(
+            "built call summary customer_id=%s lines=%d transcript_chars=%d "
+            "summary_chars=%d shutdown_reason=%s duration_seconds=%.1f",
+            customer_id,
+            len(state.transcript_collector.lines),
+            len(transcript),
+            len(summary_text),
+            reason,
+            (call_end_time - state.call_start_time).total_seconds(),
+        )
+        await persist_call_summary(
+            client=state.call_summary_client,
+            customer_id=customer_id,
+            job_id=job_id,
+            call_start_time=state.call_start_time,
+            call_end_time=call_end_time,
+            call_summary=summary_text,
+            meeting_scheduled=bool(call_outcome.get("meeting_scheduled")),
+        )
+    except Exception:
+        logger.exception("failed to persist call summary after session ended")
+    finally:
+        await state.call_summary_client.aclose()
+
+
 @server.rtc_session(agent_name=os.getenv("AGENT_NAME", "relaydesk-agent"))
 async def entrypoint(ctx: JobContext) -> None:
     await ctx.connect()
@@ -414,54 +469,30 @@ async def entrypoint(ctx: JobContext) -> None:
         knowledge_retriever=knowledge_retriever,
         rag_warmup_task=rag_warmup_task,
     )
-    try:
-        await session.start(
-            agent=default_agent,
-            room=ctx.room,
-            room_options=room_io.RoomOptions(
-                audio_input=room_io.AudioInputOptions(
-                    noise_cancellation=ai_coustics.audio_enhancement(
-                        model=ai_coustics.EnhancerModel.QUAIL_VF_S,
-                    ),
+    summary_state = _CallSummarySessionState(
+        call_start_time=call_start_time,
+        transcript_collector=transcript_collector,
+        session=session,
+        agent=default_agent,
+        client_config=client_config,
+        call_summary_client=call_summary_client,
+        ctx=ctx,
+    )
+    ctx.add_shutdown_callback(
+        lambda reason: _finalize_call_summary(summary_state, reason=reason)
+    )
+
+    await session.start(
+        agent=default_agent,
+        room=ctx.room,
+        room_options=room_io.RoomOptions(
+            audio_input=room_io.AudioInputOptions(
+                noise_cancellation=ai_coustics.audio_enhancement(
+                    model=ai_coustics.EnhancerModel.QUAIL_VF_S,
                 ),
             ),
-        )
-    finally:
-        call_end_time = datetime.now(UTC)
-        customer_id = ctx.proc.userdata.get("customer_id")
-        job_id = ctx.proc.userdata.get("job_id")
-        call_outcome = ctx.proc.userdata.get("call_outcome") or {}
-        try:
-            transcript = build_call_transcript_from_collector(
-                transcript_collector,
-                session.history,
-                default_agent._chat_ctx,
-            )
-            summary_text = await summarize_call_transcript(
-                transcript,
-                client_name=client_config.client_name,
-                meeting_scheduled=bool(call_outcome.get("meeting_scheduled")),
-            )
-            logger.info(
-                "built call summary customer_id=%s lines=%d transcript_chars=%d summary_chars=%d",
-                customer_id,
-                len(transcript_collector.lines),
-                len(transcript),
-                len(summary_text),
-            )
-            await persist_call_summary(
-                client=call_summary_client,
-                customer_id=customer_id,
-                job_id=job_id,
-                call_start_time=call_start_time,
-                call_end_time=call_end_time,
-                call_summary=summary_text,
-                meeting_scheduled=bool(call_outcome.get("meeting_scheduled")),
-            )
-        except Exception:
-            logger.exception("failed to persist call summary after session ended")
-        finally:
-            await call_summary_client.aclose()
+        ),
+    )
 
 
 if __name__ == "__main__":
