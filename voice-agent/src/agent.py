@@ -68,6 +68,7 @@ DEFAULT_LLM_MODEL = "grok-4-1-fast-non-reasoning"
 DEFAULT_MEETING_TIMEZONE = os.getenv("MEETING_TIMEZONE", "Asia/Kolkata")
 DEFAULT_TURN_ENDPOINTING_MAX_DELAY = 1.0
 DEFAULT_TURN_ENDPOINTING_MIN_DELAY = 0.3
+DEFAULT_SESSION_CLOSE_TRANSCRIPT_TIMEOUT = 5.0
 AGENT_MODE = "relaydesk-pipeline"
 
 
@@ -114,10 +115,12 @@ You are on a phone call. Follow these rules for natural speech:
 - Do not answer from memory, training data, or assumptions.
 - If uploaded documents do not contain the answer, say so clearly.
 
-{build_conversation_flow_instructions(
-    client_name,
-    knowledge_search_tool=knowledge_search_tool,
-)}
+{
+        build_conversation_flow_instructions(
+            client_name,
+            knowledge_search_tool=knowledge_search_tool,
+        )
+    }
 
 {build_rag_instructions()}
 
@@ -230,12 +233,10 @@ async def _resolve_session_client(ctx: JobContext) -> ClientConfig:
             raw_email = parsed_metadata.get("client_email_id")
             if raw_email:
                 metadata_email = str(raw_email).strip().lower()
-                logger.info(
-                    "using client email from job metadata: %s", metadata_email
-                )
-            raw_phone = parsed_metadata.get("client_business_phone_number") or parsed_metadata.get(
-                "client_phone_number"
-            )
+                logger.info("using client email from job metadata: %s", metadata_email)
+            raw_phone = parsed_metadata.get(
+                "client_business_phone_number"
+            ) or parsed_metadata.get("client_phone_number")
             if raw_phone:
                 phone_digits = normalize_phone_override(str(raw_phone))
                 logger.info(
@@ -396,6 +397,12 @@ async def entrypoint(ctx: JobContext) -> None:
         tts=tts,
         tools=session_tools,
         turn_handling=build_turn_handling_options(client_config),
+        session_close_transcript_timeout=float(
+            os.getenv(
+                "SESSION_CLOSE_TRANSCRIPT_TIMEOUT",
+                str(DEFAULT_SESSION_CLOSE_TRANSCRIPT_TIMEOUT),
+            )
+        ),
     )
 
     call_start_time = datetime.now(UTC)
@@ -428,7 +435,7 @@ async def entrypoint(ctx: JobContext) -> None:
             transcript = build_call_transcript_from_collector(
                 transcript_collector,
                 session.history,
-                default_agent.chat_ctx,
+                default_agent._chat_ctx,
             )
             summary_text = await summarize_call_transcript(
                 transcript,

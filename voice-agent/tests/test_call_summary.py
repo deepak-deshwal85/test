@@ -3,15 +3,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from livekit.agents import llm
+from livekit.agents.llm.chat_context import AgentHandoff, AudioContent
+
 from call_summary_builder import (
     CallTranscriptCollector,
     build_call_summary_from_collector,
     build_call_summary_from_history,
     format_conversation_line,
     message_text,
+    setup_call_transcript_collector,
 )
-from livekit.agents import llm
-from livekit.agents.llm.chat_context import AgentHandoff
 
 
 def test_build_call_summary_from_history():
@@ -62,6 +64,43 @@ def test_message_text_uses_text_content():
     message = history.items[0]
     assert message_text(message) == "Spoken transcript"
     assert format_conversation_line(message) == "Caller: Spoken transcript"
+
+
+def test_message_text_uses_audio_content_transcript():
+    message = llm.ChatMessage(
+        role="user",
+        content=[AudioContent(frame=[], transcript="What are your hours?")],
+    )
+    assert message_text(message) == "What are your hours?"
+    assert format_conversation_line(message) == "Caller: What are your hours?"
+
+
+def test_collector_captures_final_user_transcript():
+    collector = CallTranscriptCollector()
+    collector.add_user_transcript("Need pricing details")
+    collector.add_user_transcript("Need pricing details")
+
+    history = llm.ChatContext()
+    history.add_message(role="user", content="Need pricing details")
+    history.add_message(role="assistant", content="Plans start at ten dollars.")
+
+    summary = build_call_summary_from_collector(collector, history)
+    assert summary.count("Caller: Need pricing details") == 1
+    assert "Agent: Plans start at ten dollars." in summary
+
+
+def test_collector_deduplicates_identical_lines():
+    history = llm.ChatContext()
+    history.add_message(role="user", content="Same question")
+    history.add_message(role="assistant", content="Same answer")
+
+    collector = CallTranscriptCollector()
+    collector.add_user_transcript("Same question")
+    collector.extend_from_context(history)
+
+    summary = build_call_summary_from_collector(collector)
+    assert summary.count("Caller: Same question") == 1
+    assert summary.count("Agent: Same answer") == 1
 
 
 def test_collector_merges_session_and_agent_histories():
@@ -122,3 +161,39 @@ def test_call_summary_api_client_posts_record():
         await api_client.aclose()
 
     asyncio.run(_run())
+
+
+def test_setup_call_transcript_collector_handles_session_events():
+    from livekit.agents.voice.events import (
+        ConversationItemAddedEvent,
+        UserInputTranscribedEvent,
+    )
+    from livekit.rtc.event_emitter import EventEmitter
+
+    session = EventEmitter()
+    collector = CallTranscriptCollector()
+    setup_call_transcript_collector(session, collector)
+
+    session.emit(
+        "user_input_transcribed",
+        UserInputTranscribedEvent(transcript="Hello there", is_final=True),
+    )
+
+    user_message = llm.ChatMessage(role="user", content=["Hello there"])
+    session.emit(
+        "conversation_item_added",
+        ConversationItemAddedEvent(item=user_message),
+    )
+
+    assistant_message = llm.ChatMessage(
+        role="assistant", content=["Hi, how can I help?"]
+    )
+    session.emit(
+        "conversation_item_added",
+        ConversationItemAddedEvent(item=assistant_message),
+    )
+
+    summary = build_call_summary_from_collector(collector)
+    assert "Caller: Hello there" in summary
+    assert "Agent: Hi, how can I help?" in summary
+    assert summary.count("Caller: Hello there") == 1
