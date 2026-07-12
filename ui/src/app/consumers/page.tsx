@@ -28,6 +28,7 @@ import {
   TableHead,
   TableHeaderCell,
   TableRow,
+  Textarea,
 } from "@/components/ui";
 import { PhoneInput } from "@/components/phone-input";
 import { apiFetch } from "@/lib/api-client";
@@ -43,6 +44,8 @@ import type { Consumer, ConsumerListResponse } from "@/lib/types";
 import { Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 const emptyConsumerForm = {
+  consumer_name: "",
+  consumer_address: "",
   consumer_phone: { ...EMPTY_PHONE_FIELDS },
   consumer_email_id: "",
 };
@@ -111,6 +114,8 @@ export default function ConsumersPage() {
       client_email_id: selectedClient.client_email_id,
       consumer_phone_number: combinePhoneParts(form.consumer_phone),
       consumer_email_id: form.consumer_email_id.trim().toLowerCase(),
+      consumer_name: form.consumer_name.trim(),
+      consumer_address: form.consumer_address.trim(),
     };
   }
 
@@ -147,6 +152,8 @@ export default function ConsumersPage() {
           body: JSON.stringify({
             consumer_phone_number: consumerPhone,
             consumer_email_id: consumerEmail,
+            consumer_name: form.consumer_name.trim(),
+            consumer_address: form.consumer_address.trim(),
           }),
         });
       } else {
@@ -181,6 +188,8 @@ export default function ConsumersPage() {
   function startEdit(consumer: Consumer) {
     setEditingId(consumer.id);
     setForm({
+      consumer_name: consumer.consumer_name,
+      consumer_address: consumer.consumer_address,
       consumer_phone: splitStoredPhone(consumer.consumer_phone_number),
       consumer_email_id: consumer.consumer_email_id,
     });
@@ -197,6 +206,19 @@ export default function ConsumersPage() {
 
   const consumerForm = (
     <form className="space-y-4" onSubmit={handleSubmit}>
+      <div>
+        <Label htmlFor="consumer_name">Consumer name</Label>
+        <Input
+          id="consumer_name"
+          autoComplete="name"
+          maxLength={255}
+          placeholder="Consumer name"
+          value={form.consumer_name}
+          onChange={(e) =>
+            setForm({ ...form, consumer_name: e.target.value })
+          }
+        />
+      </div>
       <PhoneInput
         label="Consumer phone"
         countryCodeId="consumer_country_code"
@@ -221,6 +243,20 @@ export default function ConsumersPage() {
           value={form.consumer_email_id}
           onChange={(e) =>
             setForm({ ...form, consumer_email_id: e.target.value })
+          }
+        />
+      </div>
+      <div>
+        <Label htmlFor="consumer_address">Consumer address</Label>
+        <Textarea
+          id="consumer_address"
+          autoComplete="street-address"
+          maxLength={2000}
+          placeholder="Consumer address"
+          rows={3}
+          value={form.consumer_address}
+          onChange={(e) =>
+            setForm({ ...form, consumer_address: e.target.value })
           }
         />
       </div>
@@ -300,8 +336,10 @@ export default function ConsumersPage() {
               ) : (
                 <Table>
                   <TableHead>
+                    <TableHeaderCell>Name</TableHeaderCell>
                     <TableHeaderCell>Phone</TableHeaderCell>
                     <TableHeaderCell>Email</TableHeaderCell>
+                    <TableHeaderCell>Address</TableHeaderCell>
                     {canEditConsumers ? (
                       <TableHeaderCell className="text-right">Actions</TableHeaderCell>
                     ) : null}
@@ -314,9 +352,15 @@ export default function ConsumersPage() {
                         onClick={() => setHistoryConsumer(consumer)}
                       >
                         <TableCell className="font-medium">
+                          {consumer.consumer_name || "—"}
+                        </TableCell>
+                        <TableCell className="font-medium">
                           {formatPhoneDisplay(consumer.consumer_phone_number)}
                         </TableCell>
                         <TableCell>{consumer.consumer_email_id}</TableCell>
+                        <TableCell className="max-w-xs whitespace-normal">
+                          {consumer.consumer_address || "—"}
+                        </TableCell>
                         {canEditConsumers ? (
                           <TableCell className="text-right">
                             <div

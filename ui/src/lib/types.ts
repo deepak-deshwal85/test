@@ -54,6 +54,8 @@ export interface Consumer {
   client_id: number;
   consumer_phone_number: string;
   consumer_email_id: string;
+  consumer_name: string;
+  consumer_address: string;
   is_approved: boolean;
   status: ConsumerStatusValue;
   created_at: string;

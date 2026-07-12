@@ -25,7 +25,9 @@ def _raise_from_integrity_error(exc: IntegrityError) -> None:
         ) from exc
     if "unique" in message or "duplicate" in message:
         raise ValueError(_DUPLICATE_CONSUMER_MESSAGE) from exc
-    raise ValueError("Consumer could not be saved due to a database constraint.") from exc
+    raise ValueError(
+        "Consumer could not be saved due to a database constraint."
+    ) from exc
 
 
 class ConsumerRepository:
@@ -39,6 +41,8 @@ class ConsumerRepository:
             client_id=row.client_id,
             consumer_phone_number=row.consumer_phone_number,
             consumer_email_id=row.consumer_email_id,
+            consumer_name=row.consumer_name,
+            consumer_address=row.consumer_address,
             is_approved=row.is_approved,
             status=row.status,
             created_at=row.created_at,
@@ -68,6 +72,8 @@ class ConsumerRepository:
         client_business_phone_number: str,
         consumer_phone_number: str,
         consumer_email_id: str,
+        consumer_name: str = "",
+        consumer_address: str = "",
         status: str = "READY",
     ) -> Consumer:
         normalized_business = normalize_phone_number(client_business_phone_number)
@@ -87,6 +93,8 @@ class ConsumerRepository:
             client_id=client_id,
             consumer_phone_number=normalized_consumer,
             consumer_email_id=normalize_email(consumer_email_id),
+            consumer_name=consumer_name.strip(),
+            consumer_address=consumer_address.strip(),
             is_approved=True,
             status=status,
         )
@@ -141,6 +149,8 @@ class ConsumerRepository:
         client_id: int,
         consumer_email_id: str | None = None,
         consumer_phone_number: str | None = None,
+        consumer_name: str | None = None,
+        consumer_address: str | None = None,
         status: str | None = None,
     ) -> Consumer | None:
         row = await self._session.get(ConsumerRow, consumer_id)
@@ -149,6 +159,10 @@ class ConsumerRepository:
 
         if consumer_email_id is not None:
             row.consumer_email_id = normalize_email(consumer_email_id)
+        if consumer_name is not None:
+            row.consumer_name = consumer_name.strip()
+        if consumer_address is not None:
+            row.consumer_address = consumer_address.strip()
         if consumer_phone_number is not None:
             normalized_consumer = normalize_phone_number(consumer_phone_number)
             if await self._find_by_client_and_phone(

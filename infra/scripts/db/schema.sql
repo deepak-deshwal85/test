@@ -16,11 +16,19 @@ CREATE TABLE IF NOT EXISTS consumers (
     client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE RESTRICT,
     consumer_phone_number VARCHAR(32) NOT NULL,
     consumer_email_id VARCHAR(255) NOT NULL,
+    consumer_name VARCHAR(255) NOT NULL DEFAULT '',
+    consumer_address TEXT NOT NULL DEFAULT '',
     is_approved BOOLEAN NOT NULL DEFAULT TRUE,
     status VARCHAR(32) NOT NULL DEFAULT 'READY',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE consumers
+    ADD COLUMN IF NOT EXISTS consumer_name VARCHAR(255) NOT NULL DEFAULT '';
+
+ALTER TABLE consumers
+    ADD COLUMN IF NOT EXISTS consumer_address TEXT NOT NULL DEFAULT '';
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_consumers_client_consumer
     ON consumers (client_id, consumer_phone_number);

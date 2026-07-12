@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
-
 from app.domain.phone_validation import (
     combine_phone_parts,
     normalize_optional_phone_number,
@@ -12,14 +11,14 @@ from app.domain.phone_validation import (
 )
 
 __all__ = [
+    "CallAttemptResult",
+    "CallJob",
+    "Consumer",
     "combine_phone_parts",
+    "format_sip_phone",
     "normalize_email",
     "normalize_optional_phone_number",
     "normalize_phone_number",
-    "format_sip_phone",
-    "Consumer",
-    "CallJob",
-    "CallAttemptResult",
 ]
 
 
@@ -50,6 +49,8 @@ class Consumer:
     status: str
     created_at: datetime
     updated_at: datetime
+    consumer_name: str = ""
+    consumer_address: str = ""
 
 
 @dataclass(frozen=True)

@@ -26,7 +26,7 @@ def test_health(client: TestClient) -> None:
 
 
 def test_create_consumer(client: TestClient) -> None:
-    from unittest.mock import AsyncMock, MagicMock
+    from unittest.mock import AsyncMock
 
     from app.core.dependencies import get_client_repository, get_consumer_service
     from app.domain.client_models import Client
@@ -38,6 +38,8 @@ def test_create_consumer(client: TestClient) -> None:
         client_id=42,
         consumer_phone_number="9876543210",
         consumer_email_id="consumer@example.com",
+        consumer_name="Jane Consumer",
+        consumer_address="12 Main Street",
         is_approved=True,
         status="READY",
         created_at=now,
@@ -64,10 +66,29 @@ def test_create_consumer(client: TestClient) -> None:
         json={
             "consumer_phone_number": "9876543210",
             "consumer_email_id": "consumer@example.com",
+            "consumer_name": "Jane Consumer",
+            "consumer_address": "12 Main Street",
         },
     )
     assert response.status_code == 201
     assert response.json()["consumer_phone_number"] == "9876543210"
+    assert response.json()["consumer_name"] == "Jane Consumer"
+    assert response.json()["consumer_address"] == "12 Main Street"
+
+
+def test_create_consumer_requires_phone_number() -> None:
+    from pydantic import ValidationError
+
+    from app.schemas.consumers import ConsumerCreateRequest
+
+    with pytest.raises(ValidationError):
+        ConsumerCreateRequest.model_validate(
+            {
+                "consumer_email_id": "consumer@example.com",
+                "consumer_name": "Jane Consumer",
+                "consumer_address": "12 Main Street",
+            }
+        )
 
 
 def test_trigger_call_job(client: TestClient) -> None:
@@ -120,7 +141,9 @@ def test_raise_from_integrity_error_maps_not_null() -> None:
 
     from app.db.postgres.consumer_repository import _raise_from_integrity_error
 
-    exc = IntegrityError("INSERT", {}, Exception('null value in column "client_phone_number"'))
+    exc = IntegrityError(
+        "INSERT", {}, Exception('null value in column "client_phone_number"')
+    )
     try:
         _raise_from_integrity_error(exc)
     except ValueError as err:
@@ -134,7 +157,9 @@ def test_raise_from_integrity_error_maps_unique() -> None:
 
     from app.db.postgres.consumer_repository import _raise_from_integrity_error
 
-    exc = IntegrityError("INSERT", {}, Exception("duplicate key value violates unique constraint"))
+    exc = IntegrityError(
+        "INSERT", {}, Exception("duplicate key value violates unique constraint")
+    )
     try:
         _raise_from_integrity_error(exc)
     except ValueError as err:

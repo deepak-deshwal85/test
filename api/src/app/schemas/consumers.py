@@ -17,6 +17,8 @@ def _validate_phone_field(value: str) -> str:
 class ConsumerCreateRequest(BaseModel):
     consumer_phone_number: str = Field(min_length=1, max_length=32)
     consumer_email_id: str = Field(min_length=3, max_length=255)
+    consumer_name: str = Field(default="", max_length=255)
+    consumer_address: str = Field(default="", max_length=2000)
     status: ConsumerStatusValue = "READY"
 
     @field_validator("consumer_phone_number")
@@ -28,6 +30,8 @@ class ConsumerCreateRequest(BaseModel):
 class ConsumerUpdateRequest(BaseModel):
     consumer_phone_number: str | None = Field(default=None, min_length=1, max_length=32)
     consumer_email_id: str | None = Field(default=None, min_length=3, max_length=255)
+    consumer_name: str | None = Field(default=None, max_length=255)
+    consumer_address: str | None = Field(default=None, max_length=2000)
     status: ConsumerStatusValue | None = None
 
     @field_validator("consumer_phone_number")
@@ -43,6 +47,8 @@ class ConsumerResponse(BaseModel):
     client_id: int
     consumer_phone_number: str
     consumer_email_id: str
+    consumer_name: str = ""
+    consumer_address: str = ""
     is_approved: bool
     status: ConsumerStatusValue
     created_at: datetime
