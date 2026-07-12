@@ -2,7 +2,7 @@
 
 AWS infrastructure for RelayDesk: **VPC**, **ECS on EC2**, **ALB**, **Cognito**, **RDS PostgreSQL**, **ECR**, **SSM Parameter Store**, and operational scripts.
 
-[← Back to monorepo](../README.md) · **API deploy:** [`../api/README.md`](../api/README.md) · **UI deploy:** [`../ui/README.md`](../ui/README.md) · **Voice agent deploy:** [`../voice-agent/README.md`](../voice-agent/README.md)
+[← Back to monorepo](../README.md) · **New AWS account setup:** [`NEW_INFRA_SETUP.md`](NEW_INFRA_SETUP.md) · **API deploy:** [`../api/README.md`](../api/README.md) · **UI deploy:** [`../ui/README.md`](../ui/README.md) · **Voice agent deploy:** [`../voice-agent/README.md`](../voice-agent/README.md)
 
 > **Shell:** All commands use **bash** (macOS, Linux, or **Git Bash** on Windows).
 
@@ -119,6 +119,8 @@ infra/
 ---
 
 ## 3. Bootstrap (one-time)
+
+> **New AWS account?** Follow the full checklist in [`NEW_INFRA_SETUP.md`](NEW_INFRA_SETUP.md) (Phases 0–10). This section is a shorter reference for an account that is already configured.
 
 ```bash
 cd infra/terraform

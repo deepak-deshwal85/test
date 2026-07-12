@@ -35,6 +35,7 @@ Voice agent (LiveKit) ──M2M OAuth────────┘
 | UI — Cognito/NextAuth, local dev, Docker/ECR deploy | [`ui/README.md`](ui/README.md) |
 | Voice agent — LiveKit, phone configs, RAG client | [`voice-agent/README.md`](voice-agent/README.md) |
 | AWS — Terraform bootstrap, SSM, ECS, Cognito roles, ops scripts | [`infra/README.md`](infra/README.md) |
+| **New AWS account — full setup from scratch** | [`infra/NEW_INFRA_SETUP.md`](infra/NEW_INFRA_SETUP.md) |
 | LiveKit agent development | [`AGENTS.md`](AGENTS.md) |
 
 ## Quick start (local UI + API)
@@ -106,6 +107,8 @@ Production runs on **ECS on EC2** in `ap-south-1` (configurable):
 | `relaydesk-prod-voice-agent` | `voice-agent/Dockerfile` | — |
 
 **Full bootstrap, secrets, domain, and troubleshooting:** [`infra/README.md`](infra/README.md)
+
+**Setting up in a new AWS account:** [`infra/NEW_INFRA_SETUP.md`](infra/NEW_INFRA_SETUP.md)
 
 **Typical manual image push** (from repo root):
 
