@@ -36,6 +36,7 @@ import type {
   ConsumerStatusValue,
   VoiceAgentScheduleOverview,
 } from "@/lib/types";
+import { formatPhoneDisplay } from "@/lib/phone";
 import { formatDate, statusColor } from "@/lib/utils";
 import { ArrowRight, Bot, CalendarClock, Megaphone, RefreshCw } from "lucide-react";
 
@@ -340,7 +341,9 @@ export default function CampaignsPage() {
               <CardTitle>Run campaign</CardTitle>
               <CardDescription>
                 Calls all consumers with status <strong>Ready</strong> using business phone{" "}
-                {clientBusinessPhoneNumber ?? "—"}.
+                {clientBusinessPhoneNumber
+                  ? formatPhoneDisplay(clientBusinessPhoneNumber)
+                  : "—"}.
               </CardDescription>
             </CardHeader>
 
@@ -559,7 +562,7 @@ export default function CampaignsPage() {
                     {consumers.map((consumer) => (
                       <TableRow key={consumer.id}>
                         <TableCell className="font-medium">
-                          {consumer.consumer_phone_number}
+                          {formatPhoneDisplay(consumer.consumer_phone_number)}
                         </TableCell>
                         <TableCell>{consumer.consumer_email_id}</TableCell>
                         <TableCell>

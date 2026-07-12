@@ -26,6 +26,7 @@ import type {
   ConsumerListResponse,
   VoiceAgentScheduleOverview,
 } from "@/lib/types";
+import { formatPhoneDisplay } from "@/lib/phone";
 import { formatDate } from "@/lib/utils";
 import {
   ArrowRight,
@@ -309,9 +310,11 @@ export default function DashboardPage() {
                       Business phone
                     </dt>
                     <dd className="mt-1 font-medium">
-                      {clientBusinessPhoneNumber ??
-                        overview?.client_business_phone_number ??
-                        "Not configured"}
+                      {clientBusinessPhoneNumber
+                        ? formatPhoneDisplay(clientBusinessPhoneNumber)
+                        : overview?.client_business_phone_number
+                          ? formatPhoneDisplay(overview.client_business_phone_number)
+                          : "Not configured"}
                     </dd>
                   </div>
                   <div>
@@ -438,7 +441,9 @@ export default function DashboardPage() {
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="font-medium text-foreground">
-                        {summary.consumer_phone_number ?? "Unknown number"}
+                        {summary.consumer_phone_number
+                          ? formatPhoneDisplay(summary.consumer_phone_number)
+                          : "Unknown number"}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {formatDate(summary.call_start_time)}

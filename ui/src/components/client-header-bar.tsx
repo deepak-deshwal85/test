@@ -4,6 +4,7 @@ import { Label, Select, Spinner } from "@/components/ui";
 import { useClientScope } from "@/contexts/client-scope-context";
 import { usePermissions } from "@/hooks/use-permissions";
 import { cn } from "@/lib/utils";
+import { formatPhoneDisplay } from "@/lib/phone";
 
 function MetaField({
   label,
@@ -84,11 +85,11 @@ export function ClientHeaderBar() {
           <MetaField label="Client name" value={selectedClient?.client_name} />
           <MetaField
             label="Personal phone"
-            value={selectedClient?.client_phone_number}
+            value={formatPhoneDisplay(selectedClient?.client_phone_number)}
           />
           <MetaField
             label="Business phone"
-            value={selectedClient?.client_business_phone_number}
+            value={formatPhoneDisplay(selectedClient?.client_business_phone_number)}
           />
         </div>
       </div>
@@ -112,12 +113,12 @@ export function ClientHeaderBar() {
         <MetaField label="Email" value={selectedClient?.client_email_id} />
         <MetaField
           label="Personal phone"
-          value={selectedClient?.client_phone_number}
+          value={formatPhoneDisplay(selectedClient?.client_phone_number)}
         />
         {selectedClient?.client_business_phone_number ? (
           <MetaField
             label="Business phone"
-            value={selectedClient.client_business_phone_number}
+            value={formatPhoneDisplay(selectedClient.client_business_phone_number)}
           />
         ) : null}
       </div>

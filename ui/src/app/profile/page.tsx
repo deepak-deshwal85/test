@@ -18,10 +18,18 @@ import {
   Spinner,
   SuccessBanner,
 } from "@/components/ui";
+import { PhoneInput } from "@/components/phone-input";
 import { apiFetch } from "@/lib/api-client";
 import { useClientScope } from "@/contexts/client-scope-context";
 import { usePermissions } from "@/hooks/use-permissions";
 import { roleLabel } from "@/lib/roles";
+import {
+  combineOptionalPhoneParts,
+  EMPTY_PHONE_FIELDS,
+  formatPhoneDisplay,
+  splitStoredPhone,
+  type PhoneFields,
+} from "@/lib/phone";
 import type { ClientProfile } from "@/lib/types";
 
 function AppearanceCard() {
@@ -77,7 +85,10 @@ function AdminAccountCard() {
 function ClientProfileForm() {
   const { selectedClient, loading, refresh } = useClientScope();
   const [name, setName] = useState("");
-  const [personalPhone, setPersonalPhone] = useState("");
+  const [personalPhone, setPersonalPhone] = useState<PhoneFields>({
+    ...EMPTY_PHONE_FIELDS,
+  });
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -85,7 +96,7 @@ function ClientProfileForm() {
   useEffect(() => {
     if (selectedClient) {
       setName(selectedClient.client_name);
-      setPersonalPhone(selectedClient.client_phone_number ?? "");
+      setPersonalPhone(splitStoredPhone(selectedClient.client_phone_number));
     }
   }, [selectedClient]);
 
@@ -93,14 +104,23 @@ function ClientProfileForm() {
     e.preventDefault();
     setSaving(true);
     setError(null);
+    setPhoneError(null);
     setSuccess(null);
+    let storedPhone: string | null;
+    try {
+      storedPhone = combineOptionalPhoneParts(personalPhone);
+    } catch (e) {
+      setPhoneError(e instanceof Error ? e.message : "Invalid phone number");
+      setSaving(false);
+      return;
+    }
     try {
       await apiFetch<ClientProfile>("v1/clients/profile", {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           client_name: name,
-          client_phone_number: personalPhone || null,
+          client_phone_number: storedPhone,
         }),
       });
       await refresh();
@@ -142,13 +162,17 @@ function ClientProfileForm() {
               />
             </div>
             <div>
-              <Label htmlFor="profile_personal_phone">Personal phone</Label>
-              <Input
-                id="profile_personal_phone"
-                inputMode="tel"
+              <PhoneInput
+                label="Personal phone"
+                countryCodeId="profile_country_code"
+                nationalNumberId="profile_personal_phone"
                 value={personalPhone}
-                onChange={(e) => setPersonalPhone(e.target.value)}
-                placeholder="+91..."
+                error={phoneError}
+                hint="Optional. Stored as digits only without + sign."
+                onChange={(value) => {
+                  setPhoneError(null);
+                  setPersonalPhone(value);
+                }}
               />
             </div>
             <div>
@@ -163,7 +187,11 @@ function ClientProfileForm() {
               <Label htmlFor="profile_business_phone">Business phone</Label>
               <Input
                 id="profile_business_phone"
-                value={selectedClient?.client_business_phone_number ?? ""}
+                value={
+                  selectedClient?.client_business_phone_number
+                    ? formatPhoneDisplay(selectedClient.client_business_phone_number)
+                    : ""
+                }
                 disabled
               />
             </div>

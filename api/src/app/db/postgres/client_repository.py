@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.postgres.models import CallJobRow, ClientRow, ConsumerRow
 from app.domain.client_models import Client
 from app.domain.consumer_models import normalize_email, normalize_phone_number
+from app.domain.phone_validation import normalize_optional_phone_number
 
 
 class ClientRepository:
@@ -80,11 +81,7 @@ class ClientRepository:
         client_email_id: str,
     ) -> Client:
         normalized_email = normalize_email(client_email_id)
-        normalized_personal_phone = (
-            normalize_phone_number(client_phone_number)
-            if client_phone_number
-            else None
-        )
+        normalized_personal_phone = normalize_optional_phone_number(client_phone_number)
         name = client_name.strip()
         if not name:
             raise ValueError("client_name is required")

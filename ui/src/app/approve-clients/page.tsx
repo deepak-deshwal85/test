@@ -12,7 +12,6 @@ import {
   CardTitle,
   EmptyState,
   ErrorBanner,
-  Input,
   PageHeader,
   PageSection,
   Spinner,
@@ -24,8 +23,15 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui";
+import { PhoneInput } from "@/components/phone-input";
 import { apiFetch } from "@/lib/api-client";
 import { useClientScope } from "@/contexts/client-scope-context";
+import {
+  combinePhoneParts,
+  EMPTY_PHONE_FIELDS,
+  formatPhoneDisplay,
+  type PhoneFields,
+} from "@/lib/phone";
 import type { ClientAdminListResponse, ClientAdminProfile } from "@/lib/types";
 import { CheckCircle2, RefreshCw } from "lucide-react";
 
@@ -34,9 +40,10 @@ export default function ApproveClientsPage() {
   const [clients, setClients] = useState<ClientAdminProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [businessPhones, setBusinessPhones] = useState<Record<string, string>>(
-    {},
-  );
+  const [businessPhones, setBusinessPhones] = useState<
+    Record<string, PhoneFields>
+  >({});
+  const [phoneErrors, setPhoneErrors] = useState<Record<string, string>>({});
   const [approvingEmail, setApprovingEmail] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -58,15 +65,29 @@ export default function ApproveClientsPage() {
   }, []);
 
   async function approveClient(client: ClientAdminProfile) {
-    const businessPhone = (businessPhones[client.client_email_id] ?? "").trim();
-    if (!businessPhone) {
-      setError("Business phone number is required to approve a client.");
+    const phoneFields =
+      businessPhones[client.client_email_id] ?? { ...EMPTY_PHONE_FIELDS };
+    let businessPhone: string;
+    try {
+      businessPhone = combinePhoneParts(phoneFields);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Invalid business phone";
+      setPhoneErrors((current) => ({
+        ...current,
+        [client.client_email_id]: message,
+      }));
+      setError(message);
       return;
     }
 
     setApprovingEmail(client.client_email_id);
     setError(null);
     setSuccessMessage(null);
+    setPhoneErrors((current) => {
+      const next = { ...current };
+      delete next[client.client_email_id];
+      return next;
+    });
     try {
       const updated = await apiFetch<ClientAdminProfile>("v1/clients/approve", {
         method: "POST",
@@ -145,19 +166,33 @@ export default function ApproveClientsPage() {
                         <TableRow key={client.id} className="align-top">
                           <TableCell>{client.client_email_id}</TableCell>
                           <TableCell>{client.client_name || "—"}</TableCell>
-                          <TableCell>{client.client_phone_number || "—"}</TableCell>
                           <TableCell>
-                            <Input
-                              id={`business_${client.id}`}
-                              aria-label="Business phone"
-                              placeholder="+911171366880"
-                              value={businessPhones[client.client_email_id] ?? ""}
-                              onChange={(e) =>
+                            {formatPhoneDisplay(client.client_phone_number)}
+                          </TableCell>
+                          <TableCell className="min-w-[220px]">
+                            <PhoneInput
+                              label="Business phone"
+                              countryCodeId={`business_country_${client.id}`}
+                              nationalNumberId={`business_phone_${client.id}`}
+                              value={
+                                businessPhones[client.client_email_id] ?? {
+                                  ...EMPTY_PHONE_FIELDS,
+                                }
+                              }
+                              required
+                              hideLabel
+                              error={phoneErrors[client.client_email_id]}
+                              onChange={(value) => {
+                                setPhoneErrors((current) => {
+                                  const next = { ...current };
+                                  delete next[client.client_email_id];
+                                  return next;
+                                });
                                 setBusinessPhones((current) => ({
                                   ...current,
-                                  [client.client_email_id]: e.target.value,
-                                }))
-                              }
+                                  [client.client_email_id]: value,
+                                }));
+                              }}
                             />
                           </TableCell>
                           <TableCell>
@@ -205,9 +240,11 @@ export default function ApproveClientsPage() {
                         <TableRow key={client.id}>
                           <TableCell>{client.client_email_id}</TableCell>
                           <TableCell>{client.client_name || "—"}</TableCell>
-                          <TableCell>{client.client_phone_number || "—"}</TableCell>
                           <TableCell>
-                            {client.client_business_phone_number || "—"}
+                            {formatPhoneDisplay(client.client_phone_number)}
+                          </TableCell>
+                          <TableCell>
+                            {formatPhoneDisplay(client.client_business_phone_number)}
                           </TableCell>
                           <TableCell>
                             <Badge className="bg-emerald-50 text-emerald-700">

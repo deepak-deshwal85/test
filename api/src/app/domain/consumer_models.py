@@ -5,11 +5,22 @@ from datetime import datetime
 from uuid import UUID
 
 
-def normalize_phone_number(value: str) -> str:
-    digits = "".join(character for character in value if character.isdigit())
-    if not digits:
-        raise ValueError(f"Invalid phone number: {value!r}")
-    return digits
+from app.domain.phone_validation import (
+    combine_phone_parts,
+    normalize_optional_phone_number,
+    normalize_phone_number,
+)
+
+__all__ = [
+    "combine_phone_parts",
+    "normalize_email",
+    "normalize_optional_phone_number",
+    "normalize_phone_number",
+    "format_sip_phone",
+    "Consumer",
+    "CallJob",
+    "CallAttemptResult",
+]
 
 
 def normalize_email(value: str) -> str:

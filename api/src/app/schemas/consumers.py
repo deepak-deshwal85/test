@@ -3,9 +3,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.domain.phone_validation import normalize_phone_number
 
 ConsumerStatusValue = Literal["READY", "MEETING_SCHEDULED", "MEETING_NOT_SCHEDULED"]
+
+
+def _validate_phone_field(value: str) -> str:
+    return normalize_phone_number(value)
 
 
 class ConsumerCreateRequest(BaseModel):
@@ -13,11 +19,23 @@ class ConsumerCreateRequest(BaseModel):
     consumer_email_id: str = Field(min_length=3, max_length=255)
     status: ConsumerStatusValue = "READY"
 
+    @field_validator("consumer_phone_number")
+    @classmethod
+    def validate_consumer_phone(cls, value: str) -> str:
+        return _validate_phone_field(value)
+
 
 class ConsumerUpdateRequest(BaseModel):
     consumer_phone_number: str | None = Field(default=None, min_length=1, max_length=32)
     consumer_email_id: str | None = Field(default=None, min_length=3, max_length=255)
     status: ConsumerStatusValue | None = None
+
+    @field_validator("consumer_phone_number")
+    @classmethod
+    def validate_consumer_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return _validate_phone_field(value)
 
 
 class ConsumerResponse(BaseModel):

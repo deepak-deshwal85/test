@@ -29,20 +29,23 @@ import {
   TableHeaderCell,
   TableRow,
 } from "@/components/ui";
+import { PhoneInput } from "@/components/phone-input";
 import { apiFetch } from "@/lib/api-client";
 import { clientScopeQuery, useClientScope } from "@/contexts/client-scope-context";
 import { usePermissions } from "@/hooks/use-permissions";
+import {
+  combinePhoneParts,
+  EMPTY_PHONE_FIELDS,
+  formatPhoneDisplay,
+  splitStoredPhone,
+} from "@/lib/phone";
 import type { Consumer, ConsumerListResponse } from "@/lib/types";
 import { Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 const emptyConsumerForm = {
-  consumer_phone_number: "",
+  consumer_phone: { ...EMPTY_PHONE_FIELDS },
   consumer_email_id: "",
 };
-
-function normalizePhoneInput(value: string): string {
-  return value.replace(/\D/g, "");
-}
 
 export default function ConsumersPage() {
   const searchParams = useSearchParams();
@@ -51,6 +54,7 @@ export default function ConsumersPage() {
   const [consumers, setConsumers] = useState<Consumer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [form, setForm] = useState(emptyConsumerForm);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -105,7 +109,7 @@ export default function ConsumersPage() {
       client_business_phone_number: selectedClient.client_business_phone_number,
       client_name: selectedClient.client_name || "Client",
       client_email_id: selectedClient.client_email_id,
-      consumer_phone_number: normalizePhoneInput(form.consumer_phone_number),
+      consumer_phone_number: combinePhoneParts(form.consumer_phone),
       consumer_email_id: form.consumer_email_id.trim().toLowerCase(),
     };
   }
@@ -114,13 +118,24 @@ export default function ConsumersPage() {
     e.preventDefault();
     if (!clientEmailId || saving) return;
     setError(null);
+    setPhoneError(null);
     setSaving(true);
     try {
       const scope = clientScopeQuery(clientEmailId);
-      const consumerPhone = normalizePhoneInput(form.consumer_phone_number);
+      let consumerPhone: string;
+      try {
+        consumerPhone = combinePhoneParts(form.consumer_phone);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Invalid phone number";
+        setPhoneError(message);
+        setSaving(false);
+        return;
+      }
       const consumerEmail = form.consumer_email_id.trim().toLowerCase();
       if (!consumerPhone) {
-        throw new Error("Consumer phone number is required.");
+        setPhoneError("Consumer phone number is required.");
+        setSaving(false);
+        return;
       }
       if (!consumerEmail) {
         throw new Error("Consumer email is required.");
@@ -166,34 +181,35 @@ export default function ConsumersPage() {
   function startEdit(consumer: Consumer) {
     setEditingId(consumer.id);
     setForm({
-      consumer_phone_number: consumer.consumer_phone_number,
+      consumer_phone: splitStoredPhone(consumer.consumer_phone_number),
       consumer_email_id: consumer.consumer_email_id,
     });
+    setPhoneError(null);
     setMobileFormOpen(true);
   }
 
   function resetForm() {
     setEditingId(null);
     setForm(emptyConsumerForm);
+    setPhoneError(null);
     setMobileFormOpen(false);
   }
 
   const consumerForm = (
     <form className="space-y-4" onSubmit={handleSubmit}>
-      <div>
-        <Label htmlFor="consumer_phone">Consumer phone</Label>
-        <Input
-          id="consumer_phone"
-          required
-          inputMode="tel"
-          autoComplete="tel"
-          placeholder="9876543210"
-          value={form.consumer_phone_number}
-          onChange={(e) =>
-            setForm({ ...form, consumer_phone_number: e.target.value })
-          }
-        />
-      </div>
+      <PhoneInput
+        label="Consumer phone"
+        countryCodeId="consumer_country_code"
+        nationalNumberId="consumer_phone"
+        value={form.consumer_phone}
+        required
+        error={phoneError}
+        hint="Stored as digits only (e.g. 919876543210)."
+        onChange={(consumer_phone) => {
+          setPhoneError(null);
+          setForm({ ...form, consumer_phone });
+        }}
+      />
       <div>
         <Label htmlFor="consumer_email">Consumer email</Label>
         <Input
@@ -298,7 +314,7 @@ export default function ConsumersPage() {
                         onClick={() => setHistoryConsumer(consumer)}
                       >
                         <TableCell className="font-medium">
-                          {consumer.consumer_phone_number}
+                          {formatPhoneDisplay(consumer.consumer_phone_number)}
                         </TableCell>
                         <TableCell>{consumer.consumer_email_id}</TableCell>
                         {canEditConsumers ? (
