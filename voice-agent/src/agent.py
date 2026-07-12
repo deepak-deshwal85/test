@@ -14,13 +14,10 @@ from livekit.agents import (
     AgentSession,
     JobContext,
     JobProcess,
-    TurnHandlingOptions,
     cli,
-    inference,
     llm,
     room_io,
 )
-from livekit.agents.voice.turn import EndpointingOptions
 from livekit.plugins import ai_coustics, deepgram, xai
 
 from agent_instructions import build_conversation_flow_instructions
@@ -43,7 +40,6 @@ from rag_client.prefetch import (
     extract_message_text,
     pick_filler_phrase,
     prefetch_uploaded_documents,
-    requires_sync_turn_completion,
     should_auto_search_user_text,
     warmup_knowledge_retriever,
 )
@@ -55,6 +51,7 @@ from scheduling_tools import (
 from session_greeting import greet_caller
 from sip_utils import extract_routing_phone_number
 from tts_config import build_cartesia_tts
+from turn_handling_config import build_turn_handling_options
 
 logger = logging.getLogger("relaydesk-agent")
 
@@ -66,32 +63,8 @@ SIP_PARTICIPANT_WAIT_SECONDS = 5.0
 STT_MODEL = "nova-3"
 DEFAULT_LLM_MODEL = "grok-4-1-fast-non-reasoning"
 DEFAULT_MEETING_TIMEZONE = os.getenv("MEETING_TIMEZONE", "Asia/Kolkata")
-DEFAULT_TURN_ENDPOINTING_MAX_DELAY = 1.0
-DEFAULT_TURN_ENDPOINTING_MIN_DELAY = 0.3
 DEFAULT_SESSION_CLOSE_TRANSCRIPT_TIMEOUT = 5.0
 AGENT_MODE = "relaydesk-pipeline"
-
-
-def build_turn_handling_options(client_config: ClientConfig) -> TurnHandlingOptions:
-    max_delay = float(
-        os.getenv("TURN_ENDPOINTING_MAX_DELAY", str(DEFAULT_TURN_ENDPOINTING_MAX_DELAY))
-    )
-    min_delay = float(
-        os.getenv("TURN_ENDPOINTING_MIN_DELAY", str(DEFAULT_TURN_ENDPOINTING_MIN_DELAY))
-    )
-    kwargs: dict[str, object] = {
-        "turn_detection": inference.TurnDetector(version="v1"),
-        "endpointing": EndpointingOptions(
-            max_delay=max_delay,
-            min_delay=min_delay,
-        ),
-    }
-    if requires_sync_turn_completion(client_config):
-        # Document prefetch runs in on_user_turn_completed and can take several
-        # seconds. Preemptive generation starts before that hook finishes, so
-        # the LLM would run without injected excerpts.
-        kwargs["preemptive_generation"] = {"enabled": False}
-    return TurnHandlingOptions(**kwargs)
 
 
 def build_agent_instructions(client_config: ClientConfig) -> str:

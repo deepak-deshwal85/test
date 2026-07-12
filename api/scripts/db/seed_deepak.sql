@@ -39,10 +39,10 @@ SELECT
 FROM clients AS c
 JOIN (
     VALUES
-        ('deepakdeshwal85@gmail.com', '919900000001', 'alice@example.com', 'READY'),
-        ('deepakdeshwal85@gmail.com', '919900000002', 'bob@example.com', 'READY'),
-        ('deepakdeshwal85@yahoo.com', '919900000003', 'carol@example.com', 'READY'),
-        ('deepakdeshwal85@yahoo.com', '919900000004', 'dave@example.com', 'MEETING_NOT_SCHEDULED')
+        ('deepakdeshwal85@gmail.com', '919868402577', 'alice@example.com', 'READY'),
+        ('deepakdeshwal85@gmail.com', '918318589094', 'bob@example.com', 'READY'),
+        ('deepakdeshwal85@yahoo.com', '919868402577', 'carol@example.com', 'READY'),
+        ('deepakdeshwal85@yahoo.com', '918318589094', 'dave@example.com', 'MEETING_NOT_SCHEDULED')
 ) AS v(client_email_id, consumer_phone_number, consumer_email_id, status)
     ON c.client_email_id = v.client_email_id;
 
