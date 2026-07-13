@@ -39,7 +39,7 @@ aws ecs update-service --cluster relaydesk-prod --service relaydesk-prod-api \
   --force-new-deployment --profile "$PROFILE_NAME" --region "$AWS_REGION"
 ```
 
-Sections below cover architecture, secrets, domain setup, Cognito roles, all scripts, and troubleshooting in full.
+Sections below cover architecture, secrets, Cloudflare DNS, Cognito roles, automation scripts (`rebuild_infra.py`, `cost_control.py`), and troubleshooting in full.
 
 ---
 
@@ -350,13 +350,98 @@ Workflow: `.github/workflows/deploy-ecs.yml`
 
 ## 6. Custom domain (Cloudflare + ACM)
 
-1. Set `ui_domain_name = "relaydesk.uk"` in `terraform.tfvars` and `terraform apply`
-2. Add ACM validation CNAME from `terraform output acm_dns_validation_records` (DNS only / gray cloud)
-3. Wait for validation, `terraform apply` again
-4. Point `@` CNAME to `terraform output -raw alb_dns_name`
-5. Cloudflare SSL: **Full (strict)**
-6. Verify: `terraform output cognito_production_sso_ready` → `true`
-7. Rebuild/push UI so `AUTH_URL` matches production domain
+DNS is managed in **Cloudflare** (not Route 53). Terraform creates the ACM certificate and ALB HTTPS listener; you create matching CNAME records in Cloudflare.
+
+### Prerequisites
+
+- Domain already on Cloudflare (nameservers pointed to Cloudflare)
+- `ui_domain_name` set in `terraform.tfvars` (e.g. `relaydesk.uk`)
+- `api_publicly_accessible = true` (required for public HTTPS)
+
+### Step-by-step Cloudflare DNS
+
+**1. Create the ACM certificate first** (so Terraform can output validation records without waiting forever):
+
+```bash
+cd infra/terraform
+terraform apply -target=aws_acm_certificate.ui[0]
+```
+
+**2. Print the records to create:**
+
+```bash
+terraform output -json cloudflare_dns_instructions
+# or:
+terraform output acm_dns_validation_records
+terraform output -raw alb_dns_name
+```
+
+**3. In Cloudflare → your zone → DNS → Records**, add:
+
+| Purpose | Type | Name (Cloudflare) | Target / Content | Proxy status |
+|---------|------|-------------------|------------------|--------------|
+| **ACM validation** | CNAME | Hostname from output (often `_xxxxx.relaydesk.uk` — if Cloudflare complains, use only the `_xxxxx` host label) | Value from `acm_dns_validation_records` (ends with `.acm-validations.aws.`) | **DNS only** (gray cloud) — required |
+| **App traffic** | CNAME | `@` (apex) or `www` | ALB DNS from `terraform output -raw alb_dns_name` (e.g. `relaydesk-prod-….ap-south-1.elb.amazonaws.com`) | Start as **DNS only** (gray); optional orange cloud later |
+
+Cloudflare supports **CNAME flattening** on the apex (`@`), so pointing `@` at the ALB is fine.
+
+**4. Cloudflare SSL/TLS settings** (SSL/TLS → Overview / Edge Certificates):
+
+| Setting | Value |
+|---------|-------|
+| Encryption mode | **Full (strict)** |
+| Always Use HTTPS | On (recommended) |
+| Minimum TLS Version | 1.2 |
+
+Do **not** use Flexible SSL — ALB terminates real TLS; Flexible causes redirect loops / broken HTTPS.
+
+**5. Finish Terraform** (waits until ACM sees the validation CNAME, then attaches HTTPS listener):
+
+```bash
+terraform apply
+```
+
+Validation usually takes **5–15 minutes** after the gray-cloud CNAME is correct.
+
+**6. Confirm Cognito + UI env**
+
+```bash
+terraform output cognito_callback_urls
+terraform output cognito_production_sso_ready   # should be true
+```
+
+Set in `ui/.env`:
+
+```bash
+AUTH_URL=https://relaydesk.uk
+RELAYDESK_API_URL_AWS=https://relaydesk.uk
+```
+
+Then rebuild/redeploy UI:
+
+```bash
+python infra/scripts/deploy_ui.py --profile relaydesk-admin --region ap-south-1
+```
+
+**7. Smoke test**
+
+```bash
+curl -I https://relaydesk.uk/login
+curl https://relaydesk.uk/api/health
+```
+
+### After `rebuild_infra.py` / `terraform destroy`
+
+ACM CNAMEs and the app CNAME must be updated again — ALB DNS name changes on every recreate. Re-run steps 1–5 (or use `terraform output cloudflare_dns_instructions`). Keep encryption mode **Full (strict)**.
+
+### DNS troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| `terraform apply` hangs on ACM validation | ACM CNAME missing, wrong value, or **proxied** (orange cloud). Must be **DNS only**. |
+| ERR_SSL / certificate name mismatch | App CNAME must point at current ALB; wait for ACM **ISSUED**; use Full (strict). |
+| Cognito redirect_uri mismatch | `AUTH_URL` must match `https://<ui_domain_name>`; check `cognito_callback_urls`. |
+| Redirect loop | Cloudflare set to Flexible — switch to Full (strict). |
 
 ---
 
@@ -398,17 +483,57 @@ All scripts in `infra/scripts/`. Run from repo root unless noted.
 
 | Script | Purpose | Example |
 |--------|---------|---------|
+| **`rebuild_infra.py`** | Destroy / provision / full rebuild (unattended) | `python infra/scripts/rebuild_infra.py rebuild --yes` |
 | **`deploy_api.py`** | Build, push, deploy API | `python infra/scripts/deploy_api.py` |
 | **`deploy_ui.py`** | Build, push, deploy UI | `python infra/scripts/deploy_ui.py` |
 | **`deploy_voice_agent.py`** | Build, push, deploy voice-agent | `python infra/scripts/deploy_voice_agent.py` |
 | **`deploy_all.py`** | Deploy all services (parallel by default) | `python infra/scripts/deploy_all.py` |
 | **`rds_tunnel.py`** | RDS SSM tunnel + local `DATABASE_URL` | `python infra/scripts/rds_tunnel.py start` |
 | **`sync_ssm_parameters.py`** | Push secrets to SSM (all or `--only KEY`) | `python infra/scripts/sync_ssm_parameters.py --profile relaydesk-admin` |
-| **`bootstrap_db.py`** | Drop, recreate, seed PostgreSQL | `python infra/scripts/bootstrap_db.py --use-tunnel --password "$RDS_DB_PASSWORD" --yes` |
+| **`bootstrap_db.py`** | Drop, recreate, seed PostgreSQL (Deepak) | `python infra/scripts/bootstrap_db.py --use-tunnel --password "$RDS_DB_PASSWORD" --yes` |
 | **`approve_cognito_user.py`** | Assign or revoke Cognito roles | `python infra/scripts/approve_cognito_user.py --email u@x.com --role relaydesk-admins` |
 | **`cost_control.py`** | Stop/start ECS + ASG (+ optional RDS) | `python infra/scripts/cost_control.py status` |
 
 `deploy_common.py` is a shared library used by the deploy scripts — not run directly.
+
+### `rebuild_infra.py` (destroy / provision / rebuild)
+
+Unattended orchestration of Terraform, SSM sync, Deepak DB seed, and `deploy_all.py`. Requires existing `api/.env`, `ui/.env`, `voice-agent/.env`, and `terraform.tfvars`.
+
+```powershell
+# Required once per shell
+$env:RDS_DB_PASSWORD = "YourStrongRdsPassword"
+$env:AWS_PROFILE = "relaydesk-admin"
+
+# Preview steps (no changes)
+python infra/scripts/rebuild_infra.py rebuild --yes --dry-run --profile relaydesk-admin
+
+# Tear down AWS (near-zero bill; irreversible)
+python infra/scripts/rebuild_infra.py destroy --yes --profile relaydesk-admin
+
+# Recreate from scratch (apply → seed Deepak → SSM → deploy)
+python infra/scripts/rebuild_infra.py provision --profile relaydesk-admin
+
+# Full cycle: destroy + provision (~1–2 hours)
+python infra/scripts/rebuild_infra.py rebuild --yes --profile relaydesk-admin --region ap-south-1
+```
+
+| Flag | Meaning |
+|------|---------|
+| `--yes` | Required for `destroy` / `rebuild` |
+| `--skip-terraform` | Skip `terraform apply` (infra already exists) |
+| `--skip-bootstrap` | Keep existing RDS data |
+| `--skip-deploy` | Infra + DB only; no Docker/ECS |
+| `--dry-run` | Print steps only |
+
+**After rebuild, still manual:**
+
+1. **Cloudflare DNS** — ALB hostname changed; follow [§6 Custom domain](#6-custom-domain-cloudflare--acm)
+2. **Cognito users** — sign in once, then `approve_cognito_user.py`
+
+When `ui_domain_name` is set, `provision` / `rebuild` creates the ACM cert first, prints the **ACM validation CNAME**, then **waits until the certificate is ISSUED** (add that Cloudflare gray-cloud CNAME while it waits). After apply finishes it prints the **ALB CNAME** for the apex/`www` record.
+
+Qdrant collections and vendor API keys in local `.env` files are reused automatically.
 
 ### `sync_ssm_parameters.py` (single key)
 
@@ -424,6 +549,8 @@ python infra/scripts/sync_ssm_parameters.py --only COGNITO_CLIENT_SECRET --from-
 ```
 
 ### `cost_control.py`
+
+Pause compute without destroying the VPC/NAT/ALB stack:
 
 ```bash
 # Current desired counts
@@ -443,7 +570,12 @@ python infra/scripts/cost_control.py start \
   --profile relaydesk-admin --region ap-south-1 --include-rds
 ```
 
-**Still billed while stopped:** NAT Gateway, ALB, EIPs, RDS storage, ECR, SSM. Full teardown: `terraform destroy`.
+**Still billed while stopped:** NAT Gateway, ALB, EIPs, RDS storage, ECR, SSM.
+
+| Goal | Use |
+|------|-----|
+| Short pause (days/weeks), fast resume | `cost_control.py stop --include-rds` |
+| Long idle, near-zero AWS bill | `rebuild_infra.py destroy --yes` then later `provision` |
 
 ### ASG instance refresh (after changing instance type)
 
@@ -504,6 +636,9 @@ Enable billing alerts in AWS Console → Billing preferences if the dashboard is
 | `client_email_id` errors in UI | Redeploy UI + API; sign out/in; complete profile on `/login` |
 | Cognito callback mismatch | `terraform output cognito_callback_urls` must match UI `AUTH_URL` |
 | Google SSO fails | Check SSM `GOOGLE_*` params and `enable_cognito_google = true` |
+| ACM validation stuck | Cloudflare ACM CNAME must be **DNS only** (gray); check `terraform output acm_dns_validation_records` |
+| HTTPS redirect loop | Cloudflare SSL mode must be **Full (strict)**, not Flexible |
+| Domain after rebuild | ALB DNS changed — update app CNAME; see [§6](#6-custom-domain-cloudflare--acm) |
 
 ### Fix voice-agent M2M secret (Terraform targeted apply)
 
